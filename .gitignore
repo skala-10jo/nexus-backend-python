@@ -35,3 +35,6 @@ htmlcov/
 # Database
 *.db
 *.sqlite
+
+# Claude Code generated documentation
+claudedocs/
