@@ -4,7 +4,7 @@ FastAPI application entry point for Python AI backend.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.api import glossary
+from app.api import glossary, translate
 import logging
 
 # Configure logging
@@ -34,6 +34,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(glossary.router, prefix="/api/ai", tags=["Glossary AI"])
+app.include_router(translate.router, tags=["Translation AI"])
 
 
 @app.on_event("startup")
