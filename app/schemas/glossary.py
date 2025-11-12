@@ -27,9 +27,12 @@ class TermData(BaseModel):
     """Schema for term data extracted by GPT-4o."""
     korean: str = Field(..., description="Korean term")
     english: Optional[str] = Field(None, description="English term")
+    vietnamese: Optional[str] = Field(None, description="Vietnamese term")
     abbreviation: Optional[str] = Field(None, description="Abbreviation if exists")
     definition: str = Field(..., description="Clear definition of the term")
     context: Optional[str] = Field(None, description="Context where term was used in document")
+    example_sentence: Optional[str] = Field(None, description="Example sentence showing term usage")
+    note: Optional[str] = Field(None, description="Additional notes and references")
     domain: str = Field(..., description="Domain (IT, Business, etc.)")
     confidence: Decimal = Field(..., ge=0.0, le=1.0, description="Confidence score 0.0-1.0")
 

@@ -213,9 +213,12 @@ class GlossaryService:
                     user_id=user_id,
                     korean_term=term_data['korean'],
                     english_term=term_data.get('english'),
+                    vietnamese_term=term_data.get('vietnamese'),
                     abbreviation=term_data.get('abbreviation'),
                     definition=term_data['definition'],
                     context=term_data.get('context'),
+                    example_sentence=term_data.get('example_sentence'),
+                    note=term_data.get('note'),
                     domain=term_data['domain'],
                     confidence_score=term_data['confidence'],
                     status='AUTO_EXTRACTED'

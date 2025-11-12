@@ -19,9 +19,12 @@ class GlossaryTerm(Base):
     # Term information
     korean_term = Column(String(255), nullable=False)
     english_term = Column(String(255), nullable=True)
+    vietnamese_term = Column(String(255), nullable=True)
     abbreviation = Column(String(100), nullable=True)
     definition = Column(Text, nullable=False)
     context = Column(Text, nullable=True)
+    example_sentence = Column(Text, nullable=True)
+    note = Column(Text, nullable=True)
 
     # Metadata
     domain = Column(String(100), nullable=True)
