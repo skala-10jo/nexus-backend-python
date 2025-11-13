@@ -16,8 +16,8 @@ class DocumentStatus(enum.Enum):
     """문서 상태 열거형 (Java DocumentStatus와 동일)"""
     UPLOADED = "UPLOADED"       # 업로드 완료
     PROCESSING = "PROCESSING"   # 분석 중
-    READY = "READY"             # 사용 가능
-    ERROR = "ERROR"             # 오류 발생
+    PROCESSED = "PROCESSED"     # 분석 완료 (사용 가능)
+    FAILED = "FAILED"           # 오류 발생
 
 
 # Project-Document 다대다 관계 테이블
@@ -51,7 +51,7 @@ class Document(Base):
     upload_date = Column(DateTime(timezone=True), nullable=False)
 
     # 상태
-    status = Column(Enum(DocumentStatus), nullable=False, default=DocumentStatus.READY)
+    status = Column(Enum(DocumentStatus), nullable=False, default=DocumentStatus.PROCESSED)
     is_analyzed = Column(Boolean, nullable=False, default=False)
 
     # 타임스탬프
