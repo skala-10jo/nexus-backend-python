@@ -4,7 +4,7 @@ FastAPI application entry point for Python AI backend.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.api import glossary, translate, mail_agent, scenarios, conversations
+from app.api import glossary, translate, mail_agent, scenarios, conversations, video_translation
 import logging
 
 # Configure logging
@@ -38,21 +38,31 @@ app.include_router(translate.router, tags=["Translation AI"])
 app.include_router(mail_agent.router)  # prefix already defined in mail_agent.py
 app.include_router(scenarios.router, prefix="/api/ai/scenarios", tags=["Scenarios AI"])
 app.include_router(conversations.router, tags=["Conversations AI"])  # prefix already defined
+app.include_router(video_translation.router, tags=["Video Translation AI"])
 
 
 @app.on_event("startup")
 async def startup_event():
     """Execute on application startup."""
-    logger.info("🚀 NEXUS Python AI Backend starting...")
-    logger.info(f"📍 Port: {settings.PYTHON_BACKEND_PORT}")
-    logger.info(f"🔗 CORS origins: {settings.ALLOWED_ORIGINS}")
-    logger.info(f"🗄️  Database: {settings.DATABASE_URL.split('@')[1] if '@' in settings.DATABASE_URL else 'configured'}")
+    from app.core.qdrant_client import ensure_collection_exists
+
+    logger.info("NEXUS Python AI Backend starting...")
+    logger.info(f"Port: {settings.PYTHON_BACKEND_PORT}")
+    logger.info(f"CORS origins: {settings.ALLOWED_ORIGINS}")
+    logger.info(f"Database: {settings.DATABASE_URL.split('@')[1] if '@' in settings.DATABASE_URL else 'configured'}")
+
+    # Initialize Qdrant collection
+    try:
+        ensure_collection_exists()
+        logger.info(f"Qdrant collection ready: {settings.QDRANT_COLLECTION_NAME}")
+    except Exception as e:
+        logger.error(f"Failed to initialize Qdrant: {str(e)}")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Execute on application shutdown."""
-    logger.info("👋 NEXUS Python AI Backend shutting down...")
+    logger.info("NEXUS Python AI Backend shutting down...")
 
 
 @app.get("/", tags=["Root"])

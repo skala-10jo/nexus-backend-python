@@ -1,11 +1,14 @@
 """
-EmbeddingAgent: 메일 본문을 청킹하고 각 청크를 임베딩으로 변환하는 Agent.
+EmbeddingAgent: 메일 본문을 청킹하고 각 청크를 임베딩으로 변환하여 Qdrant에 저장하는 Agent.
 
 Author: NEXUS Team
 Date: 2025-01-12
+Updated: 2025-01-17 (Qdrant 연동)
 """
 from agent.base_agent import BaseAgent
 from app.core.text_utils import split_text_into_chunks
+from app.core.embedding_service import save_embeddings_to_qdrant
+from app.config import settings
 from typing import List, Dict, Any
 import logging
 
@@ -14,25 +17,26 @@ logger = logging.getLogger(__name__)
 
 class EmbeddingAgent(BaseAgent):
     """
-    메일 본문을 청킹하고 각 청크를 임베딩으로 변환하는 Agent.
+    메일 본문을 청킹하고 각 청크를 임베딩으로 변환하여 Qdrant에 저장하는 Agent.
 
     계층 구조:
         - API: 라우팅만
-        - Service: Agent 조율 + DB 저장
-        - Agent: 순수 AI 로직 (청킹 + 임베딩 생성)
+        - Service: Agent 조율
+        - Agent: AI 로직 (청킹 + 임베딩 생성 + Qdrant 저장)
 
     Example:
         >>> agent = EmbeddingAgent()
         >>> email_data = {
         ...     'email_id': 'uuid',
+        ...     'user_id': 'uuid',
         ...     'subject': '프로젝트 일정',
         ...     'body': '메일 본문...',
         ...     'folder': 'Inbox',
         ...     'from_name': '홍길동',
         ...     'date': datetime.now()
         ... }
-        >>> results = await agent.process(email_data)
-        >>> len(results)  # 청크 개수
+        >>> result = await agent.process(email_data)
+        >>> result['chunks_created']
         3
     """
 
@@ -41,29 +45,30 @@ class EmbeddingAgent(BaseAgent):
         email_data: Dict[str, Any],
         chunk_size: int = 1000,
         overlap: int = 200
-    ) -> List[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """
-        메일 데이터를 받아 청킹 + 임베딩 생성.
+        메일 데이터를 받아 청킹 + 임베딩 생성 + Qdrant 저장.
 
         Args:
             email_data: {
                 'email_id': UUID,
+                'user_id': UUID,
                 'subject': str,
                 'body': str,
                 'folder': 'Inbox' or 'SentItems',
                 'from_name': str (Inbox용),
                 'to_recipients': str (SentItems용),
-                'date': datetime
+                'date': datetime,
+                'has_attachments': bool
             }
             chunk_size: 청크 크기 (기본 1000자)
             overlap: 오버랩 크기 (기본 200자, 20%)
 
         Returns:
-            List of {
-                'chunk_index': int,
-                'chunk_text': str (메타데이터 포함),
-                'embedding': List[float],
-                'metadata': dict
+            {
+                'status': 'success',
+                'chunks_created': int,
+                'email_id': str
             }
 
         Raises:
@@ -74,33 +79,53 @@ class EmbeddingAgent(BaseAgent):
             logger.warning(f"Email {email_data.get('email_id')}: Body too short, skipping")
             raise ValueError("Email body is too short or empty (min 50 characters)")
 
+        email_id = email_data.get('email_id')
+        user_id = email_data.get('user_id')
+
         # 1. 청킹 (오버랩 포함)
         chunks = split_text_into_chunks(body, chunk_size, overlap)
         logger.info(
-            f"📧 Email {email_data.get('email_id')}: "
+            f"Email {email_id}: "
             f"Split into {len(chunks)} chunks (size={chunk_size}, overlap={overlap})"
         )
 
         # 2. 각 청크마다 임베딩 생성
-        results = []
+        embeddings = []
+        payloads = []
+
         for idx, chunk in enumerate(chunks):
             # 메타데이터 포함한 텍스트 생성
             formatted_text = self._format_chunk_text(email_data, chunk)
 
             # OpenAI 임베딩 API 호출
             embedding = await self._generate_embedding(formatted_text)
+            embeddings.append(embedding)
 
-            results.append({
-                'chunk_index': idx,
-                'chunk_text': formatted_text,
-                'embedding': embedding,
-                'metadata': self._build_metadata(email_data)
-            })
+            # 메타데이터 생성
+            metadata = self._build_metadata(email_data)
+            metadata['chunk_index'] = idx
+            metadata['chunk_text'] = formatted_text[:500]  # Preview only
+            metadata['email_id'] = str(email_id)
+            metadata['user_id'] = str(user_id)
 
-            logger.debug(f"  ✅ Chunk {idx}/{len(chunks)-1}: Embedded {len(chunk)} chars")
+            payloads.append(metadata)
 
-        logger.info(f"🎯 Email {email_data.get('email_id')}: Generated {len(results)} embeddings")
-        return results
+            logger.debug(f"Chunk {idx}/{len(chunks)-1}: Embedded {len(chunk)} chars")
+
+        # 3. Qdrant에 일괄 저장 (공통 유틸 사용)
+        saved_count = save_embeddings_to_qdrant(
+            embeddings=embeddings,
+            payloads=payloads,
+            collection_name=settings.QDRANT_COLLECTION_NAME
+        )
+
+        logger.info(f"Email {email_id}: Generated and saved {saved_count} embeddings to Qdrant")
+
+        return {
+            'status': 'success',
+            'chunks_created': saved_count,
+            'email_id': str(email_id)
+        }
 
     def _format_chunk_text(self, email_data: Dict, chunk: str) -> str:
         """
@@ -131,16 +156,13 @@ class EmbeddingAgent(BaseAgent):
 
     def _build_metadata(self, email_data: Dict) -> Dict:
         """
-        JSONB 메타데이터 생성 (SQL 필터링용).
-
-        chunk_text에 이미 메타데이터가 포함되어 있지만,
-        JSONB 메타데이터는 SQL 필터링/정렬에 사용됩니다.
+        Qdrant payload 메타데이터 생성.
 
         Args:
             email_data: 메일 정보
 
         Returns:
-            JSONB 메타데이터 딕셔너리
+            Qdrant payload 딕셔너리
         """
         date = email_data.get('date')
         return {
