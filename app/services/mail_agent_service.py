@@ -1,14 +1,15 @@
 """
 MailAgentService: 메일 임베딩 및 검색 오케스트레이션.
 
-Agent를 조율하고 DB에 저장하는 비즈니스 로직을 담당합니다.
+Agent를 조율하는 비즈니스 로직을 담당합니다.
 
 Author: NEXUS Team
 Date: 2025-01-12
+Updated: 2025-01-17 (Qdrant 연동)
 """
 from agent.mail.embedding_agent import EmbeddingAgent
 from agent.mail.search_agent import SearchAgent
-from app.models.email import Email, EmailEmbedding
+from app.models.email import Email
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 import logging
@@ -22,8 +23,8 @@ class MailAgentService:
 
     계층 구조:
         - API: 라우팅만
-        - Service: Agent 조율 + DB 저장 (이 클래스)
-        - Agent: 순수 AI 로직
+        - Service: Agent 조율
+        - Agent: AI 로직 (임베딩 생성 + Qdrant 저장)
 
     Example:
         >>> service = MailAgentService()
@@ -46,7 +47,7 @@ class MailAgentService:
         db: Session
     ) -> Dict[str, Any]:
         """
-        단일 메일에 대한 임베딩 생성 및 저장.
+        단일 메일에 대한 임베딩 생성 및 Qdrant 저장.
 
         Args:
             email_id: 이메일 ID
@@ -56,6 +57,7 @@ class MailAgentService:
             {
                 'status': 'success' | 'skipped' | 'failed',
                 'chunks_created': int (성공 시),
+                'email_id': str,
                 'reason': str (스킵 시),
                 'error': str (실패 시)
             }
@@ -63,32 +65,51 @@ class MailAgentService:
         Example:
             >>> result = await service.generate_embeddings_for_email('uuid', db)
             >>> result
-            {'status': 'success', 'chunks_created': 3}
+            {'status': 'success', 'chunks_created': 3, 'email_id': 'uuid'}
         """
         try:
             # 1. 메일 데이터 조회
             email = db.query(Email).filter(Email.id == email_id).first()
             if not email:
-                logger.error(f"❌ Email {email_id}: Not found")
+                logger.error(f"Email {email_id}: Not found")
                 return {
                     'status': 'failed',
                     'error': f"Email {email_id} not found"
                 }
 
-            # 2. 이미 임베딩이 존재하면 스킵
-            existing = db.query(EmailEmbedding).filter(
-                EmailEmbedding.email_id == email_id
-            ).first()
-            if existing:
-                logger.info(f"⏭️  Email {email_id}: Embeddings already exist, skipping")
+            # 2. 중복 체크 (Qdrant에 이미 있는지 확인)
+            from app.core.qdrant_client import get_qdrant_client
+            from app.config import settings
+            from qdrant_client.http import models
+
+            qdrant_client = get_qdrant_client()
+
+            # email_id로 검색
+            existing = qdrant_client.scroll(
+                collection_name=settings.QDRANT_COLLECTION_NAME,
+                scroll_filter=models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="email_id",
+                            match=models.MatchValue(value=str(email_id))
+                        )
+                    ]
+                ),
+                limit=1
+            )
+
+            if existing[0]:  # 이미 임베딩이 있음
+                logger.info(f"Email {email_id}: Already has embeddings, skipping")
                 return {
                     'status': 'skipped',
-                    'reason': 'already_embedded'
+                    'reason': 'Already has embeddings',
+                    'email_id': str(email_id)
                 }
 
-            # 3. Agent로 임베딩 생성 (순수 AI 로직)
+            # 2. Agent로 임베딩 생성 + Qdrant 저장
             email_data = {
                 'email_id': email.id,
+                'user_id': email.user_id,  # user_id 추가
                 'subject': email.subject,
                 'body': email.body,
                 'folder': email.folder,
@@ -98,41 +119,29 @@ class MailAgentService:
                 'has_attachments': email.has_attachments
             }
 
-            embeddings = await self.embedding_agent.process(email_data)
+            result = await self.embedding_agent.process(email_data)
 
-            # 4. DB에 저장 (비즈니스 로직)
-            for emb in embeddings:
-                email_emb = EmailEmbedding(
-                    email_id=email_id,
-                    chunk_index=emb['chunk_index'],
-                    chunk_text=emb['chunk_text'],
-                    embedding=emb['embedding'],
-                    metadata=emb['metadata']
-                )
-                db.add(email_emb)
+            logger.info(
+                f"Email {email_id}: Successfully created {result['chunks_created']} embeddings"
+            )
 
-            db.commit()
-            logger.info(f"✅ Email {email_id}: Saved {len(embeddings)} embeddings")
-
-            return {
-                'status': 'success',
-                'chunks_created': len(embeddings)
-            }
+            return result
 
         except ValueError as e:
             # 본문이 너무 짧거나 비어있음
-            logger.warning(f"⚠️  Email {email_id}: {str(e)}")
+            logger.warning(f"Email {email_id}: {str(e)}")
             return {
                 'status': 'skipped',
-                'reason': str(e)
+                'reason': str(e),
+                'email_id': str(email_id)
             }
 
         except Exception as e:
-            logger.error(f"❌ Email {email_id}: Failed to generate embeddings: {str(e)}")
-            db.rollback()
+            logger.error(f"Email {email_id}: Failed to generate embeddings: {str(e)}")
             return {
                 'status': 'failed',
-                'error': str(e)
+                'error': str(e),
+                'email_id': str(email_id)
             }
 
     async def batch_generate_embeddings(
@@ -161,14 +170,10 @@ class MailAgentService:
             >>> result
             {'status': 'success', 'total': 100, 'processed': 95, 'skipped': 3, 'failed': 2}
         """
-        # 임베딩이 없는 메일들만 조회
-        subquery = db.query(EmailEmbedding.email_id).distinct()
-        emails = db.query(Email).filter(
-            Email.user_id == user_id,
-            ~Email.id.in_(subquery)
-        ).all()
+        # 사용자의 모든 메일 조회
+        emails = db.query(Email).filter(Email.user_id == user_id).all()
 
-        logger.info(f"🚀 User {user_id}: Found {len(emails)} emails without embeddings")
+        logger.info(f"User {user_id}: Found {len(emails)} emails for batch processing")
 
         processed = 0
         skipped = 0
@@ -185,7 +190,7 @@ class MailAgentService:
                 failed += 1
 
         logger.info(
-            f"🎉 User {user_id}: Batch complete - "
+            f"User {user_id}: Batch complete - "
             f"processed={processed}, skipped={skipped}, failed={failed}"
         )
 

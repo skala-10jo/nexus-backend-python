@@ -1,13 +1,16 @@
 """
-SearchAgent: 사용자 쿼리를 임베딩으로 변환하고 pgvector로 검색하는 Agent.
+SearchAgent: 사용자 쿼리를 임베딩으로 변환하고 Qdrant로 검색하는 Agent.
 
 Author: NEXUS Team
 Date: 2025-01-12
+Updated: 2025-01-17 (Qdrant 연동)
 """
 from agent.base_agent import BaseAgent
-from app.models.email import EmailEmbedding, Email
+from app.core.qdrant_client import get_qdrant_client
+from app.models.email import Email
+from app.config import settings
+from qdrant_client.http import models
 from sqlalchemy.orm import Session
-from sqlalchemy import text
 from typing import List, Dict, Any, Optional
 import logging
 
@@ -16,11 +19,11 @@ logger = logging.getLogger(__name__)
 
 class SearchAgent(BaseAgent):
     """
-    사용자 쿼리를 임베딩으로 변환하고 pgvector로 검색하는 Agent.
+    사용자 쿼리를 임베딩으로 변환하고 Qdrant로 검색하는 Agent.
 
     하이브리드 검색 전략:
-        1. SQL 필터로 범위 축소 (user_id, folder, date)
-        2. pgvector로 의미 기반 검색 (RAG)
+        1. Qdrant 필터로 범위 축소 (user_id, folder, date)
+        2. Qdrant로 의미 기반 검색 (RAG)
         3. 유사도 높은 순으로 정렬
 
     Example:
@@ -35,6 +38,10 @@ class SearchAgent(BaseAgent):
         >>> len(results)  # 최대 10개
     """
 
+    def __init__(self):
+        super().__init__()
+        self.qdrant_client = get_qdrant_client()
+
     async def process(
         self,
         query: str,
@@ -47,12 +54,12 @@ class SearchAgent(BaseAgent):
         date_to: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
-        자연어 쿼리로 메일 검색 (SQL 필터 + RAG).
+        자연어 쿼리로 메일 검색 (Qdrant 필터 + RAG).
 
         Args:
             query: 사용자 검색 쿼리 ("~내용에 관한 메일 있었나?")
             user_id: 현재 사용자 ID
-            db: DB 세션
+            db: DB 세션 (메일 메타데이터 조회용)
             top_k: 최대 결과 개수 (기본 10)
             similarity_threshold: 최소 유사도 (0~1, 기본 0.7)
             folder: 폴더 필터 (선택, 'Inbox' or 'SentItems')
@@ -79,84 +86,89 @@ class SearchAgent(BaseAgent):
 
         # 1. 쿼리를 임베딩으로 변환
         query_embedding = await self._generate_embedding(query)
-        logger.info(f"🔍 Generated embedding for query: '{query[:50]}...'")
+        logger.info(f"Generated embedding for query: '{query[:50]}...'")
 
-        # 2. SQL 필터 동적 생성
-        filters = ["e.user_id = :user_id"]
-        # pgvector는 리스트를 문자열로 변환해서 전달
-        query_embedding_str = str(query_embedding)
-        params = {
-            'query_embedding': query_embedding_str,
-            'user_id': user_id,
-            'threshold': similarity_threshold,
-            'top_k': top_k
-        }
+        # 2. Qdrant 필터 동적 생성
+        filter_conditions = [
+            models.FieldCondition(
+                key="user_id",
+                match=models.MatchValue(value=user_id)
+            )
+        ]
 
         if folder:
-            filters.append("metadata->>'folder' = :folder")
-            params['folder'] = folder
+            filter_conditions.append(
+                models.FieldCondition(
+                    key="folder",
+                    match=models.MatchValue(value=folder)
+                )
+            )
 
         if date_from:
-            filters.append("metadata->>'date' >= :date_from")
-            params['date_from'] = date_from
+            filter_conditions.append(
+                models.FieldCondition(
+                    key="date",
+                    range=models.Range(gte=date_from)
+                )
+            )
 
         if date_to:
-            filters.append("metadata->>'date' <= :date_to")
-            params['date_to'] = date_to
+            filter_conditions.append(
+                models.FieldCondition(
+                    key="date",
+                    range=models.Range(lte=date_to)
+                )
+            )
 
-        where_clause = " AND ".join(filters)
+        # 3. Qdrant 벡터 검색
+        search_results = self.qdrant_client.search(
+            collection_name=settings.QDRANT_COLLECTION_NAME,
+            query_vector=query_embedding,
+            query_filter=models.Filter(must=filter_conditions) if filter_conditions else None,
+            limit=top_k * 2,  # 중복 제거 위해 넉넉하게 검색
+            score_threshold=similarity_threshold
+        )
 
-        # 3. pgvector cosine similarity 검색
-        sql_query = text(f"""
-            SELECT
-                ee.email_id,
-                ee.chunk_text,
-                ee.metadata,
-                1 - (ee.embedding <=> CAST(:query_embedding AS vector)) AS similarity,
-                e.subject,
-                e.from_name,
-                e.to_recipients,
-                e.folder,
-                e.received_date_time,
-                e.sent_date_time
-            FROM email_embeddings ee
-            JOIN emails e ON ee.email_id = e.id
-            WHERE {where_clause}
-              AND 1 - (ee.embedding <=> CAST(:query_embedding AS vector)) > :threshold
-            ORDER BY similarity DESC
-            LIMIT :top_k
-        """)
-
-        results = db.execute(sql_query, params).fetchall()
+        logger.info(f"Qdrant search returned {len(search_results)} results")
 
         # 4. 결과 포맷팅 (중복 메일 제거 - 가장 유사도 높은 청크만)
-        search_results = []
+        formatted_results = []
         seen_emails = set()
 
-        for row in results:
-            email_id = row.email_id
+        for hit in search_results:
+            email_id = hit.payload.get('email_id')
 
             # 같은 메일의 여러 청크가 매칭될 수 있으므로, 가장 유사도 높은 것만 반환
             if email_id in seen_emails:
                 continue
             seen_emails.add(email_id)
 
-            search_results.append({
+            # DB에서 이메일 전체 정보 조회
+            email = db.query(Email).filter(Email.id == email_id).first()
+            if not email:
+                logger.warning(f"Email {email_id} not found in DB, skipping")
+                continue
+
+            formatted_results.append({
                 'email_id': str(email_id),
-                'subject': row.subject or '(제목 없음)',
-                'from_name': row.from_name,
-                'to_recipients': row.to_recipients,
-                'folder': row.folder,
-                'date': row.received_date_time or row.sent_date_time,
-                'similarity': float(row.similarity),
-                'matched_chunk': row.chunk_text[:200] + '...' if len(row.chunk_text) > 200 else row.chunk_text
+                'subject': email.subject or '(제목 없음)',
+                'from_name': email.from_name,
+                'to_recipients': email.to_recipients,
+                'folder': email.folder,
+                'date': email.received_date_time or email.sent_date_time,
+                'similarity': float(hit.score),
+                'matched_chunk': hit.payload.get('chunk_text', '')[:200] + '...'
             })
 
+            # top_k개만 반환
+            if len(formatted_results) >= top_k:
+                break
+
         logger.info(
-            f"✅ Found {len(search_results)} matching emails "
+            f"Found {len(formatted_results)} matching emails "
             f"(filters: folder={folder}, date_from={date_from}, date_to={date_to})"
         )
-        return search_results
+        return formatted_results
 
     async def _generate_embedding(self, text: str) -> List[float]:
         """

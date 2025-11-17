@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Database
-    DATABASE_URL: str = "postgresql://kihoon@localhost:5432/langapp"
+    DATABASE_URL: str = "postgresql://user:password@localhost:5432/nexus"
 
     # JWT (must match Java backend)
     JWT_SECRET: str
@@ -28,6 +28,11 @@ class Settings(BaseSettings):
 
     # CORS
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+
+    # Qdrant Vector Database
+    QDRANT_HOST: str = "localhost"
+    QDRANT_PORT: int = 6333
+    QDRANT_COLLECTION_NAME: str = "email_embeddings"
 
     class Config:
         env_file = ".env"

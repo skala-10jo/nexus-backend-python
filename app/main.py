@@ -41,16 +41,25 @@ app.include_router(mail_agent.router)  # prefix already defined in mail_agent.py
 @app.on_event("startup")
 async def startup_event():
     """Execute on application startup."""
-    logger.info("🚀 NEXUS Python AI Backend starting...")
-    logger.info(f"📍 Port: {settings.PYTHON_BACKEND_PORT}")
-    logger.info(f"🔗 CORS origins: {settings.ALLOWED_ORIGINS}")
-    logger.info(f"🗄️  Database: {settings.DATABASE_URL.split('@')[1] if '@' in settings.DATABASE_URL else 'configured'}")
+    from app.core.qdrant_client import ensure_collection_exists
+
+    logger.info("NEXUS Python AI Backend starting...")
+    logger.info(f"Port: {settings.PYTHON_BACKEND_PORT}")
+    logger.info(f"CORS origins: {settings.ALLOWED_ORIGINS}")
+    logger.info(f"Database: {settings.DATABASE_URL.split('@')[1] if '@' in settings.DATABASE_URL else 'configured'}")
+
+    # Initialize Qdrant collection
+    try:
+        ensure_collection_exists()
+        logger.info(f"Qdrant collection ready: {settings.QDRANT_COLLECTION_NAME}")
+    except Exception as e:
+        logger.error(f"Failed to initialize Qdrant: {str(e)}")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Execute on application shutdown."""
-    logger.info("👋 NEXUS Python AI Backend shutting down...")
+    logger.info("NEXUS Python AI Backend shutting down...")
 
 
 @app.get("/", tags=["Root"])

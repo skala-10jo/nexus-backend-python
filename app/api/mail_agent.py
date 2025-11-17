@@ -15,7 +15,9 @@ from app.schemas.mail_agent import (
     BatchGenerateResponse,
     SearchRequest,
     SearchResponse,
-    EmailSearchResult
+    EmailSearchResult,
+    ChatRequest,
+    ChatResponse
 )
 import logging
 
@@ -106,8 +108,8 @@ async def search_emails(
     자연어로 메일 검색 (RAG + SQL 필터).
 
     하이브리드 검색 전략:
-        1. SQL 필터로 범위 축소 (user_id, folder, date)
-        2. pgvector로 의미 기반 검색
+        1. Qdrant 필터로 범위 축소 (user_id, folder, date)
+        2. Qdrant로 의미 기반 검색 (벡터 유사도)
         3. 유사도 높은 순으로 정렬
 
     Args:
@@ -177,5 +179,109 @@ async def search_emails(
         raise HTTPException(status_code=400, detail=str(e))
 
     except Exception as e:
-        logger.error(f"❌ Search failed: {str(e)}")
+        logger.error(f"Search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/chat", response_model=ChatResponse)
+async def chat_with_mail_search(
+    request: ChatRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    대화형 메일 검색 (챗봇 인터페이스).
+
+    사용자의 자연어 메시지를 분석하여 검색 쿼리를 추출하고,
+    필요한 경우 자동으로 메일을 검색합니다.
+
+    Args:
+        message: 사용자 메시지 (자연어)
+        user_id: 사용자 ID
+        conversation_history: 대화 히스토리 (선택)
+
+    Returns:
+        {
+            "query": 추출된 검색 쿼리,
+            "folder": 폴더 필터,
+            "date_from": 시작 날짜,
+            "date_to": 종료 날짜,
+            "needs_search": 검색 수행 여부,
+            "response": 사용자 응답 메시지,
+            "search_results": 검색 결과 (검색 수행 시)
+        }
+
+    Example:
+        Request:
+            POST /api/ai/mail/chat
+            {
+                "message": "어제 받은 프로젝트 관련 메일 찾아줘",
+                "user_id": "uuid",
+                "conversation_history": []
+            }
+
+        Response:
+            {
+                "query": "프로젝트",
+                "folder": "Inbox",
+                "date_from": "2025-01-16",
+                "needs_search": true,
+                "response": "어제 받은 프로젝트 관련 메일을 검색하겠습니다.",
+                "search_results": [...]
+            }
+    """
+    logger.info(f"Chat request: message='{request.message[:50]}...', user={request.user_id}")
+
+    try:
+        # QueryAgent로 쿼리 추출
+        from agent.mail.query_agent import QueryAgent
+
+        query_agent = QueryAgent()
+
+        # 대화 히스토리를 딕셔너리 형태로 변환
+        conversation_history = [
+            {"role": msg.role, "content": msg.content}
+            for msg in request.conversation_history
+        ] if request.conversation_history else []
+
+        query_result = await query_agent.process(
+            user_message=request.message,
+            conversation_history=conversation_history
+        )
+
+        logger.info(f"Query extraction result: {query_result}")
+
+        # 검색이 필요한 경우 자동으로 검색 수행
+        search_results = None
+        if query_result.get("needs_search") and query_result.get("query"):
+            logger.info(f"Performing search with query: {query_result.get('query')}")
+
+            results = await service.search_emails(
+                query=query_result.get("query"),
+                user_id=request.user_id,
+                db=db,
+                top_k=5,  # 챗봇은 최대 5개만 표시
+                folder=query_result.get("folder"),
+                date_from=query_result.get("date_from"),
+                date_to=query_result.get("date_to")
+            )
+
+            search_results = [EmailSearchResult(**r) for r in results]
+            logger.info(f"Search completed: {len(search_results)} results")
+
+        return ChatResponse(
+            query=query_result.get("query"),
+            folder=query_result.get("folder"),
+            date_from=query_result.get("date_from"),
+            date_to=query_result.get("date_to"),
+            needs_search=query_result.get("needs_search", False),
+            response=query_result.get("response", ""),
+            search_results=search_results
+        )
+
+    except ValueError as e:
+        logger.error(f"Invalid chat request: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+    except Exception as e:
+        logger.error(f"Chat failed: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")

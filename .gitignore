@@ -36,5 +36,8 @@ htmlcov/
 *.db
 *.sqlite
 
+# Vector Database
+qdrant_storage/
+
 # Claude Code generated documentation
 claudedocs/
