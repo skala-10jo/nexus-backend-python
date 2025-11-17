@@ -62,6 +62,7 @@ class Document(Base):
     projects = relationship("Project", secondary=project_documents, back_populates="documents")
     contents = relationship("DocumentContent", back_populates="document", cascade="all, delete-orphan")
     doc_metadata = relationship("DocumentMetadata", back_populates="document", uselist=False, cascade="all, delete-orphan")
+    video_document = relationship("VideoDocument", back_populates="document", uselist=False, cascade="all, delete-orphan")
 
 
 class DocumentContent(Base):
