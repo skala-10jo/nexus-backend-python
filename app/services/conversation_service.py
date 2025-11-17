@@ -277,3 +277,88 @@ Instructions:
                 detected.append(term)
 
         return detected
+
+    async def generate_message_feedback(
+        self,
+        scenario_id: str,
+        user_message: str,
+        detected_terms: List[str],
+        user_id: UUID
+    ) -> Dict[str, Any]:
+        """
+        사용자 메시지에 대한 피드백 생성
+
+        Args:
+            scenario_id: 시나리오 ID
+            user_message: 사용자 메시지
+            detected_terms: 감지된 전문용어
+            user_id: 사용자 ID
+
+        Returns:
+            피드백 (문법 교정, 용어 사용, 제안, 점수)
+        """
+        try:
+            # DB에서 시나리오 조회
+            db = next(get_db())
+            from app.models.scenario import Scenario
+
+            scenario = db.query(Scenario).filter(
+                Scenario.id == UUID(scenario_id),
+                Scenario.user_id == user_id
+            ).first()
+
+            if not scenario:
+                raise ValueError(f"Scenario not found: {scenario_id}")
+
+            # GPT-4o로 피드백 생성
+            system_prompt = f"""You are an expert language tutor providing feedback on business conversation practice.
+
+Scenario Context:
+- Title: {scenario.title}
+- Language: {scenario.language}
+- Difficulty: {scenario.difficulty}
+- Required Terminology: {', '.join(scenario.required_terminology)}
+
+Analyze the user's message and provide detailed feedback in JSON format with these fields:
+- grammar_corrections: List of grammar mistakes and corrections (empty list if none)
+- terminology_usage: Object with "used" (list of used terms) and "missed" (list of required terms not used)
+- suggestions: List of 2-3 suggestions for improvement
+- score: Integer score from 1-10 based on accuracy, fluency, and terminology usage
+
+Be constructive, encouraging, and specific in your feedback."""
+
+            user_prompt = f"""User's message: "{user_message}"
+
+Detected terminology used: {', '.join(detected_terms) if detected_terms else 'None'}
+
+Provide feedback in this exact JSON format:
+{{
+  "grammar_corrections": ["correction 1", "correction 2"],
+  "terminology_usage": {{
+    "used": ["term1", "term2"],
+    "missed": ["term3"]
+  }},
+  "suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"],
+  "score": 8
+}}"""
+
+            response = await self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.7,
+                max_tokens=500,
+                response_format={"type": "json_object"}
+            )
+
+            # JSON 파싱
+            import json
+            feedback = json.loads(response.choices[0].message.content)
+
+            return feedback
+
+        except Exception as e:
+            logger.error(f"Error generating feedback: {str(e)}")
+            raise

@@ -32,6 +32,12 @@ class EndConversationRequest(BaseModel):
     history: List[Dict[str, str]] = []
 
 
+class MessageFeedbackRequest(BaseModel):
+    scenarioId: str
+    message: str
+    detectedTerms: List[str] = []
+
+
 @router.post("/start")
 async def start_conversation(
     request: StartConversationRequest,
@@ -102,6 +108,43 @@ async def send_message(
     except Exception as e:
         logger.error(f"Failed to send message: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to send message: {str(e)}")
+
+
+@router.post("/feedback")
+async def get_message_feedback(
+    request: MessageFeedbackRequest,
+    user: dict = Depends(get_current_user)
+):
+    """
+    사용자 메시지에 대한 피드백 생성
+
+    Args:
+        request: 메시지 피드백 요청
+        user: 현재 사용자 정보
+
+    Returns:
+        문법 교정, 용어 사용, 제안, 점수
+    """
+    try:
+        user_id = user["user_id"]
+
+        feedback = await conversation_service.generate_message_feedback(
+            scenario_id=request.scenarioId,
+            user_message=request.message,
+            detected_terms=request.detectedTerms,
+            user_id=user_id
+        )
+
+        return {
+            "success": True,
+            "feedback": feedback
+        }
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to generate feedback: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate feedback: {str(e)}")
 
 
 @router.post("/end")
