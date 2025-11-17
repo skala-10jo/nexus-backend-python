@@ -7,6 +7,7 @@ Updated: 2025-01-17 (Qdrant 마이그레이션 - EmailEmbedding 제거)
 """
 from sqlalchemy import Column, String, Integer, Text, ForeignKey, TIMESTAMP, Boolean, BigInteger
 from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.orm import relationship
 from app.models.base import Base
 import uuid
 from datetime import datetime
@@ -54,6 +55,9 @@ class Email(Base):
     received_date_time = Column(TIMESTAMP(timezone=False), nullable=True)
     sent_date_time = Column(TIMESTAMP(timezone=False), nullable=True)
     synced_at = Column(TIMESTAMP(timezone=False), default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    project = relationship("Project", foreign_keys=[project_id], lazy="joined")
 
     def __repr__(self):
         return f"<Email(id={self.id}, subject='{self.subject[:30]}...', folder={self.folder})>"
