@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     # JWT (must match Java backend)
     JWT_SECRET: str
-    JWT_ALGORITHM: str = "HS512"
+    JWT_ALGORITHM: str = "HS256"
 
     # OpenAI
     OPENAI_API_KEY: str
