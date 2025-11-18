@@ -19,6 +19,7 @@ class GenerateEmbeddingsRequest(BaseModel):
 class BatchGenerateRequest(BaseModel):
     """일괄 임베딩 생성 요청"""
     user_id: str = Field(..., description="사용자 ID")
+    force_regenerate: bool = Field(default=False, description="기존 임베딩 강제 재생성 여부")
 
 
 class SearchRequest(BaseModel):
@@ -29,6 +30,7 @@ class SearchRequest(BaseModel):
     folder: Optional[str] = Field(None, description="폴더 필터 (Inbox/SentItems)")
     date_from: Optional[str] = Field(None, description="시작 날짜 (YYYY-MM-DD)")
     date_to: Optional[str] = Field(None, description="종료 날짜 (YYYY-MM-DD)")
+    project_name: Optional[str] = Field(None, description="프로젝트명 필터")
 
 
 class EmailSearchResult(BaseModel):
@@ -41,6 +43,7 @@ class EmailSearchResult(BaseModel):
     date: datetime
     similarity: float = Field(..., ge=0.0, le=1.0, description="유사도 점수 (0.0-1.0)")
     matched_chunk: str = Field(..., description="매칭된 청크 미리보기")
+    full_body: Optional[str] = Field(None, description="전체 이메일 본문")
 
 
 class SearchResponse(BaseModel):
@@ -86,6 +89,7 @@ class ChatResponse(BaseModel):
     folder: Optional[str] = Field(None, description="폴더 필터")
     date_from: Optional[str] = Field(None, description="시작 날짜")
     date_to: Optional[str] = Field(None, description="종료 날짜")
+    project_name: Optional[str] = Field(None, description="프로젝트명 필터")
     needs_search: bool = Field(..., description="검색이 필요한지 여부")
-    response: str = Field(..., description="사용자에게 보여줄 응답")
+    answer: str = Field(..., description="AI가 생성한 자연어 답변")
     search_results: Optional[List[EmailSearchResult]] = Field(None, description="검색 결과 (검색 수행된 경우)")

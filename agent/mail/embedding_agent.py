@@ -6,7 +6,7 @@ Date: 2025-01-12
 Updated: 2025-01-17 (Qdrant 연동)
 """
 from agent.base_agent import BaseAgent
-from app.core.text_utils import split_text_into_chunks
+from app.core.text_utils import split_text_into_chunks, strip_html_tags
 from app.core.embedding_service import save_embeddings_to_qdrant
 from app.config import settings
 from typing import List, Dict, Any
@@ -82,14 +82,18 @@ class EmbeddingAgent(BaseAgent):
         email_id = email_data.get('email_id')
         user_id = email_data.get('user_id')
 
-        # 1. 청킹 (오버랩 포함)
-        chunks = split_text_into_chunks(body, chunk_size, overlap)
+        # 1. HTML 태그 제거 (임베딩 품질 향상)
+        clean_body = strip_html_tags(body)
+        logger.info(f"Email {email_id}: HTML stripped ({len(body)} → {len(clean_body)} chars)")
+
+        # 2. 청킹 (오버랩 포함)
+        chunks = split_text_into_chunks(clean_body, chunk_size, overlap)
         logger.info(
             f"Email {email_id}: "
             f"Split into {len(chunks)} chunks (size={chunk_size}, overlap={overlap})"
         )
 
-        # 2. 각 청크마다 임베딩 생성
+        # 3. 각 청크마다 임베딩 생성
         embeddings = []
         payloads = []
 
@@ -112,7 +116,7 @@ class EmbeddingAgent(BaseAgent):
 
             logger.debug(f"Chunk {idx}/{len(chunks)-1}: Embedded {len(chunk)} chars")
 
-        # 3. Qdrant에 일괄 저장 (공통 유틸 사용)
+        # 4. Qdrant에 일괄 저장 (공통 유틸 사용)
         saved_count = save_embeddings_to_qdrant(
             embeddings=embeddings,
             payloads=payloads,
@@ -171,7 +175,9 @@ class EmbeddingAgent(BaseAgent):
             'to_recipients': email_data.get('to_recipients'),
             'date': date.isoformat() if date else None,
             'folder': email_data.get('folder'),
-            'has_attachments': email_data.get('has_attachments', False)
+            'has_attachments': email_data.get('has_attachments', False),
+            'project_id': email_data.get('project_id'),  # 프로젝트 ID (UUID or None)
+            'project_name': email_data.get('project_name')  # 프로젝트명 (검색용)
         }
 
     async def _generate_embedding(self, text: str) -> List[float]:
