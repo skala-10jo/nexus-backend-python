@@ -30,6 +30,7 @@ from app.models.email import Email
 from app.models.project import Project
 from agent.mail.query_agent import QueryAgent
 from agent.mail.answer_agent import AnswerAgent
+from app.services.email_draft_service import EmailDraftService
 
 logger = logging.getLogger(__name__)
 
@@ -183,9 +184,19 @@ async def chat_with_mail_search(
     request: ChatRequest,
     db: Session = Depends(get_db)
 ):
+    """
+    메일 검색/작성/번역 통합 챗봇 API
+
+    QueryAgent가 쿼리 타입을 분석하고:
+    - search: 메일 검색
+    - draft: 메일 초안 작성 (RAG 통합)
+    - translate: 메일 번역 (RAG 통합)
+    - general: 일반 대화
+    """
     logger.info(f"Chat request: message='{request.message[:50]}...', user={request.user_id}")
 
     try:
+        # 1. QueryAgent로 쿼리 분석
         query_agent = QueryAgent()
 
         conversation_history = [
@@ -200,10 +211,18 @@ async def chat_with_mail_search(
 
         logger.info(f"Query extraction result: {query_result}")
 
-        search_results = None
+        query_type = query_result.get("query_type", "general")
         answer = query_result.get("response", "")
 
-        if query_result.get("needs_search") and query_result.get("query"):
+        # 응답 초기화
+        response_data = {
+            "query_type": query_type,
+            "answer": answer
+        }
+
+        # 2. query_type별 처리
+        if query_type == "search":
+            # 메일 검색
             results = await service.search_emails(
                 query=query_result.get("query"),
                 user_id=request.user_id,
@@ -217,6 +236,7 @@ async def chat_with_mail_search(
 
             search_results = [EmailSearchResult(**r) for r in results]
 
+            # AnswerAgent로 자연어 답변 생성
             answer_agent = AnswerAgent()
             answer = await answer_agent.process(
                 user_query=request.message,
@@ -224,16 +244,55 @@ async def chat_with_mail_search(
                 conversation_history=conversation_history
             )
 
-        return ChatResponse(
-            query=query_result.get("query"),
-            folder=query_result.get("folder"),
-            date_from=query_result.get("date_from"),
-            date_to=query_result.get("date_to"),
-            project_name=query_result.get("project_name"),
-            needs_search=query_result.get("needs_search", False),
-            answer=answer,
-            search_results=search_results
-        )
+            response_data.update({
+                "query": query_result.get("query"),
+                "folder": query_result.get("folder"),
+                "date_from": query_result.get("date_from"),
+                "date_to": query_result.get("date_to"),
+                "project_name": query_result.get("project_name"),
+                "needs_search": True,
+                "answer": answer,
+                "search_results": search_results
+            })
+
+        elif query_type == "draft":
+            # 메일 초안 작성 (RAG 통합)
+            logger.info(f"Creating email draft with keywords: {query_result.get('keywords')}")
+
+            draft_service = EmailDraftService()
+            draft_result = await draft_service.create_draft(
+                original_message=query_result.get("original_message", request.message),
+                keywords=query_result.get("keywords"),
+                target_language=query_result.get("target_language", "ko")
+            )
+
+            response_data.update({
+                "email_draft": draft_result.get("email_draft"),
+                "subject": draft_result.get("subject"),
+                "rag_sections": draft_result.get("rag_sections", []),
+                "answer": f"{answer}\n\n**제목:** {draft_result.get('subject')}\n\n**본문:**\n{draft_result.get('email_draft')}"
+            })
+
+        elif query_type == "translate":
+            # 메일 번역 (RAG 통합)
+            logger.info(f"Translating email with keywords: {query_result.get('keywords')}")
+
+            draft_service = EmailDraftService()
+            translate_result = await draft_service.translate_email(
+                email_text=query_result.get("original_message", ""),
+                keywords=query_result.get("keywords"),
+                target_language=query_result.get("target_language", "en")
+            )
+
+            response_data.update({
+                "translated_email": translate_result.get("translated_email"),
+                "rag_sections": translate_result.get("rag_sections", []),
+                "answer": f"{answer}\n\n**번역 결과:**\n{translate_result.get('translated_email')}"
+            })
+
+        # 3. general은 기본 answer만 반환
+
+        return ChatResponse(**response_data)
 
     except ValueError as e:
         logger.error(f"Invalid chat request: {str(e)}")
@@ -241,4 +300,6 @@ async def chat_with_mail_search(
 
     except Exception as e:
         logger.error(f"Chat failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="Internal server error")

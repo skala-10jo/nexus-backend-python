@@ -95,3 +95,58 @@ def ensure_collection_exists():
     except Exception as e:
         logger.error(f"Failed to ensure collection exists: {str(e)}")
         raise
+
+
+def ensure_bizguide_collection_exists(collection_name: str = "bizguide"):
+    """
+    Ensure the bizguide collection exists in Qdrant for RAG.
+
+    Creates the collection if it doesn't exist with the correct schema:
+    - Vector size: 1536 (OpenAI text-embedding-3-small)
+    - Distance metric: Cosine similarity
+
+    Args:
+        collection_name: Name of the collection (default: "bizguide")
+
+    Example:
+        >>> ensure_bizguide_collection_exists()
+        Collection 'bizguide' ready
+    """
+    client = get_qdrant_client()
+
+    try:
+        # Check if collection exists
+        collections = client.get_collections().collections
+        collection_exists = any(c.name == collection_name for c in collections)
+
+        if collection_exists:
+            logger.info(f"Collection '{collection_name}' already exists")
+            return
+
+        # Create collection
+        client.create_collection(
+            collection_name=collection_name,
+            vectors_config=models.VectorParams(
+                size=1536,  # OpenAI text-embedding-3-small dimension
+                distance=models.Distance.COSINE
+            )
+        )
+
+        # Create payload indexes for filtering
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="topic",
+            field_schema=models.PayloadSchemaType.KEYWORD
+        )
+
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="chapter",
+            field_schema=models.PayloadSchemaType.KEYWORD
+        )
+
+        logger.info(f"Collection '{collection_name}' created successfully")
+
+    except Exception as e:
+        logger.error(f"Failed to ensure bizguide collection exists: {str(e)}")
+        raise
