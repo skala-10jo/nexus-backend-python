@@ -12,6 +12,11 @@ from app.database import Base
 import uuid
 import enum
 
+# ProjectFile import (순환 import 방지를 위해 TYPE_CHECKING 사용)
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.models.project import ProjectFile
+
 
 class FileType(str, enum.Enum):
     """파일 타입 Enum"""
@@ -61,5 +66,6 @@ class File(Base):
     doc_metadata = relationship("DocumentMetadata", back_populates="file", uselist=False, cascade="all, delete-orphan")
 
     # Project 관련 Many-to-Many relationship (Java Backend와 호환)
-    # Junction Table: project_files (file_id, project_id)
-    projects = relationship("Project", secondary="project_files", back_populates="files")
+    # Junction Table: ProjectFile (file_id, project_id)
+    # lazy import로 순환 참조 방지
+    projects = relationship("Project", secondary="project_files", back_populates="files", lazy="dynamic")
