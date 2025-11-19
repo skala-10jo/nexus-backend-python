@@ -135,6 +135,8 @@ class GlossaryService:
 
         except Exception as e:
             logger.error(f"❌ Job {job_id}: Failed with error: {str(e)}")
+            # Rollback before marking job as failed
+            db.rollback()
             self._mark_job_failed(db, job_id, str(e))
             return {
                 "status": "failed",
