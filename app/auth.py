@@ -37,7 +37,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
         )
 
         # Extract user information from payload
-        user_id_str: Optional[str] = payload.get("sub")  # Subject contains userId
+        user_id_str: Optional[str] = payload.get("userId")  # Match Java's claim name
         username: Optional[str] = payload.get("username")
 
         if user_id_str is None:
