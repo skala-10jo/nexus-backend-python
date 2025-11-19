@@ -52,7 +52,7 @@ class MailAgentService:
             qdrant_client = get_qdrant_client()
 
             existing = qdrant_client.scroll(
-                collection_name=settings.QDRANT_COLLECTION_NAME,
+                collection_name=settings.QDRANT_EMAIL_COLLECTION,
                 scroll_filter=models.Filter(
                     must=[
                         models.FieldCondition(
@@ -74,7 +74,7 @@ class MailAgentService:
                     }
                 else:
                     qdrant_client.delete(
-                        collection_name=settings.QDRANT_COLLECTION_NAME,
+                        collection_name=settings.QDRANT_EMAIL_COLLECTION,
                         points_selector=models.FilterSelector(
                             filter=models.Filter(
                                 must=[

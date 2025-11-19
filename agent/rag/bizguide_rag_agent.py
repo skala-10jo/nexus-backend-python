@@ -32,10 +32,11 @@ class BizGuideRAGAgent(BaseAgent):
         ...     print(chunk["text"])
     """
 
-    def __init__(self, collection_name: str = "bizguide"):
+    def __init__(self, collection_name: str = None):
         super().__init__()
+        from app.config import settings
         self.qdrant = get_qdrant_client()
-        self.collection_name = collection_name
+        self.collection_name = collection_name or settings.QDRANT_BIZGUIDE_COLLECTION
 
     async def process(
         self,

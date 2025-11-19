@@ -30,9 +30,9 @@ logger = logging.getLogger(__name__)
 
 # 챕터별 topic 매핑 (수동 설정)
 CHAPTER_TOPICS = {
-    "Chapter 1": ["미팅 참여", "미팅에서의 기본 태도", "미팅", "meeting", "Starting a Meeting", "email"],
-    "Chapter 2": ["미팅 참여", "주간미팅 진행하기", "미팅,", "meeting", "Conducting Weekly Meetings", "email"],
-    "Chapter 3": ["미팅 참여", "미팅 마무리하기", "미팅", "meeting", "Ending the Meeting", "email"],
+    "Chapter 1": ["미팅 참여", "미팅에서의 기본 태도", "미팅", "회의", "meeting", "Starting a Meeting", "email"],
+    "Chapter 2": ["미팅 참여", "주간미팅 진행하기", "미팅,", "회의", "meeting", "Conducting Weekly Meetings", "email"],
+    "Chapter 3": ["미팅 참여", "미팅 마무리하기", "미팅", "회의", "meeting", "Ending the Meeting", "email"],
     "Chapter 4": ["업무 요청 및 개선", "업무 요청하기", "업무", "work", "Requesting Work", "email"],
     "Chapter 5": ["업무 요청 및 개선", "요청 사항 재확인하기", "업무", "work", "Reviewing Requested Information", "email"],
     "Chapter 6": ["업무 요청 및 개선", "개선 요구하기", "업무", "work", "Requesting Improvements", "email"],
@@ -41,7 +41,7 @@ CHAPTER_TOPICS = {
     "Chapter 9": ["효과적인 이메일 작성", "협상 메일 작성하기", "이메일", "email", "Writing a Negotiation Email"],
     "Chapter 10": ["업무 피드백 및 문제 해결", "업무 피드백하기", "피드백", "feedback", "Giving Feedback", "email"],
     "Chapter 11": ["업무 피드백 및 문제 해결", "이슈 해결 요청하기", "피드백", "feedback", "Request for an Issue Resolution", "email"],
-    "Chapter 10": ["업무 피드백 및 문제 해결", "감정 공유하기", "피드백", "feedback", "Sharing Emotions", "email"],
+    "Chapter 12": ["업무 피드백 및 문제 해결", "감정 공유하기", "피드백", "feedback", "Sharing Emotions", "email"],
 }
 
 
@@ -97,14 +97,17 @@ def chunk_by_h2(markdown_text: str) -> List[Dict[str, str]]:
     return chunks
 
 
-async def index_bizguide(file_path: str, collection_name: str = "bizguide"):
+async def index_bizguide(file_path: str, collection_name: str = None):
     """
     BizGuide.md를 Qdrant에 인덱싱
 
     Args:
         file_path: BizGuide.md 파일 경로
-        collection_name: Qdrant 컬렉션 이름
+        collection_name: Qdrant 컬렉션 이름 (기본값: settings에서 가져옴)
     """
+    if collection_name is None:
+        collection_name = settings.QDRANT_BIZGUIDE_COLLECTION
+
     # 1. 파일 읽기
     logger.info(f"Reading file: {file_path}")
     with open(file_path, 'r', encoding='utf-8') as f:
@@ -177,8 +180,8 @@ def main():
     parser.add_argument(
         "--collection",
         type=str,
-        default="bizguide",
-        help="Qdrant collection name (default: bizguide)"
+        default=None,
+        help="Qdrant collection name (default: from settings)"
     )
 
     args = parser.parse_args()

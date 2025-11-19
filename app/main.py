@@ -54,7 +54,7 @@ async def startup_event():
     # Initialize Qdrant collection
     try:
         ensure_collection_exists()
-        logger.info(f"Qdrant collection ready: {settings.QDRANT_COLLECTION_NAME}")
+        logger.info(f"Qdrant collection ready: {settings.QDRANT_EMAIL_COLLECTION}")
     except Exception as e:
         logger.error(f"Failed to initialize Qdrant: {str(e)}")
 

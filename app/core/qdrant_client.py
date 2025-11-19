@@ -57,7 +57,7 @@ def ensure_collection_exists():
         Collection 'email_embeddings' ready
     """
     client = get_qdrant_client()
-    collection_name = settings.QDRANT_COLLECTION_NAME
+    collection_name = settings.QDRANT_EMAIL_COLLECTION
 
     try:
         # Check if collection exists
@@ -97,7 +97,7 @@ def ensure_collection_exists():
         raise
 
 
-def ensure_bizguide_collection_exists(collection_name: str = "bizguide"):
+def ensure_bizguide_collection_exists(collection_name: str = None):
     """
     Ensure the bizguide collection exists in Qdrant for RAG.
 
@@ -106,12 +106,15 @@ def ensure_bizguide_collection_exists(collection_name: str = "bizguide"):
     - Distance metric: Cosine similarity
 
     Args:
-        collection_name: Name of the collection (default: "bizguide")
+        collection_name: Name of the collection (default: from settings)
 
     Example:
         >>> ensure_bizguide_collection_exists()
-        Collection 'bizguide' ready
+        Collection from settings ready
     """
+    if collection_name is None:
+        collection_name = settings.QDRANT_BIZGUIDE_COLLECTION
+
     client = get_qdrant_client()
 
     try:

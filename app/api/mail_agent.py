@@ -143,7 +143,7 @@ async def update_email_project(
         }
 
         qdrant_client.set_payload(
-            collection_name=settings.QDRANT_COLLECTION_NAME,
+            collection_name=settings.QDRANT_EMAIL_COLLECTION,
             payload=payload_update,
             points=models.FilterSelector(
                 filter=models.Filter(
