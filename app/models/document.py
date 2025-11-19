@@ -85,7 +85,7 @@ class DocumentContent(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # 관계
-    document = relationship("Document", back_populates="contents")
+    document = relationship("Document", foreign_keys=[file_id], back_populates="contents")
 
 
 class DocumentMetadata(Base):
@@ -111,4 +111,4 @@ class DocumentMetadata(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # 관계
-    document = relationship("Document", back_populates="doc_metadata")
+    document = relationship("Document", foreign_keys=[file_id], back_populates="doc_metadata")
