@@ -23,7 +23,7 @@ class VideoDocument(Base):
     __tablename__ = "video_documents"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, unique=True)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("files.id", ondelete="CASCADE"), nullable=False, unique=True)
 
     # 영상 메타데이터
     duration_seconds = Column(Integer, nullable=True)

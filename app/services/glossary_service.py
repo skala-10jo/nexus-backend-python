@@ -30,7 +30,7 @@ class GlossaryService:
         >>> service = GlossaryService()
         >>> await service.extract_and_save_terms(
         ...     job_id="job-123",
-        ...     document_id="doc-456",
+        ...     file_id="file-456",
         ...     file_path="uploads/document.pdf",
         ...     user_id="user-789",
         ...     project_id="proj-101",
@@ -45,7 +45,7 @@ class GlossaryService:
     async def extract_and_save_terms(
         self,
         job_id: str,
-        document_id: str,
+        file_id: str,
         file_path: str,
         user_id: str,
         project_id: str,
@@ -63,7 +63,7 @@ class GlossaryService:
 
         Args:
             job_id: Extraction job ID
-            document_id: Document ID
+            file_id: File ID
             file_path: Relative path to document file
             user_id: User ID
             project_id: Project ID (can be "None" or None for no project)
@@ -115,7 +115,7 @@ class GlossaryService:
             saved_count = self._save_terms(
                 db=db,
                 terms_data=terms_data,
-                document_id=document_id,
+                file_id=file_id,
                 user_id=user_id,
                 project_id=project_id
             )
@@ -180,7 +180,7 @@ class GlossaryService:
         self,
         db: Session,
         terms_data: list,
-        document_id: str,
+        file_id: str,
         user_id: str,
         project_id: str
     ) -> int:
@@ -190,7 +190,7 @@ class GlossaryService:
         Args:
             db: Database session
             terms_data: List of term dictionaries from Agent
-            document_id: Document ID
+            file_id: File ID
             user_id: User ID
             project_id: Project ID (can be "None" or None)
 
@@ -226,10 +226,10 @@ class GlossaryService:
                 db.add(term)
                 db.flush()  # Get term ID
 
-                # Create term-document link
+                # Create term-file link
                 term_doc = GlossaryTermDocument(
                     term_id=term.id,
-                    document_id=document_id
+                    file_id=file_id
                 )
                 db.add(term_doc)
                 saved_count += 1

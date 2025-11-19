@@ -27,7 +27,7 @@ async def extract_glossary_terms(
     the job status endpoint to check progress.
 
     Args:
-        request: Extraction request containing job_id, document_id, file_path, user_id, project_id
+        request: Extraction request containing job_id, file_id, file_path, user_id, project_id
         background_tasks: FastAPI background tasks
         db: Database session
 
@@ -38,14 +38,14 @@ async def extract_glossary_terms(
         >>> POST /api/ai/glossary/extract
         >>> {
         >>>   "job_id": "uuid",
-        >>>   "document_id": "uuid",
+        >>>   "file_id": "uuid",
         >>>   "file_path": "uploads/documents/file.pdf",
         >>>   "user_id": "uuid",
         >>>   "project_id": "uuid"
         >>> }
         >>> Response: {"status": "started", "job_id": "uuid"}
     """
-    logger.info(f"🚀 Starting extraction for document {request.document_id}")
+    logger.info(f"🚀 Starting extraction for file {request.file_id}")
 
     # Create service instance
     service = GlossaryService()
@@ -54,7 +54,7 @@ async def extract_glossary_terms(
     background_tasks.add_task(
         service.extract_and_save_terms,
         job_id=str(request.job_id),
-        document_id=str(request.document_id),
+        file_id=str(request.file_id),
         file_path=request.file_path,
         user_id=str(request.user_id),
         project_id=str(request.project_id),

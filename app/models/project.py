@@ -33,9 +33,9 @@ class Project(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # 관계
-    # documents는 project_documents 테이블을 통한 다대다 관계
-    # document.py에서 정의된 project_documents 테이블 사용
-    documents = relationship("Document", secondary="project_documents", back_populates="projects")
+    # documents는 project_files 테이블을 통한 다대다 관계
+    # document.py에서 정의된 project_files 테이블 사용
+    documents = relationship("Document", secondary="project_files", back_populates="projects")
 
     # glossary_terms는 일대다 관계 (GlossaryTerm의 project_id가 외래키)
     # Note: glossary.py에서 relationship이 이미 정의되어 있으므로 여기서는 back_populates만 설정

@@ -20,12 +20,12 @@ class DocumentStatus(enum.Enum):
     FAILED = "FAILED"           # 오류 발생
 
 
-# Project-Document 다대다 관계 테이블
-project_documents = Table(
-    'project_documents',
+# Project-File 다대다 관계 테이블 (project_files 테이블 사용)
+project_files = Table(
+    'project_files',
     Base.metadata,
     Column('project_id', UUID(as_uuid=True), ForeignKey('projects.id', ondelete='CASCADE'), primary_key=True),
-    Column('document_id', UUID(as_uuid=True), ForeignKey('documents.id', ondelete='CASCADE'), primary_key=True),
+    Column('file_id', UUID(as_uuid=True), ForeignKey('files.id', ondelete='CASCADE'), primary_key=True),
     Column('created_at', DateTime(timezone=True), server_default=func.now(), nullable=False)
 )
 
@@ -35,8 +35,9 @@ class Document(Base):
     문서 모델
 
     사용자가 업로드한 문서 정보를 저장합니다.
+    NOTE: files 테이블을 사용합니다 (documents → files 마이그레이션 완료)
     """
-    __tablename__ = "documents"
+    __tablename__ = "files"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
@@ -50,16 +51,15 @@ class Document(Base):
     mime_type = Column(String(100), nullable=False)
     upload_date = Column(DateTime(timezone=True), nullable=False)
 
-    # 상태
-    status = Column(Enum(DocumentStatus), nullable=False, default=DocumentStatus.PROCESSED)
-    is_analyzed = Column(Boolean, nullable=False, default=False)
+    # 상태 (files 테이블에서는 String 타입 사용)
+    status = Column(String(20), nullable=False, default="PROCESSED")
 
     # 타임스탬프
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
-    # 관계
-    projects = relationship("Project", secondary=project_documents, back_populates="documents")
+    # 관계 (project_files 테이블 사용)
+    projects = relationship("Project", secondary=project_files, back_populates="documents")
     contents = relationship("DocumentContent", back_populates="document", cascade="all, delete-orphan")
     doc_metadata = relationship("DocumentMetadata", back_populates="document", uselist=False, cascade="all, delete-orphan")
     video_document = relationship("VideoDocument", back_populates="document", uselist=False, cascade="all, delete-orphan")
@@ -70,11 +70,12 @@ class DocumentContent(Base):
     문서 콘텐츠 모델
 
     문서의 각 페이지별 텍스트 내용을 저장합니다.
+    NOTE: file_id 컬럼을 사용합니다 (document_id → file_id 마이그레이션 완료)
     """
     __tablename__ = "document_content"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+    file_id = Column(UUID(as_uuid=True), ForeignKey("files.id", ondelete="CASCADE"), nullable=False, name="file_id")
 
     # 페이지 정보
     page_number = Column(Integer, nullable=True)
@@ -92,11 +93,12 @@ class DocumentMetadata(Base):
     문서 메타데이터 모델
 
     문서의 메타데이터 정보를 저장합니다.
+    NOTE: file_id 컬럼을 사용합니다 (document_id → file_id 마이그레이션 완료)
     """
     __tablename__ = "document_metadata"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, unique=True)
+    file_id = Column(UUID(as_uuid=True), ForeignKey("files.id", ondelete="CASCADE"), nullable=False, unique=True, name="file_id")
 
     # 메타데이터
     language = Column(String(10), nullable=True)
