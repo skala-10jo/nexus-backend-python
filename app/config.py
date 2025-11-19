@@ -14,7 +14,8 @@ class Settings(BaseSettings):
 
     # JWT (must match Java backend)
     JWT_SECRET: str
-    JWT_ALGORITHM: str = "HS256"
+    # Support multiple algorithms as Java uses hmacShaKeyFor which auto-selects based on key length
+    JWT_ALGORITHMS: List[str] = ["HS256", "HS384", "HS512"]
 
     # OpenAI
     OPENAI_API_KEY: str

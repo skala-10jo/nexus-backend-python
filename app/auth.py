@@ -30,10 +30,11 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
 
     try:
         # Decode JWT token using same secret as Java backend
+        # Support multiple algorithms (HS256, HS384, HS512) as Java auto-selects based on key length
         payload = jwt.decode(
             token,
             settings.JWT_SECRET,
-            algorithms=[settings.JWT_ALGORITHM]
+            algorithms=settings.JWT_ALGORITHMS
         )
 
         # Extract user information from payload
