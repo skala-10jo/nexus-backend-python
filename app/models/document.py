@@ -62,13 +62,11 @@ class Document(Base):
     projects = relationship("Project", secondary=project_files, back_populates="documents")
     contents = relationship(
         "DocumentContent",
-        foreign_keys="[DocumentContent.file_id]",
         back_populates="document",
         cascade="all, delete-orphan"
     )
     doc_metadata = relationship(
         "DocumentMetadata",
-        foreign_keys="[DocumentMetadata.file_id]",
         back_populates="document",
         uselist=False,
         cascade="all, delete-orphan"
@@ -96,7 +94,7 @@ class DocumentContent(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # 관계
-    document = relationship("Document", foreign_keys=[file_id], back_populates="contents")
+    document = relationship("Document", back_populates="contents")
 
 
 class DocumentMetadata(Base):
@@ -122,4 +120,4 @@ class DocumentMetadata(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # 관계
-    document = relationship("Document", foreign_keys=[file_id], back_populates="doc_metadata")
+    document = relationship("Document", back_populates="doc_metadata")
