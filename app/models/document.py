@@ -36,8 +36,10 @@ class Document(Base):
 
     사용자가 업로드한 문서 정보를 저장합니다.
     NOTE: files 테이블을 사용합니다 (documents → files 마이그레이션 완료)
+    NOTE: File 모델과 같은 테이블을 사용하므로 extend_existing 필요
     """
     __tablename__ = "files"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
