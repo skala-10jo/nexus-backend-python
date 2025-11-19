@@ -2,7 +2,7 @@
 Video Translation Service
 
 영상 자막 STT 및 번역 비즈니스 로직을 담당합니다.
-Java Backend V13 스키마와 호환되도록 설계되었습니다.
+Java Backend V22 스키마와 호환되도록 설계되었습니다 (files/video_files 시스템).
 """
 
 import logging
@@ -19,9 +19,10 @@ from agent.video.subtitle_generator_agent import SubtitleGeneratorAgent
 from agent.translate.context_enhanced_translation_agent import ContextEnhancedTranslationAgent
 
 # Model imports
-from app.models.document import Document
-from app.models.video_document import VideoDocument
+from app.models.file import File
+from app.models.video_file import VideoFile
 from app.models.video_subtitle import VideoSubtitle
+from app.models.document import Document  # For context documents
 
 # Config
 from app.config import settings
@@ -45,49 +46,49 @@ class VideoTranslationService:
         self.subtitle_generator = SubtitleGeneratorAgent()
         self.context_translator = ContextEnhancedTranslationAgent()
 
-    def _get_video_document_by_document_id(self, document_id: UUID, db: Session) -> VideoDocument:
+    def _get_video_file_by_file_id(self, file_id: UUID, db: Session) -> VideoFile:
         """
-        문서 ID로 영상 문서 조회
+        파일 ID로 영상 파일 조회
 
         Args:
-            document_id: 문서 ID (Document)
+            file_id: 파일 ID (File)
             db: DB 세션
 
         Returns:
-            VideoDocument 객체
+            VideoFile 객체
 
         Raises:
-            ValueError: 영상 문서를 찾을 수 없을 때
+            ValueError: 영상 파일을 찾을 수 없을 때
         """
-        video_document = db.query(VideoDocument).filter(
-            VideoDocument.document_id == document_id
+        video_file = db.query(VideoFile).filter(
+            VideoFile.id == file_id
         ).first()
 
-        if not video_document:
-            raise ValueError(f"영상 문서를 찾을 수 없습니다: {document_id}")
+        if not video_file:
+            raise ValueError(f"영상 파일을 찾을 수 없습니다: {file_id}")
 
-        return video_document
+        return video_file
 
-    def _get_document_by_id(self, document_id: UUID, db: Session) -> Document:
+    def _get_file_by_id(self, file_id: UUID, db: Session) -> File:
         """
-        문서 ID로 문서 조회
+        파일 ID로 파일 조회
 
         Args:
-            document_id: 문서 ID
+            file_id: 파일 ID
             db: DB 세션
 
         Returns:
-            Document 객체
+            File 객체
 
         Raises:
-            ValueError: 문서를 찾을 수 없을 때
+            ValueError: 파일을 찾을 수 없을 때
         """
-        document = db.query(Document).filter(Document.id == document_id).first()
+        file = db.query(File).filter(File.id == file_id).first()
 
-        if not document:
-            raise ValueError(f"문서를 찾을 수 없습니다: {document_id}")
+        if not file:
+            raise ValueError(f"파일을 찾을 수 없습니다: {file_id}")
 
-        return document
+        return file
 
     def _fetch_context_documents_text(
         self,
@@ -127,7 +128,7 @@ class VideoTranslationService:
 
     async def process_stt(
         self,
-        video_document_id: UUID,
+        video_file_id: UUID,
         source_language: str,
         user_id: UUID,
         db: Session
@@ -136,7 +137,7 @@ class VideoTranslationService:
         영상 STT 처리 및 DB 저장
 
         Args:
-            video_document_id: 영상 문서 ID (Document ID, not VideoDocument ID)
+            video_file_id: 영상 파일 ID (File ID, not VideoFile ID)
             source_language: 음성 언어 코드
             user_id: 사용자 ID
             db: DB 세션
@@ -144,15 +145,15 @@ class VideoTranslationService:
         Returns:
             STT 결과 딕셔너리
         """
-        logger.info(f"🎥 STT 처리 시작: document={video_document_id}, lang={source_language}")
+        logger.info(f"🎥 STT 처리 시작: file={video_file_id}, lang={source_language}")
 
-        # Step 1: Document 및 VideoDocument 조회
-        document = self._get_document_by_id(video_document_id, db)
-        video_document = self._get_video_document_by_document_id(video_document_id, db)
+        # Step 1: File 및 VideoFile 조회
+        file = self._get_file_by_id(video_file_id, db)
+        video_file = self._get_video_file_by_file_id(video_file_id, db)
 
         # 절대 경로로 변환
         upload_base_dir = os.getenv('UPLOAD_BASE_DIR', settings.UPLOAD_BASE_DIR)
-        full_video_path = os.path.join(upload_base_dir, document.file_path)
+        full_video_path = os.path.join(upload_base_dir, file.file_path)
 
         if not os.path.exists(full_video_path):
             raise FileNotFoundError(f"영상 파일을 찾을 수 없습니다: {full_video_path}")
@@ -167,7 +168,7 @@ class VideoTranslationService:
 
         # Step 3: 기존 자막 삭제 (재처리 허용)
         deleted_count = db.query(VideoSubtitle).filter(
-            VideoSubtitle.video_document_id == video_document.id
+            VideoSubtitle.video_file_id == video_file.id
         ).delete()
 
         if deleted_count > 0:
@@ -176,7 +177,7 @@ class VideoTranslationService:
         # Step 4: DB 저장 (각 세그먼트를 VideoSubtitle row로 저장)
         for segment_data in segments:
             subtitle = VideoSubtitle(
-                video_document_id=video_document.id,
+                video_file_id=video_file.id,
                 sequence_number=segment_data["sequence_number"],
                 start_time_ms=segment_data["start_time_ms"],
                 end_time_ms=segment_data["end_time_ms"],
@@ -192,14 +193,14 @@ class VideoTranslationService:
 
         # Step 5: 저장된 자막 조회
         saved_subtitles = db.query(VideoSubtitle).filter(
-            VideoSubtitle.video_document_id == video_document.id
+            VideoSubtitle.video_file_id == video_file.id
         ).order_by(VideoSubtitle.sequence_number).all()
 
         logger.info(f"✅ STT 결과 저장 완료: {len(saved_subtitles)}개 자막")
 
         # 응답 구성
         return {
-            "video_document_id": video_document_id,
+            "video_file_id": video_file_id,
             "language": source_language,
             "segments": [
                 {
@@ -217,7 +218,7 @@ class VideoTranslationService:
 
     async def process_translation(
         self,
-        video_document_id: UUID,
+        video_file_id: UUID,
         document_ids: List[UUID],
         source_language: str,
         target_language: str,
@@ -228,7 +229,7 @@ class VideoTranslationService:
         영상 자막 번역 및 DB 저장
 
         Args:
-            video_document_id: 영상 문서 ID (Document ID)
+            video_file_id: 영상 파일 ID (File ID)
             document_ids: 컨텍스트 문서 ID 리스트
             source_language: 원본 언어
             target_language: 목표 언어
@@ -240,18 +241,18 @@ class VideoTranslationService:
         """
         logger.info(f"🌐 자막 번역 시작: {source_language} → {target_language}")
 
-        # Step 1: VideoDocument 조회
-        video_document = self._get_video_document_by_document_id(video_document_id, db)
+        # Step 1: VideoFile 조회
+        video_file = self._get_video_file_by_file_id(video_file_id, db)
 
         # Step 2: 원본 자막 조회
         original_subtitles = db.query(VideoSubtitle).filter(
-            VideoSubtitle.video_document_id == video_document.id
+            VideoSubtitle.video_file_id == video_file.id
         ).order_by(VideoSubtitle.sequence_number).all()
 
         if not original_subtitles:
             raise ValueError(
                 f"원본 자막을 찾을 수 없습니다. STT를 먼저 실행하세요. "
-                f"(document={video_document_id})"
+                f"(file={video_file_id})"
             )
 
         logger.info(f"📝 원본 자막 조회: {len(original_subtitles)}개 세그먼트")
@@ -288,7 +289,7 @@ class VideoTranslationService:
 
         # 응답 구성
         return {
-            "video_document_id": video_document_id,
+            "video_file_id": video_file_id,
             "source_language": source_language,
             "target_language": target_language,
             "segments": [
@@ -310,31 +311,31 @@ class VideoTranslationService:
 
     async def get_subtitles(
         self,
-        video_document_id: UUID,
+        video_file_id: UUID,
         db: Session
     ) -> Dict[str, Any]:
         """
         다국어 자막 조회
 
         Args:
-            video_document_id: 영상 문서 ID (Document ID)
+            video_file_id: 영상 파일 ID (File ID)
             db: DB 세션
 
         Returns:
             다국어 자막 정보 딕셔너리
         """
-        logger.info(f"📖 다국어 자막 조회: video_document_id={video_document_id}")
+        logger.info(f"📖 다국어 자막 조회: video_file_id={video_file_id}")
 
-        # Step 1: VideoDocument 조회
-        video_document = self._get_video_document_by_document_id(video_document_id, db)
+        # Step 1: VideoFile 조회
+        video_file = self._get_video_file_by_file_id(video_file_id, db)
 
         # Step 2: 자막 조회
         subtitles = db.query(VideoSubtitle).filter(
-            VideoSubtitle.video_document_id == video_document.id
+            VideoSubtitle.video_file_id == video_file.id
         ).order_by(VideoSubtitle.sequence_number).all()
 
         if not subtitles:
-            raise ValueError(f"자막을 찾을 수 없습니다: {video_document_id}")
+            raise ValueError(f"자막을 찾을 수 없습니다: {video_file_id}")
 
         # Step 3: 사용 가능한 언어 목록 추출
         original_language = subtitles[0].original_language if subtitles else "ko"
@@ -349,7 +350,7 @@ class VideoTranslationService:
 
         # 응답 구성
         return {
-            "video_document_id": video_document_id,
+            "video_file_id": video_file_id,
             "original_language": original_language,
             "available_languages": sorted(list(available_languages)),
             "segments": [
@@ -369,7 +370,7 @@ class VideoTranslationService:
 
     async def generate_subtitle_file(
         self,
-        video_document_id: UUID,
+        video_file_id: UUID,
         language_type: str,  # "original" or "translated"
         db: Session
     ) -> Dict[str, Any]:
@@ -377,21 +378,21 @@ class VideoTranslationService:
         SRT 자막 파일 생성
 
         Args:
-            video_document_id: 영상 문서 ID (Document ID)
+            video_file_id: 영상 파일 ID (File ID)
             language_type: "original" (원본) or "translated" (번역)
             db: DB 세션
 
         Returns:
             파일 정보 딕셔너리
         """
-        logger.info(f"📄 SRT 파일 생성 시작: video_document_id={video_document_id}, type={language_type}")
+        logger.info(f"📄 SRT 파일 생성 시작: video_file_id={video_file_id}, type={language_type}")
 
-        # Step 1: VideoDocument 조회
-        video_document = self._get_video_document_by_document_id(video_document_id, db)
+        # Step 1: VideoFile 조회
+        video_file = self._get_video_file_by_file_id(video_file_id, db)
 
         # Step 2: 자막 조회
         subtitles = db.query(VideoSubtitle).filter(
-            VideoSubtitle.video_document_id == video_document.id
+            VideoSubtitle.video_file_id == video_file.id
         ).order_by(VideoSubtitle.sequence_number).all()
 
         if not subtitles:
@@ -401,7 +402,7 @@ class VideoTranslationService:
         subtitle_dir = Path(settings.UPLOAD_BASE_DIR) / "subtitles"
         subtitle_dir.mkdir(parents=True, exist_ok=True)
 
-        filename = f"{video_document.id}_{language_type}.srt"
+        filename = f"{video_file.id}_{language_type}.srt"
         output_path = subtitle_dir / filename
 
         # Step 4: SubtitleGeneratorAgent로 SRT 파일 생성
@@ -428,7 +429,7 @@ class VideoTranslationService:
         file_size = os.path.getsize(file_path)
 
         return {
-            "video_document_id": video_document_id,
+            "video_file_id": video_file_id,
             "file_path": file_path,
             "language_type": language_type,
             "file_size_bytes": file_size
