@@ -59,3 +59,7 @@ class File(Base):
     # Document 관련 relationship (DocumentContent, DocumentMetadata)
     contents = relationship("DocumentContent", back_populates="file", cascade="all, delete-orphan")
     doc_metadata = relationship("DocumentMetadata", back_populates="file", uselist=False, cascade="all, delete-orphan")
+
+    # Project 관련 Many-to-Many relationship (Java Backend와 호환)
+    # Junction Table: project_files (file_id, project_id)
+    projects = relationship("Project", secondary="project_files", back_populates="files")
