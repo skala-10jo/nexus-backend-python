@@ -5,7 +5,7 @@ Java의 Document, DocumentContent, DocumentMetadata 엔티티와 매핑됩니다
 """
 from sqlalchemy import Column, String, Text, Integer, BigInteger, Boolean, ForeignKey, DateTime, Enum, Table
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship, foreign
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
 import uuid
@@ -62,13 +62,13 @@ class Document(Base):
     projects = relationship("Project", secondary=project_files, back_populates="documents")
     contents = relationship(
         "DocumentContent",
-        primaryjoin="Document.id == foreign(DocumentContent.file_id)",
+        foreign_keys="[DocumentContent.file_id]",
         back_populates="document",
         cascade="all, delete-orphan"
     )
     doc_metadata = relationship(
         "DocumentMetadata",
-        primaryjoin="Document.id == foreign(DocumentMetadata.file_id)",
+        foreign_keys="[DocumentMetadata.file_id]",
         back_populates="document",
         uselist=False,
         cascade="all, delete-orphan"
