@@ -207,6 +207,16 @@ class GlossaryService:
 
         for term_data in terms_data:
             try:
+                # Check if term already exists (중복 체크)
+                existing_term = db.query(GlossaryTerm).filter(
+                    GlossaryTerm.user_id == user_id,
+                    GlossaryTerm.korean_term == term_data['korean']
+                ).first()
+
+                if existing_term:
+                    logger.info(f"Term already exists, skipping: '{term_data['korean']}'")
+                    continue
+
                 # Create GlossaryTerm
                 term = GlossaryTerm(
                     project_id=actual_project_id,
@@ -235,6 +245,8 @@ class GlossaryService:
                 saved_count += 1
 
             except Exception as e:
+                # Rollback on error to prevent PendingRollbackError
+                db.rollback()
                 logger.warning(f"Failed to save term '{term_data.get('korean', 'unknown')}': {str(e)}")
                 continue
 
