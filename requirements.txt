@@ -9,6 +9,7 @@ pydantic-settings==2.1.0
 # Database
 sqlalchemy==2.0.25
 psycopg2-binary==2.9.9
+pgvector==0.4.1
 
 # Vector Database
 qdrant-client==1.7.3
@@ -26,3 +27,4 @@ openai==2.7.1
 PyPDF2==3.0.1
 python-docx==1.1.0
 chardet==5.2.0
+beautifulsoup4==4.12.3

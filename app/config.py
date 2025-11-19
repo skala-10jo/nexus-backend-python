@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     # JWT (must match Java backend)
     JWT_SECRET: str
-    JWT_ALGORITHM: str = "HS512"
+    JWT_ALGORITHM: str = "HS256"
 
     # OpenAI
     OPENAI_API_KEY: str
@@ -32,7 +32,12 @@ class Settings(BaseSettings):
     # Qdrant Vector Database
     QDRANT_HOST: str = "localhost"
     QDRANT_PORT: int = 6333
-    QDRANT_COLLECTION_NAME: str = "email_embeddings"
+    QDRANT_EMAIL_COLLECTION: str = "email_embeddings"
+    QDRANT_BIZGUIDE_COLLECTION: str = "bizguide"
+
+    # Azure Speech
+    AZURE_SPEECH_KEY: str
+    AZURE_SPEECH_REGION: str
 
     class Config:
         env_file = ".env"

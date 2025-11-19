@@ -6,6 +6,9 @@ Date: 2025-01-12
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from typing import Optional
+import logging
+
 from app.database import get_db
 from app.services.mail_agent_service import MailAgentService
 from app.schemas.mail_agent import (
@@ -19,7 +22,15 @@ from app.schemas.mail_agent import (
     ChatRequest,
     ChatResponse
 )
-import logging
+
+from app.core.qdrant_client import get_qdrant_client
+from app.config import settings
+from qdrant_client.http import models
+from app.models.email import Email
+from app.models.project import Project
+from agent.mail.query_agent import QueryAgent
+from agent.mail.answer_agent import AnswerAgent
+from app.services.email_draft_service import EmailDraftService
 
 logger = logging.getLogger(__name__)
 
@@ -34,25 +45,6 @@ async def generate_embeddings(
     request: GenerateEmbeddingsRequest,
     db: Session = Depends(get_db)
 ):
-    """
-    단일 메일 임베딩 생성.
-
-    메일 본문을 청킹하여 각 청크를 OpenAI text-embedding-ada-002로 임베딩합니다.
-
-    Args:
-        email_id: 임베딩 생성할 메일 ID
-
-    Returns:
-        임베딩 생성 결과 {status, chunks_created}
-
-    Example:
-        Request:
-            POST /api/ai/mail/embeddings/generate
-            {"email_id": "uuid"}
-
-        Response:
-            {"status": "success", "chunks_created": 3}
-    """
     logger.info(f"📧 Generating embeddings for email: {request.email_id}")
 
     result = await service.generate_embeddings_for_email(request.email_id, db)
@@ -64,38 +56,16 @@ async def batch_generate_embeddings(
     request: BatchGenerateRequest,
     db: Session = Depends(get_db)
 ):
-    """
-    사용자의 모든 메일 임베딩 일괄 생성.
+    logger.info(
+        f"🚀 Batch generating embeddings for user: {request.user_id} "
+        f"(force_regenerate={request.force_regenerate})"
+    )
 
-    임베딩이 없는 메일들만 자동으로 선택하여 처리합니다.
-
-    Args:
-        user_id: 사용자 ID
-
-    Returns:
-        일괄 생성 결과 {status, total, processed, skipped, failed}
-
-    Example:
-        Request:
-            POST /api/ai/mail/embeddings/batch
-            {"user_id": "uuid"}
-
-        Response:
-            {
-                "status": "success",
-                "total": 100,
-                "processed": 95,
-                "skipped": 3,
-                "failed": 2
-            }
-
-    Notes:
-        - 시간이 오래 걸릴 수 있으므로 타임아웃 주의
-        - 향후 백그라운드 작업으로 전환 고려
-    """
-    logger.info(f"🚀 Batch generating embeddings for user: {request.user_id}")
-
-    result = await service.batch_generate_embeddings(request.user_id, db)
+    result = await service.batch_generate_embeddings(
+        request.user_id,
+        db,
+        force_regenerate=request.force_regenerate
+    )
     return BatchGenerateResponse(**result)
 
 
@@ -104,51 +74,6 @@ async def search_emails(
     request: SearchRequest,
     db: Session = Depends(get_db)
 ):
-    """
-    자연어로 메일 검색 (RAG + SQL 필터).
-
-    하이브리드 검색 전략:
-        1. Qdrant 필터로 범위 축소 (user_id, folder, date)
-        2. Qdrant로 의미 기반 검색 (벡터 유사도)
-        3. 유사도 높은 순으로 정렬
-
-    Args:
-        query: 검색 쿼리 (예: "프로젝트 일정 관련 메일")
-        user_id: 사용자 ID
-        top_k: 최대 결과 개수 (1-50, 기본 10)
-        folder: 폴더 필터 (선택, 'Inbox' or 'SentItems')
-        date_from/date_to: 날짜 범위 필터 (선택, 'YYYY-MM-DD')
-
-    Returns:
-        검색 결과 목록 (유사도 높은 순)
-
-    Example:
-        Request:
-            POST /api/ai/mail/search
-            {
-                "query": "프로젝트 일정 회의",
-                "user_id": "uuid",
-                "top_k": 10,
-                "folder": "Inbox",
-                "date_from": "2025-01-01"
-            }
-
-        Response:
-            {
-                "success": true,
-                "data": [
-                    {
-                        "email_id": "uuid",
-                        "subject": "프로젝트 일정 회의 요청",
-                        "from_name": "홍길동",
-                        "similarity": 0.92,
-                        "matched_chunk": "제목: 프로젝트 일정 회의 요청...",
-                        ...
-                    }
-                ],
-                "count": 5
-            }
-    """
     logger.info(
         f"🔍 Searching emails: query='{request.query[:50]}...', "
         f"user={request.user_id}, folder={request.folder}"
@@ -162,10 +87,10 @@ async def search_emails(
             top_k=request.top_k,
             folder=request.folder,
             date_from=request.date_from,
-            date_to=request.date_to
+            date_to=request.date_to,
+            project_name=request.project_name
         )
 
-        # Dict를 Pydantic 모델로 변환
         search_results = [EmailSearchResult(**r) for r in results]
 
         return SearchResponse(
@@ -175,11 +100,82 @@ async def search_emails(
         )
 
     except ValueError as e:
-        logger.error(f"❌ Invalid search query: {str(e)}")
+        logger.error(f"Invalid search query: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
     except Exception as e:
         logger.error(f"Search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.patch("/emails/{email_id}/project")
+async def update_email_project(
+    email_id: str,
+    project_id: Optional[str] = None,    
+    db: Session = Depends(get_db)
+):
+    """
+    메일의 프로젝트 할당/해제.
+    """
+
+    logger.info(f"Updating project for email: {email_id}, project_id={project_id}")
+
+    try:
+        # 1. 이메일 존재 확인
+        email = db.query(Email).filter(Email.id == email_id).first()
+        if not email:
+            raise HTTPException(status_code=404, detail=f"Email {email_id} not found")
+
+        # 2. 프로젝트 정보 조회
+        project_name = None
+        if project_id:
+            project = db.query(Project).filter(Project.id == project_id).first()
+            if not project:
+                raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+            project_name = project.name
+
+        # 3. Qdrant Payload 업데이트
+        qdrant_client = get_qdrant_client()
+
+        payload_update = {
+            "project_id": str(project_id) if project_id else None,
+            "project_name": project_name
+        }
+
+        qdrant_client.set_payload(
+            collection_name=settings.QDRANT_EMAIL_COLLECTION,
+            payload=payload_update,
+            points=models.FilterSelector(
+                filter=models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="email_id",
+                            match=models.MatchValue(value=str(email_id))
+                        )
+                    ]
+                )
+            )
+        )
+
+        logger.info(
+            f"Updated Qdrant payload for email {email_id}: "
+            f"project_id={project_id}, project_name={project_name}"
+        )
+
+        return {
+            "success": True,
+            "email_id": str(email_id),
+            "project_id": str(project_id) if project_id else None,
+            "project_name": project_name,
+            "message": "프로젝트 정보가 업데이트되었습니다 (임베딩 재생성 없음)"
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Failed to update email project: {str(e)}")
+        # (4) 에러 처리 개선
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -189,55 +185,20 @@ async def chat_with_mail_search(
     db: Session = Depends(get_db)
 ):
     """
-    대화형 메일 검색 (챗봇 인터페이스).
+    메일 검색/작성/번역 통합 챗봇 API
 
-    사용자의 자연어 메시지를 분석하여 검색 쿼리를 추출하고,
-    필요한 경우 자동으로 메일을 검색합니다.
-
-    Args:
-        message: 사용자 메시지 (자연어)
-        user_id: 사용자 ID
-        conversation_history: 대화 히스토리 (선택)
-
-    Returns:
-        {
-            "query": 추출된 검색 쿼리,
-            "folder": 폴더 필터,
-            "date_from": 시작 날짜,
-            "date_to": 종료 날짜,
-            "needs_search": 검색 수행 여부,
-            "response": 사용자 응답 메시지,
-            "search_results": 검색 결과 (검색 수행 시)
-        }
-
-    Example:
-        Request:
-            POST /api/ai/mail/chat
-            {
-                "message": "어제 받은 프로젝트 관련 메일 찾아줘",
-                "user_id": "uuid",
-                "conversation_history": []
-            }
-
-        Response:
-            {
-                "query": "프로젝트",
-                "folder": "Inbox",
-                "date_from": "2025-01-16",
-                "needs_search": true,
-                "response": "어제 받은 프로젝트 관련 메일을 검색하겠습니다.",
-                "search_results": [...]
-            }
+    QueryAgent가 쿼리 타입을 분석하고:
+    - search: 메일 검색
+    - draft: 메일 초안 작성 (RAG 통합)
+    - translate: 메일 번역 (RAG 통합)
+    - general: 일반 대화
     """
     logger.info(f"Chat request: message='{request.message[:50]}...', user={request.user_id}")
 
     try:
-        # QueryAgent로 쿼리 추출
-        from agent.mail.query_agent import QueryAgent
-
+        # 1. QueryAgent로 쿼리 분석
         query_agent = QueryAgent()
 
-        # 대화 히스토리를 딕셔너리 형태로 변환
         conversation_history = [
             {"role": msg.role, "content": msg.content}
             for msg in request.conversation_history
@@ -250,33 +211,88 @@ async def chat_with_mail_search(
 
         logger.info(f"Query extraction result: {query_result}")
 
-        # 검색이 필요한 경우 자동으로 검색 수행
-        search_results = None
-        if query_result.get("needs_search") and query_result.get("query"):
-            logger.info(f"Performing search with query: {query_result.get('query')}")
+        query_type = query_result.get("query_type", "general")
+        answer = query_result.get("response", "")
 
+        # 응답 초기화
+        response_data = {
+            "query_type": query_type,
+            "answer": answer
+        }
+
+        # 2. query_type별 처리
+        if query_type == "search":
+            # 메일 검색
             results = await service.search_emails(
                 query=query_result.get("query"),
                 user_id=request.user_id,
                 db=db,
-                top_k=5,  # 챗봇은 최대 5개만 표시
+                top_k=5,
                 folder=query_result.get("folder"),
                 date_from=query_result.get("date_from"),
-                date_to=query_result.get("date_to")
+                date_to=query_result.get("date_to"),
+                project_name=query_result.get("project_name")
             )
 
             search_results = [EmailSearchResult(**r) for r in results]
-            logger.info(f"Search completed: {len(search_results)} results")
 
-        return ChatResponse(
-            query=query_result.get("query"),
-            folder=query_result.get("folder"),
-            date_from=query_result.get("date_from"),
-            date_to=query_result.get("date_to"),
-            needs_search=query_result.get("needs_search", False),
-            response=query_result.get("response", ""),
-            search_results=search_results
-        )
+            # AnswerAgent로 자연어 답변 생성
+            answer_agent = AnswerAgent()
+            answer = await answer_agent.process(
+                user_query=request.message,
+                search_results=results,
+                conversation_history=conversation_history
+            )
+
+            response_data.update({
+                "query": query_result.get("query"),
+                "folder": query_result.get("folder"),
+                "date_from": query_result.get("date_from"),
+                "date_to": query_result.get("date_to"),
+                "project_name": query_result.get("project_name"),
+                "needs_search": True,
+                "answer": answer,
+                "search_results": search_results
+            })
+
+        elif query_type == "draft":
+            # 메일 초안 작성 (RAG 통합)
+            logger.info(f"Creating email draft with keywords: {query_result.get('keywords')}")
+
+            draft_service = EmailDraftService()
+            draft_result = await draft_service.create_draft(
+                original_message=query_result.get("original_message", request.message),
+                keywords=query_result.get("keywords"),
+                target_language=query_result.get("target_language", "ko")
+            )
+
+            response_data.update({
+                "email_draft": draft_result.get("email_draft"),
+                "subject": draft_result.get("subject"),
+                "rag_sections": draft_result.get("rag_sections", []),
+                "answer": f"{answer}\n\n**제목:** {draft_result.get('subject')}\n\n**본문:**\n{draft_result.get('email_draft')}"
+            })
+
+        elif query_type == "translate":
+            # 메일 번역 (RAG 통합)
+            logger.info(f"Translating email with keywords: {query_result.get('keywords')}")
+
+            draft_service = EmailDraftService()
+            translate_result = await draft_service.translate_email(
+                email_text=query_result.get("original_message", ""),
+                keywords=query_result.get("keywords"),
+                target_language=query_result.get("target_language", "en")
+            )
+
+            response_data.update({
+                "translated_email": translate_result.get("translated_email"),
+                "rag_sections": translate_result.get("rag_sections", []),
+                "answer": f"{answer}\n\n**번역 결과:**\n{translate_result.get('translated_email')}"
+            })
+
+        # 3. general은 기본 answer만 반환
+
+        return ChatResponse(**response_data)
 
     except ValueError as e:
         logger.error(f"Invalid chat request: {str(e)}")
@@ -284,4 +300,6 @@ async def chat_with_mail_search(
 
     except Exception as e:
         logger.error(f"Chat failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="Internal server error")

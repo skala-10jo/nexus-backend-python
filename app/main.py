@@ -4,7 +4,7 @@ FastAPI application entry point for Python AI backend.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.api import glossary, translate, mail_agent, video_translation, voice_translation
+from app.api import glossary, translate, mail_agent, scenarios, conversations, video_translation, voice_translation
 import logging
 
 # Configure logging
@@ -36,6 +36,8 @@ app.add_middleware(
 app.include_router(glossary.router, prefix="/api/ai", tags=["Glossary AI"])
 app.include_router(translate.router, tags=["Translation AI"])
 app.include_router(mail_agent.router)  # prefix already defined in mail_agent.py
+app.include_router(scenarios.router, prefix="/api/ai/scenarios", tags=["Scenarios AI"])
+app.include_router(conversations.router, tags=["Conversations AI"])  # prefix already defined
 app.include_router(video_translation.router, tags=["Video Translation AI"])
 app.include_router(voice_translation.router, tags=["Voice Translation AI"])
 
@@ -53,7 +55,7 @@ async def startup_event():
     # Initialize Qdrant collection
     try:
         ensure_collection_exists()
-        logger.info(f"Qdrant collection ready: {settings.QDRANT_COLLECTION_NAME}")
+        logger.info(f"Qdrant collection ready: {settings.QDRANT_EMAIL_COLLECTION}")
     except Exception as e:
         logger.error(f"Failed to initialize Qdrant: {str(e)}")
 

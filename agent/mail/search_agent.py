@@ -7,6 +7,7 @@ Updated: 2025-01-17 (Qdrant 연동)
 """
 from agent.base_agent import BaseAgent
 from app.core.qdrant_client import get_qdrant_client
+from app.core.text_utils import strip_html_tags
 from app.models.email import Email
 from app.config import settings
 from qdrant_client.http import models
@@ -51,7 +52,8 @@ class SearchAgent(BaseAgent):
         similarity_threshold: float = 0.7,
         folder: Optional[str] = None,
         date_from: Optional[str] = None,
-        date_to: Optional[str] = None
+        date_to: Optional[str] = None,
+        project_name: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         자연어 쿼리로 메일 검색 (Qdrant 필터 + RAG).
@@ -65,6 +67,7 @@ class SearchAgent(BaseAgent):
             folder: 폴더 필터 (선택, 'Inbox' or 'SentItems')
             date_from: 시작 날짜 (선택, 'YYYY-MM-DD')
             date_to: 종료 날짜 (선택, 'YYYY-MM-DD')
+            project_name: 프로젝트명 필터 (선택, 'prototype-dev' 등)
 
         Returns:
             List of {
@@ -120,9 +123,17 @@ class SearchAgent(BaseAgent):
                 )
             )
 
+        if project_name:
+            filter_conditions.append(
+                models.FieldCondition(
+                    key="project_name",
+                    match=models.MatchValue(value=project_name)
+                )
+            )
+
         # 3. Qdrant 벡터 검색
         search_results = self.qdrant_client.search(
-            collection_name=settings.QDRANT_COLLECTION_NAME,
+            collection_name=settings.QDRANT_EMAIL_COLLECTION,
             query_vector=query_embedding,
             query_filter=models.Filter(must=filter_conditions) if filter_conditions else None,
             limit=top_k * 2,  # 중복 제거 위해 넉넉하게 검색
@@ -149,6 +160,9 @@ class SearchAgent(BaseAgent):
                 logger.warning(f"Email {email_id} not found in DB, skipping")
                 continue
 
+            # HTML 제거 후 반환 (AnswerAgent에 깔끔한 텍스트 제공)
+            clean_body = strip_html_tags(email.body) if email.body else ''
+
             formatted_results.append({
                 'email_id': str(email_id),
                 'subject': email.subject or '(제목 없음)',
@@ -157,7 +171,9 @@ class SearchAgent(BaseAgent):
                 'folder': email.folder,
                 'date': email.received_date_time or email.sent_date_time,
                 'similarity': float(hit.score),
-                'matched_chunk': hit.payload.get('chunk_text', '')[:200] + '...'
+                'matched_chunk': hit.payload.get('chunk_text', '')[:200] + '...',
+                'full_body': clean_body,  # HTML 제거된 전체 본문
+                'project_name': email.project.name if email.project else None  # 프로젝트명 추가
             })
 
             # top_k개만 반환
@@ -166,7 +182,7 @@ class SearchAgent(BaseAgent):
 
         logger.info(
             f"Found {len(formatted_results)} matching emails "
-            f"(filters: folder={folder}, date_from={date_from}, date_to={date_to})"
+            f"(filters: folder={folder}, date_from={date_from}, date_to={date_to}, project_name={project_name})"
         )
         return formatted_results
 
