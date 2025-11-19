@@ -55,3 +55,7 @@ class File(Base):
     # 관계
     # user = relationship("User", back_populates="files")  # User 모델에서 정의되어야 함
     video_file = relationship("VideoFile", back_populates="file", uselist=False, cascade="all, delete-orphan")
+
+    # Document 관련 relationship (DocumentContent, DocumentMetadata)
+    contents = relationship("DocumentContent", back_populates="file", cascade="all, delete-orphan")
+    doc_metadata = relationship("DocumentMetadata", back_populates="file", uselist=False, cascade="all, delete-orphan")

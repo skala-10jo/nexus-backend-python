@@ -12,68 +12,9 @@ import uuid
 import enum
 
 
-class DocumentStatus(enum.Enum):
-    """문서 상태 열거형 (Java DocumentStatus와 동일)"""
-    UPLOADED = "UPLOADED"       # 업로드 완료
-    PROCESSING = "PROCESSING"   # 분석 중
-    PROCESSED = "PROCESSED"     # 분석 완료 (사용 가능)
-    FAILED = "FAILED"           # 오류 발생
-
-
-# Project-File 다대다 관계 테이블 (project_files 테이블 사용)
-project_files = Table(
-    'project_files',
-    Base.metadata,
-    Column('project_id', UUID(as_uuid=True), ForeignKey('projects.id', ondelete='CASCADE'), primary_key=True),
-    Column('file_id', UUID(as_uuid=True), ForeignKey('files.id', ondelete='CASCADE'), primary_key=True),
-    Column('created_at', DateTime(timezone=True), server_default=func.now(), nullable=False)
-)
-
-
-class Document(Base):
-    """
-    문서 모델
-
-    사용자가 업로드한 문서 정보를 저장합니다.
-    NOTE: files 테이블을 사용합니다 (documents → files 마이그레이션 완료)
-    NOTE: File 모델과 같은 테이블을 사용하므로 extend_existing 필요
-    """
-    __tablename__ = "files"
-    __table_args__ = {'extend_existing': True}
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-
-    # 파일 정보
-    original_filename = Column(String(255), nullable=False)
-    stored_filename = Column(String(255), nullable=False, unique=True)
-    file_path = Column(String(500), nullable=False)
-    file_size = Column(BigInteger, nullable=False)
-    file_type = Column(String(50), nullable=False)
-    mime_type = Column(String(100), nullable=False)
-    upload_date = Column(DateTime(timezone=True), nullable=False)
-
-    # 상태 (files 테이블에서는 String 타입 사용)
-    status = Column(String(20), nullable=False, default="PROCESSED")
-
-    # 타임스탬프
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
-
-    # 관계 (project_files 테이블 사용)
-    projects = relationship("Project", secondary=project_files, back_populates="documents")
-    contents = relationship(
-        "DocumentContent",
-        back_populates="document",
-        cascade="all, delete-orphan"
-    )
-    doc_metadata = relationship(
-        "DocumentMetadata",
-        back_populates="document",
-        uselist=False,
-        cascade="all, delete-orphan"
-    )
-    # video_document relationship removed (migrated to files/video_files system)
+# DocumentStatus는 File 모델로 이동됨
+# project_files 테이블은 File 모델에서 사용
+# Document 클래스는 제거됨 - File 모델을 사용하세요
 
 
 class DocumentContent(Base):
@@ -96,7 +37,7 @@ class DocumentContent(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # 관계
-    document = relationship("Document", back_populates="contents")
+    file = relationship("File", back_populates="contents")
 
 
 class DocumentMetadata(Base):
@@ -122,4 +63,4 @@ class DocumentMetadata(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # 관계
-    document = relationship("Document", back_populates="doc_metadata")
+    file = relationship("File", back_populates="doc_metadata")

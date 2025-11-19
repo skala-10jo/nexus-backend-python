@@ -19,10 +19,9 @@ from agent.video.subtitle_generator_agent import SubtitleGeneratorAgent
 from agent.translate.context_enhanced_translation_agent import ContextEnhancedTranslationAgent
 
 # Model imports
-from app.models.file import File
+from app.models.file import File  # For context documents
 from app.models.video_file import VideoFile
 from app.models.video_subtitle import VideoSubtitle
-from app.models.document import Document  # For context documents
 
 # Config
 from app.config import settings
@@ -108,7 +107,7 @@ class VideoTranslationService:
         if not document_ids:
             return ""
 
-        documents = db.query(Document).filter(Document.id.in_(document_ids)).all()
+        documents = db.query(File).filter(File.id.in_(document_ids)).all()
 
         document_texts = []
         for doc in documents:

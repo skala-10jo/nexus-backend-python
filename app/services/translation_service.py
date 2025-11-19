@@ -19,7 +19,7 @@ from agent.summarization.document_summarizer_agent import DocumentSummarizerAgen
 # Model imports
 from app.models.translation import Translation, TranslationTerm
 from app.models.glossary import GlossaryTerm
-from app.models.document import Document
+from app.models.file import File
 
 logger = logging.getLogger(__name__)
 
@@ -113,10 +113,10 @@ class TranslationService:
             문서 텍스트 리스트
         """
         # 프로젝트와 연결된 문서 조회
-        documents = db.query(Document).join(
-            Document.projects
+        documents = db.query(File).join(
+            File.projects
         ).filter(
-            Document.projects.any(id=project_id)
+            File.projects.any(id=project_id)
         ).limit(max_docs).all()
 
         document_texts = []
