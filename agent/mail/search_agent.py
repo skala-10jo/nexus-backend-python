@@ -133,7 +133,7 @@ class SearchAgent(BaseAgent):
 
         # 3. Qdrant 벡터 검색
         search_results = self.qdrant_client.search(
-            collection_name=settings.QDRANT_COLLECTION_NAME,
+            collection_name=settings.QDRANT_EMAIL_COLLECTION,
             query_vector=query_embedding,
             query_filter=models.Filter(must=filter_conditions) if filter_conditions else None,
             limit=top_k * 2,  # 중복 제거 위해 넉넉하게 검색

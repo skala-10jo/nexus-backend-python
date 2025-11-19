@@ -120,7 +120,7 @@ class EmbeddingAgent(BaseAgent):
         saved_count = save_embeddings_to_qdrant(
             embeddings=embeddings,
             payloads=payloads,
-            collection_name=settings.QDRANT_COLLECTION_NAME
+            collection_name=settings.QDRANT_EMAIL_COLLECTION
         )
 
         logger.info(f"Email {email_id}: Generated and saved {saved_count} embeddings to Qdrant")

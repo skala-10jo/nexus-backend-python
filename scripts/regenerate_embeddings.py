@@ -22,7 +22,7 @@ async def delete_user_embeddings(user_id: str):
 
     # user_id로 필터링하여 삭제
     qdrant_client.delete(
-        collection_name=settings.QDRANT_COLLECTION_NAME,
+        collection_name=settings.QDRANT_EMAIL_COLLECTION,
         points_selector=models.FilterSelector(
             filter=models.Filter(
                 must=[

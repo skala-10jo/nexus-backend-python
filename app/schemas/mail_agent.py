@@ -84,12 +84,26 @@ class ChatRequest(BaseModel):
 
 
 class ChatResponse(BaseModel):
-    """메일 검색 챗봇 응답"""
+    """메일 검색/작성/번역 통합 챗봇 응답"""
+    # 공통
+    query_type: str = Field(..., description="쿼리 타입 (search/translate/draft/general)")
+    answer: str = Field(..., description="AI가 생성한 자연어 답변")
+
+    # 검색 관련 (query_type=search)
     query: Optional[str] = Field(None, description="추출된 검색 쿼리")
     folder: Optional[str] = Field(None, description="폴더 필터")
     date_from: Optional[str] = Field(None, description="시작 날짜")
     date_to: Optional[str] = Field(None, description="종료 날짜")
     project_name: Optional[str] = Field(None, description="프로젝트명 필터")
-    needs_search: bool = Field(..., description="검색이 필요한지 여부")
-    answer: str = Field(..., description="AI가 생성한 자연어 답변")
+    needs_search: bool = Field(default=False, description="검색이 필요한지 여부")
     search_results: Optional[List[EmailSearchResult]] = Field(None, description="검색 결과 (검색 수행된 경우)")
+
+    # 메일 작성 관련 (query_type=draft)
+    email_draft: Optional[str] = Field(None, description="작성된 메일 초안")
+    subject: Optional[str] = Field(None, description="메일 제목")
+
+    # 메일 번역 관련 (query_type=translate)
+    translated_email: Optional[str] = Field(None, description="번역된 메일")
+
+    # RAG 관련 (draft/translate 공통)
+    rag_sections: Optional[List[str]] = Field(None, description="사용된 BizGuide 섹션")

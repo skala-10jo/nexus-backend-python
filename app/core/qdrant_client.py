@@ -57,7 +57,7 @@ def ensure_collection_exists():
         Collection 'email_embeddings' ready
     """
     client = get_qdrant_client()
-    collection_name = settings.QDRANT_COLLECTION_NAME
+    collection_name = settings.QDRANT_EMAIL_COLLECTION
 
     try:
         # Check if collection exists
@@ -94,4 +94,62 @@ def ensure_collection_exists():
 
     except Exception as e:
         logger.error(f"Failed to ensure collection exists: {str(e)}")
+        raise
+
+
+def ensure_bizguide_collection_exists(collection_name: str = None):
+    """
+    Ensure the bizguide collection exists in Qdrant for RAG.
+
+    Creates the collection if it doesn't exist with the correct schema:
+    - Vector size: 1536 (OpenAI text-embedding-3-small)
+    - Distance metric: Cosine similarity
+
+    Args:
+        collection_name: Name of the collection (default: from settings)
+
+    Example:
+        >>> ensure_bizguide_collection_exists()
+        Collection from settings ready
+    """
+    if collection_name is None:
+        collection_name = settings.QDRANT_BIZGUIDE_COLLECTION
+
+    client = get_qdrant_client()
+
+    try:
+        # Check if collection exists
+        collections = client.get_collections().collections
+        collection_exists = any(c.name == collection_name for c in collections)
+
+        if collection_exists:
+            logger.info(f"Collection '{collection_name}' already exists")
+            return
+
+        # Create collection
+        client.create_collection(
+            collection_name=collection_name,
+            vectors_config=models.VectorParams(
+                size=1536,  # OpenAI text-embedding-3-small dimension
+                distance=models.Distance.COSINE
+            )
+        )
+
+        # Create payload indexes for filtering
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="topic",
+            field_schema=models.PayloadSchemaType.KEYWORD
+        )
+
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="chapter",
+            field_schema=models.PayloadSchemaType.KEYWORD
+        )
+
+        logger.info(f"Collection '{collection_name}' created successfully")
+
+    except Exception as e:
+        logger.error(f"Failed to ensure bizguide collection exists: {str(e)}")
         raise
