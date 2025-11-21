@@ -4,6 +4,8 @@ from app.models.glossary import GlossaryTerm, GlossaryTermDocument, GlossaryExtr
 from app.models.translation import Translation, TranslationTerm
 from app.models.video_file import VideoFile
 from app.models.video_subtitle import VideoSubtitle
+from app.models.scenario import Scenario
+from app.models.conversation import ConversationSession, ConversationMessage
 
 __all__ = [
     "User",
@@ -18,4 +20,7 @@ __all__ = [
     "TranslationTerm",
     "VideoFile",
     "VideoSubtitle",
+    "Scenario",
+    "ConversationSession",
+    "ConversationMessage",
 ]
