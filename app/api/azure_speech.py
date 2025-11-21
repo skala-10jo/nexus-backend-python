@@ -1,11 +1,12 @@
 """
-Azure Speech Service API endpoints.
-Provides token issuance for client-side Speech SDK usage.
+Azure Speech Service API 엔드포인트
+
+브라우저에서 Azure Speech SDK를 사용하기 위한 토큰 발급 API
 """
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 import logging
-from app.services.azure_speech_service import azure_speech_service
+from agent.stt_translation.azure_speech_agent import AzureSpeechAgent
 from app.schemas.azure_speech import SpeechTokenResponse
 
 logger = logging.getLogger(__name__)
@@ -13,48 +14,46 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/speech", tags=["Azure Speech"])
 
 
-# ✅ 브라우저 preflight용 OPTIONS 허용
 @router.options("/token")
 async def options_speech_token():
-    # CORSMiddleware가 실제로 처리하더라도,
-    # 여기서 200만 돌려줘도 preflight는 통과한다.
+    """브라우저 preflight용 OPTIONS 허용"""
     return JSONResponse(content=None, status_code=200)
 
 
 @router.get(
     "/token",
     response_model=dict,
-    summary="Get Azure Speech authorization token",
+    summary="Azure Speech 인증 토큰 발급",
     description="""
-    Issues an Azure Speech Service authorization token for client-side SDK usage.
+    브라우저에서 Azure Speech SDK를 사용하기 위한 인증 토큰을 발급합니다.
 
-    - Token is valid for 10 minutes
-    - Client should cache and reuse the token until expiry
-    - Used for Speech-to-Text, Translation, and Text-to-Speech operations
+    - 토큰 유효 시간: 10분
+    - 클라이언트는 토큰을 캐싱하여 재사용 권장
+    - STT, Translation, TTS 작업에 사용됨
 
-    **Security**: Token is issued from backend to prevent exposing Azure subscription key to clients.
+    **보안**: Azure 구독 키 노출 방지를 위해 백엔드에서 토큰 발급
     """
 )
-def get_speech_token(request: Request):
+async def get_speech_token(request: Request):
     """
-    Get Azure Speech authorization token.
+    Azure Speech 인증 토큰 발급
 
     Returns:
-        dict: Success response with token and region
+        dict: 토큰 및 리전 정보
 
     Raises:
-        HTTPException: If token request fails
+        HTTPException: 토큰 발급 실패 시
     """
     try:
-        token = azure_speech_service.get_token()
-        region = azure_speech_service.get_region()
+        # 싱글톤 Agent 인스턴스 가져오기
+        agent = AzureSpeechAgent.get_instance()
+        token, region = await agent.process()
 
         response_data = SpeechTokenResponse(
             token=token,
             region=region
         )
 
-        # ✅ 여기서도 안전하게 CORS 헤더 한 번 더 넣어줌
         resp = JSONResponse(
             content={
                 "success": True,
@@ -73,10 +72,10 @@ def get_speech_token(request: Request):
         return resp
 
     except Exception as e:
-        logger.error(f"Failed to issue speech token: {str(e)}")
+        logger.error(f"토큰 발급 실패: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to issue speech token: {str(e)}"
+            detail=f"토큰 발급 실패: {str(e)}"
         )
     
 
@@ -85,21 +84,20 @@ def get_speech_token(request: Request):
 @router.post(
     "/token/refresh",
     response_model=dict,
-    summary="Force refresh Azure Speech token",
-    description="Clears cached token and issues a new one (useful for testing)"
+    summary="Azure Speech 토큰 강제 갱신",
+    description="캐시된 토큰을 무효화하고 새 토큰을 발급합니다 (테스트용)"
 )
-def refresh_speech_token(request: Request):
+async def refresh_speech_token(request: Request):
     """
-    Force refresh Azure Speech token by clearing cache.
+    Azure Speech 토큰 강제 갱신 (캐시 무효화)
 
     Returns:
-        dict: Success response with new token and region
+        dict: 새 토큰 및 리전 정보
     """
     try:
-        # 캐시 초기화 후 새 토큰 발급
-        azure_speech_service.clear_cache()
-        token = azure_speech_service.get_token()
-        region = azure_speech_service.get_region()
+        # 싱글톤 Agent 인스턴스 가져오기
+        agent = AzureSpeechAgent.get_instance()
+        token, region = await agent.refresh_token()
 
         response_data = SpeechTokenResponse(
             token=token,
@@ -124,31 +122,34 @@ def refresh_speech_token(request: Request):
         return resp
 
     except Exception as e:
-        logger.error(f"Failed to refresh speech token: {str(e)}")
+        logger.error(f"토큰 갱신 실패: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to refresh speech token: {str(e)}"
+            detail=f"토큰 갱신 실패: {str(e)}"
         )
 
 
 @router.get(
     "/region",
-    summary="Get Azure Speech region",
-    description="Returns the configured Azure Speech region"
+    summary="Azure Speech 리전 조회",
+    description="설정된 Azure Speech 리전을 반환합니다"
 )
-def get_speech_region(request: Request):
+async def get_speech_region(request: Request):
     """
-    Get Azure Speech region.
+    Azure Speech 리전 조회
 
     Returns:
-        dict: Response with region info
+        dict: 리전 정보
     """
+    # 싱글톤 Agent 인스턴스 가져오기
+    agent = AzureSpeechAgent.get_instance()
+
     resp = JSONResponse(
         content={
             "success": True,
             "message": "Speech region retrieved",
             "data": {
-                "region": azure_speech_service.get_region()
+                "region": agent.get_region()
             }
         }
     )
