@@ -60,7 +60,8 @@ def should_skip_section(section: str) -> bool:
 def get_unit_and_chapter(chapter_name: str):
     """챕터명으로 unit명과 chapter명 반환"""
     for key, values in CHAPTER_TOPICS.items():
-        if key in chapter_name:
+        # 정확한 매칭을 위해 "Chapter X." 형식으로 체크
+        if key + "." in chapter_name or key + " " in chapter_name:
             return values[0], values[1]
     return "general", "general"
 
@@ -202,7 +203,6 @@ async def main():
         for expr in expressions:
             expr["unit"] = unit_name
             expr["chapter"] = chapter_name
-            expr["source_chapter"] = chapter
             expr["source_section"] = section
             all_expressions.append(expr)
 
