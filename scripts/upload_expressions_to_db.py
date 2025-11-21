@@ -83,14 +83,21 @@ def main():
                 examples_json = json.dumps(expr_data.get("examples", []))
 
                 conn.execute(text("""
-                    INSERT INTO expressions (expression, meaning, examples, unit, chapter)
-                    VALUES (:expression, :meaning, :examples::jsonb, :unit, :chapter)
+                    INSERT INTO expressions (expression, meaning, examples, unit, chapter, source_section)
+                    VALUES (:expression, :meaning, CAST(:examples AS jsonb), :unit, :chapter, :source_section)
+                    ON CONFLICT (expression) DO UPDATE SET
+                        meaning = EXCLUDED.meaning,
+                        examples = EXCLUDED.examples,
+                        unit = EXCLUDED.unit,
+                        chapter = EXCLUDED.chapter,
+                        source_section = EXCLUDED.source_section
                 """), {
                     "expression": expr_data.get("expression", ""),
                     "meaning": expr_data.get("meaning", ""),
                     "examples": examples_json,
                     "unit": expr_data.get("unit", ""),
-                    "chapter": expr_data.get("chapter", "")
+                    "chapter": expr_data.get("chapter", ""),
+                    "source_section": expr_data.get("source_section", "")
                 })
                 inserted += 1
 

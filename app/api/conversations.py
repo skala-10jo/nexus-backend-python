@@ -38,6 +38,11 @@ class MessageFeedbackRequest(BaseModel):
     detectedTerms: List[str] = []
 
 
+class TranslateMessageRequest(BaseModel):
+    message: str
+    targetLanguage: str = "ko"  # Default to Korean
+
+
 @router.post("/start")
 async def start_conversation(
     request: StartConversationRequest,
@@ -172,3 +177,104 @@ async def end_conversation(
     except Exception as e:
         logger.error(f"Failed to end conversation: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to end conversation: {str(e)}")
+
+
+@router.post("/translate")
+async def translate_message(
+    request: TranslateMessageRequest,
+    user: dict = Depends(get_current_user)
+):
+    """
+    메시지 번역 (GPT-4o 사용)
+
+    Args:
+        request: 번역할 메시지 및 목표 언어
+        user: 현재 사용자 정보
+
+    Returns:
+        번역된 텍스트
+    """
+    try:
+        user_id = user["user_id"]
+
+        translated_text = await conversation_service.translate_message(
+            message=request.message,
+            target_language=request.targetLanguage
+        )
+
+        return {
+            "success": True,
+            "translatedText": translated_text
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to translate message: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to translate message: {str(e)}")
+
+
+@router.post("/reset")
+async def reset_conversation(
+    request: StartConversationRequest,
+    user: dict = Depends(get_current_user)
+):
+    """
+    대화 초기화 - 해당 시나리오의 모든 세션 및 메시지 삭제
+
+    Args:
+        request: 시나리오 ID
+        user: 현재 사용자 정보
+
+    Returns:
+        초기화 성공 메시지
+    """
+    try:
+        user_id = user["user_id"]
+
+        await conversation_service.reset_conversation(
+            scenario_id=request.scenarioId,
+            user_id=user_id
+        )
+
+        return {
+            "success": True,
+            "message": "Conversation reset successfully"
+        }
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to reset conversation: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to reset conversation: {str(e)}")
+
+
+@router.get("/history/{scenario_id}")
+async def get_conversation_history(
+    scenario_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """
+    저장된 대화 히스토리 조회
+
+    Args:
+        scenario_id: 시나리오 ID
+        user: 현재 사용자 정보
+
+    Returns:
+        세션 정보 및 메시지 목록
+    """
+    try:
+        user_id = user["user_id"]
+
+        history = await conversation_service.get_conversation_history(
+            scenario_id=scenario_id,
+            user_id=user_id
+        )
+
+        return {
+            "success": True,
+            **history
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get conversation history: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get conversation history: {str(e)}")
