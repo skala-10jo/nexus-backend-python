@@ -4,8 +4,10 @@
 Agent를 조율하고 비즈니스 로직을 처리합니다.
 """
 import logging
-from typing import Dict, Any
+import asyncio
+from typing import Dict, Any, AsyncGenerator
 from agent.stt_translation.stt_agent import STTAgent
+import azure.cognitiveservices.speech as speechsdk
 
 logger = logging.getLogger(__name__)
 
@@ -112,3 +114,134 @@ class VoiceSTTService:
 
         logger.debug(f"Supported languages requested: {len(supported_languages)} languages")
         return supported_languages
+
+    async def transcribe_stream(
+        self,
+        language: str = "en-US",
+        enable_diarization: bool = False,
+        user_id: str = None
+    ) -> tuple:
+        """
+        실시간 스트리밍 STT을 위한 Recognizer, PushStream, 결과 Queue 반환
+
+        WebSocket에서 사용하기 위한 스트리밍 인터페이스입니다.
+
+        Args:
+            language: 언어 코드 (기본값: en-US)
+            enable_diarization: 화자 분리 활성화 여부
+            user_id: 사용자 ID (사용량 추적용, 선택사항)
+
+        Returns:
+            tuple: (recognizer, push_stream, result_queue)
+                - recognizer: SpeechRecognizer 인스턴스 (호출자가 관리)
+                - push_stream: PushAudioInputStream (호출자가 write)
+                - result_queue: asyncio.Queue (결과 수신용)
+
+        Example:
+            >>> recognizer, push_stream, queue = await service.transcribe_stream()
+            >>> # WebSocket에서 오디오 청크 수신 시
+            >>> push_stream.write(audio_chunk)
+            >>> # 결과 큐에서 읽기
+            >>> result = await queue.get()
+            >>> # 종료 시
+            >>> push_stream.close()
+            >>> recognizer.stop_continuous_recognition()
+        """
+        try:
+            logger.info(
+                f"Streaming STT started: "
+                f"user={user_id or 'anonymous'}, "
+                f"language={language}, "
+                f"diarization={enable_diarization}"
+            )
+
+            # 1. Agent 호출 (recognizer, push_stream 생성)
+            recognizer, push_stream = await self.agent.process_stream(
+                language=language,
+                enable_diarization=enable_diarization
+            )
+
+            # 2. 결과 전달을 위한 asyncio Queue
+            result_queue = asyncio.Queue()
+
+            # 현재 event loop 참조 저장 (다른 스레드에서 사용)
+            loop = asyncio.get_event_loop()
+
+            # 3. 이벤트 핸들러 등록 (Azure SDK → Queue)
+            def recognizing_handler(evt: speechsdk.SpeechRecognitionEventArgs):
+                """실시간 인식 중 (interim result)"""
+                try:
+                    # 다른 스레드에서 안전하게 coroutine 실행
+                    asyncio.run_coroutine_threadsafe(
+                        result_queue.put({
+                            "type": "interim",
+                            "text": evt.result.text,
+                            "confidence": None  # interim은 confidence 없음
+                        }),
+                        loop
+                    )
+                    logger.debug(f"Interim result: {evt.result.text}")
+                except Exception as e:
+                    logger.error(f"Error in recognizing_handler: {str(e)}")
+
+            def recognized_handler(evt: speechsdk.SpeechRecognitionEventArgs):
+                """최종 인식 완료 (final result)"""
+                try:
+                    if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
+                        # 다른 스레드에서 안전하게 coroutine 실행
+                        asyncio.run_coroutine_threadsafe(
+                            result_queue.put({
+                                "type": "final",
+                                "text": evt.result.text,
+                                "confidence": 0.95  # Azure는 confidence를 직접 제공하지 않음
+                            }),
+                            loop
+                        )
+                        logger.info(f"Final result: {evt.result.text}")
+                except Exception as e:
+                    logger.error(f"Error in recognized_handler: {str(e)}")
+
+            def canceled_handler(evt: speechsdk.SpeechRecognitionCanceledEventArgs):
+                """인식 취소 또는 에러"""
+                try:
+                    if evt.reason == speechsdk.CancellationReason.Error:
+                        asyncio.run_coroutine_threadsafe(
+                            result_queue.put({
+                                "type": "error",
+                                "message": f"Recognition error: {evt.error_details}"
+                            }),
+                            loop
+                        )
+                        logger.error(f"Recognition canceled: {evt.error_details}")
+                except Exception as e:
+                    logger.error(f"Error in canceled_handler: {str(e)}")
+
+            def session_stopped_handler(evt: speechsdk.SessionEventArgs):
+                """세션 종료"""
+                try:
+                    asyncio.run_coroutine_threadsafe(
+                        result_queue.put({
+                            "type": "session_stopped"
+                        }),
+                        loop
+                    )
+                    logger.info("Recognition session stopped")
+                except Exception as e:
+                    logger.error(f"Error in session_stopped_handler: {str(e)}")
+
+            # 이벤트 핸들러 연결
+            recognizer.recognizing.connect(recognizing_handler)
+            recognizer.recognized.connect(recognized_handler)
+            recognizer.canceled.connect(canceled_handler)
+            recognizer.session_stopped.connect(session_stopped_handler)
+
+            # 4. Continuous Recognition 시작
+            recognizer.start_continuous_recognition()
+            logger.info("Continuous recognition started")
+
+            # 5. recognizer, push_stream, queue 반환 (호출자가 관리)
+            return recognizer, push_stream, result_queue
+
+        except Exception as e:
+            logger.error(f"Streaming STT setup failed: {str(e)}", exc_info=True)
+            raise
