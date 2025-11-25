@@ -6,9 +6,10 @@ Azure Cognitive Services Speech SDK를 사용하여
 """
 from typing import Dict
 import azure.cognitiveservices.speech as speechsdk
+from agent.voice.base_azure_agent import BaseAzureAgent
 
 
-class TTSAgent:
+class TTSAgent(BaseAzureAgent):
     """
     Text-to-Speech Agent
 
@@ -23,6 +24,28 @@ class TTSAgent:
         """
         self.speech_key = speech_key
         self.speech_region = speech_region
+
+    def process(
+        self,
+        text: str,
+        voice_name: str = "en-US-JennyNeural",
+        audio_format: str = "audio-16khz-32kbitrate-mono-mp3"
+    ) -> Dict:
+        """
+        텍스트를 음성으로 합성 (BaseAzureAgent 인터페이스 구현)
+
+        Args:
+            text: 음성으로 변환할 텍스트
+            voice_name: 음성 이름
+            audio_format: 오디오 형식
+
+        Returns:
+            음성 데이터 딕셔너리
+
+        Raises:
+            Exception: TTS 합성 실패 시
+        """
+        return self.synthesize(text, voice_name, audio_format)
 
     def synthesize(
         self,

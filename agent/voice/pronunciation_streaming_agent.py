@@ -6,9 +6,10 @@ WebSocket을 통해 오디오 청크를 실시간으로 받아 발음을 평가�
 import json
 from typing import Dict, Optional
 import azure.cognitiveservices.speech as speechsdk
+from agent.voice.base_azure_agent import BaseAzureAgent
 
 
-class PronunciationStreamingAgent:
+class PronunciationStreamingAgent(BaseAzureAgent):
     """
     실시간 스트리밍 발음 평가 Agent
 
@@ -51,13 +52,16 @@ class PronunciationStreamingAgent:
         push_stream = speechsdk.audio.PushAudioInputStream()
         audio_config = speechsdk.audio.AudioConfig(stream=push_stream)
 
-        # 3. Pronunciation Assessment Config
+        # 3. Pronunciation Assessment Config (음소 레벨로 설정)
         pronunciation_config = speechsdk.PronunciationAssessmentConfig(
             reference_text=reference_text,
             grading_system=speechsdk.PronunciationAssessmentGradingSystem.HundredMark,
-            granularity=speechsdk.PronunciationAssessmentGranularity.Word,
+            granularity=speechsdk.PronunciationAssessmentGranularity.Phoneme,
             enable_miscue=True
         )
+        # Prosody(억양/리듬) 평가 활성화 (en-US만 지원)
+        if language == "en-US":
+            pronunciation_config.enable_prosody_assessment()
 
         # 4. Speech Recognizer
         recognizer = speechsdk.SpeechRecognizer(
@@ -67,6 +71,21 @@ class PronunciationStreamingAgent:
         pronunciation_config.apply_to(recognizer)
 
         return recognizer, push_stream
+
+    def process(self, result) -> Optional[Dict]:
+        """
+        발음 평가 결과 처리 (BaseAzureAgent 인터페이스 구현)
+
+        Args:
+            result: Azure Speech Recognition 결과
+
+        Returns:
+            발음 평가 결과 딕셔너리 또는 None
+
+        Raises:
+            Exception: 결과 파싱 실패 시
+        """
+        return self.parse_result(result)
 
     def parse_result(self, result) -> Optional[Dict]:
         """
@@ -92,10 +111,22 @@ class PronunciationStreamingAgent:
             word_details = []
             for word in words:
                 word_assessment = word.get("PronunciationAssessment", {})
+
+                # 음소별 점수 파싱
+                phonemes = word.get("Phonemes", [])
+                phoneme_details = []
+                for phoneme in phonemes:
+                    phoneme_assessment = phoneme.get("PronunciationAssessment", {})
+                    phoneme_details.append({
+                        "phoneme": phoneme.get("Phoneme", ""),
+                        "accuracy_score": phoneme_assessment.get("AccuracyScore", 0.0)
+                    })
+
                 word_details.append({
                     "word": word.get("Word", ""),
                     "accuracy_score": word_assessment.get("AccuracyScore", 0.0),
-                    "error_type": word_assessment.get("ErrorType", "None")
+                    "error_type": word_assessment.get("ErrorType", "None"),
+                    "phonemes": phoneme_details
                 })
 
             return {
@@ -103,6 +134,7 @@ class PronunciationStreamingAgent:
                 "accuracy_score": assessment.get("AccuracyScore", 0.0),
                 "fluency_score": assessment.get("FluencyScore", 0.0),
                 "completeness_score": assessment.get("CompletenessScore", 0.0),
+                "prosody_score": assessment.get("ProsodyScore"),  # en-US만 지원
                 "recognized_text": nbest.get("Display", ""),
                 "words": word_details
             }
