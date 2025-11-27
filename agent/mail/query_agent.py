@@ -114,6 +114,14 @@ target_language 추론 (translate/draft일 때):
 - "지난주": date_from={last_week_start}, date_to={last_week_end}
 - "이번 달": date_from={this_month_start}
 
+프로젝트명 추출 규칙 (search일 때):
+- "프로젝트"라는 단어와 함께 언급된 이름 추출
+- 예시:
+  * "NexUS 프로젝트 관련 메일" → "NexUS 프로젝트"
+  * "prototype-dev 프로젝트" → "prototype-dev"
+  * "AI 메일 에이전트 프로젝트" → "AI 메일 에이전트 프로젝트"
+- 프로젝트명이 명확하지 않으면 null
+
 응답 형식 (JSON):
 {{
     "query_type": "search" or "translate" or "draft" or "general",
@@ -133,6 +141,9 @@ target_language 추론 (translate/draft일 때):
 1. search (메일 검색):
 - 사용자: "어제 받은 프로젝트 관련 메일 찾아줘"
   응답: {{"query_type": "search", "query": "프로젝트", "folder": "Inbox", "date_from": "{yesterday}", "response": "어제 받은 프로젝트 관련 메일을 검색하겠습니다."}}
+
+- 사용자: "NexUS 프로젝트 관련 메일 보여줘"
+  응답: {{"query_type": "search", "query": "NexUS 프로젝트", "project_name": "NexUS 프로젝트", "response": "NexUS 프로젝트 관련 메일을 검색하겠습니다."}}
 
 - 사용자: "회식 장소 어디더라?"
   응답: {{"query_type": "search", "query": "회식 장소", "response": "회식 장소 관련 메일을 검색하겠습니다."}}

@@ -35,7 +35,8 @@ class EmailDraftAgent(BaseAgent):
         original_message: str,
         rag_context: Optional[List[str]] = None,
         target_language: str = "ko",
-        recipient: Optional[str] = None
+        recipient: Optional[str] = None,
+        conversation_history: Optional[List[Dict[str, str]]] = None
     ) -> Dict[str, Any]:
         """
         메일 초안을 작성합니다 (순수 AI 로직).
@@ -90,7 +91,7 @@ class EmailDraftAgent(BaseAgent):
 {rag_text if rag_text else "없음"}
 
 주의사항:
-- 받는 사람: {recipient if recipient else "팀장님/상사"}
+- 받는 사람: {recipient if recipient else "OO매니저님"}
 - 너무 길지 않게 (10줄 이내)
 - 존댓말 사용 (한글인 경우)
 - 제목도 함께 제안
@@ -106,13 +107,20 @@ class EmailDraftAgent(BaseAgent):
 [메일 본문]
 """
 
+            # 대화 히스토리 구성
+            messages = [{"role": "system", "content": system_prompt}]
+
+            if conversation_history:
+                # 이전 대화 내역 추가 (연속 질문 지원)
+                messages.extend(conversation_history)
+
+            # 현재 요청 추가
+            messages.append({"role": "user", "content": user_prompt})
+
             # GPT 호출
             response = await self.client.chat.completions.create(
                 model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
+                messages=messages,
                 temperature=0.7,
                 max_tokens=500
             )
@@ -150,7 +158,8 @@ class EmailDraftAgent(BaseAgent):
         self,
         email_text: str,
         rag_context: Optional[List[str]] = None,
-        target_language: str = "en"
+        target_language: str = "en",
+        conversation_history: Optional[List[Dict[str, str]]] = None
     ) -> Dict[str, Any]:
         """
         메일을 번역합니다 (순수 AI 로직).
@@ -186,12 +195,19 @@ class EmailDraftAgent(BaseAgent):
 - 자연스러운 표현 사용
 """
 
+            # 대화 히스토리 구성
+            messages = [{"role": "system", "content": system_prompt}]
+
+            if conversation_history:
+                # 이전 대화 내역 추가 (연속 질문 지원)
+                messages.extend(conversation_history)
+
+            # 현재 요청 추가
+            messages.append({"role": "user", "content": f"다음 메일을 {target_language}로 번역해주세요:\n\n{email_text}"})
+
             response = await self.client.chat.completions.create(
                 model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"다음 메일을 {target_language}로 번역해주세요:\n\n{email_text}"}
-                ],
+                messages=messages,
                 temperature=0.5,
                 max_tokens=500
             )
