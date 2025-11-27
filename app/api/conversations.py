@@ -36,6 +36,7 @@ class MessageFeedbackRequest(BaseModel):
     scenarioId: str
     message: str
     detectedTerms: List[str] = []
+    audioData: Optional[str] = None  # Base64 encoded audio for pronunciation assessment
 
 
 class TranslateMessageRequest(BaseModel):
@@ -133,11 +134,15 @@ async def get_message_feedback(
     try:
         user_id = user["user_id"]
 
+        # audioData를 올바르게 전달 (None이 아닌 빈 문자열 체크)
+        audio_data_to_send = request.audioData if request.audioData and len(request.audioData) > 0 else None
+
         feedback = await conversation_service.generate_message_feedback(
             scenario_id=request.scenarioId,
             user_message=request.message,
             detected_terms=request.detectedTerms,
-            user_id=user_id
+            user_id=user_id,
+            audio_data=audio_data_to_send
         )
 
         return {

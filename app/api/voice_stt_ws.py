@@ -8,6 +8,7 @@ import logging
 import base64
 import asyncio
 import jwt
+import time
 from app.services.voice_stt_service import VoiceSTTService
 from app.config import settings
 
@@ -16,11 +17,43 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/voice", tags=["Voice STT WebSocket"])
 
 # 사용자별 동시 연결 수 제한
-active_connections = {}  # {user_id: connection_count}
+active_connections = {}  # {user_id: {"count": int, "timestamps": [float, ...]}}
 MAX_CONNECTIONS_PER_USER = 3
+CONNECTION_TIMEOUT = 60  # 60초 후 자동으로 연결 정리
 
 # 허용된 Origin (CORS 대응)
 ALLOWED_ORIGINS = ["http://localhost:5173", "http://localhost:3000"]
+
+
+def cleanup_stale_connections(user_id: str):
+    """
+    특정 사용자의 타임아웃된 연결 정리
+
+    Args:
+        user_id: 사용자 ID
+    """
+    if user_id not in active_connections:
+        return
+
+    current_time = time.time()
+    connection_data = active_connections[user_id]
+
+    # 타임아웃된 연결 제거
+    valid_timestamps = [
+        ts for ts in connection_data.get("timestamps", [])
+        if current_time - ts < CONNECTION_TIMEOUT
+    ]
+
+    if valid_timestamps:
+        active_connections[user_id] = {
+            "count": len(valid_timestamps),
+            "timestamps": valid_timestamps
+        }
+        logger.info(f"Cleaned up stale connections for user {user_id}: {len(connection_data.get('timestamps', []))} -> {len(valid_timestamps)}")
+    else:
+        # 모든 연결이 타임아웃됨
+        del active_connections[user_id]
+        logger.info(f"All connections timed out for user {user_id}, removed from active_connections")
 
 
 def verify_token_from_string(token: str) -> dict:
@@ -118,8 +151,13 @@ async def websocket_stt(websocket: WebSocket):
 
             logger.info(f"User authenticated: {username} ({user_id})")
 
-            # 동시 연결 수 제한
-            if active_connections.get(user_id, 0) >= MAX_CONNECTIONS_PER_USER:
+            # 타임아웃된 연결 정리
+            cleanup_stale_connections(user_id)
+
+            # 동시 연결 수 제한 체크
+            current_count = active_connections.get(user_id, {}).get("count", 0)
+            if current_count >= MAX_CONNECTIONS_PER_USER:
+                logger.warning(f"Connection limit exceeded for user {user_id}: {current_count}/{MAX_CONNECTIONS_PER_USER}")
                 await websocket.send_json({
                     "type": "auth_error",
                     "message": f"Maximum {MAX_CONNECTIONS_PER_USER} concurrent connections exceeded"
@@ -127,8 +165,18 @@ async def websocket_stt(websocket: WebSocket):
                 await websocket.close()
                 return
 
-            # 연결 카운트 증가
-            active_connections[user_id] = active_connections.get(user_id, 0) + 1
+            # 연결 카운트 증가 및 타임스탬프 추가
+            current_time = time.time()
+            if user_id in active_connections:
+                active_connections[user_id]["count"] += 1
+                active_connections[user_id]["timestamps"].append(current_time)
+            else:
+                active_connections[user_id] = {
+                    "count": 1,
+                    "timestamps": [current_time]
+                }
+
+            logger.info(f"Connection established for user {user_id}: {active_connections[user_id]['count']}/{MAX_CONNECTIONS_PER_USER}")
 
             # 인증 성공 응답
             await websocket.send_json({
@@ -291,10 +339,18 @@ async def websocket_stt(websocket: WebSocket):
         if user:
             user_id = user["user_id"]
             if user_id in active_connections:
-                active_connections[user_id] -= 1
-                if active_connections[user_id] <= 0:
+                active_connections[user_id]["count"] -= 1
+
+                # 타임스탬프도 하나 제거 (FIFO)
+                if active_connections[user_id]["timestamps"]:
+                    active_connections[user_id]["timestamps"].pop(0)
+
+                # 카운트가 0이면 완전히 제거
+                if active_connections[user_id]["count"] <= 0:
                     del active_connections[user_id]
-                logger.info(f"Connection count for user {user_id}: {active_connections.get(user_id, 0)}")
+                    logger.info(f"All connections closed for user {user_id}")
+                else:
+                    logger.info(f"Connection closed for user {user_id}: {active_connections[user_id]['count']}/{MAX_CONNECTIONS_PER_USER} remaining")
 
         # WebSocket 종료
         try:

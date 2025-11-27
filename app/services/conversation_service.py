@@ -220,22 +220,23 @@ Difficulty: {scenario.difficulty}
 Required Terminology to use naturally later: {', '.join(scenario.required_terminology)}
 
 Instructions:
-- Start with friendly small talk (greetings, how are you, weather, weekend, etc.)
-- Keep it casual and natural (2-3 sentences)
-- Gradually transition into the business scenario topic
+- Start with a brief, friendly greeting (1-2 sentences maximum)
+- Include a casual greeting AND subtly hint at the scenario context
+- Example: "Hi! How's it going? Ready for our meeting about the project?" or "Hey! How are you? Excited to discuss the proposal today?"
+- Keep it natural and conversational
 - Respond in {scenario.language} language
-- Be encouraging and supportive for language practice
-- Use realistic dates and contexts based on today's date"""
+- Be friendly and welcoming
+- Use realistic contexts based on today's date"""
 
             # GPT-4o 호출
             response = await self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": "Start the conversation with casual small talk like greeting, asking how they are, or mentioning the weather."}
+                    {"role": "user", "content": "Start with a friendly greeting (1-2 sentences). First sentence: casual greeting. Second sentence (optional): subtly reference the scenario context. Keep it brief and natural."}
                 ],
-                temperature=0.8,
-                max_tokens=150
+                temperature=0.7,
+                max_tokens=80
             )
 
             return response.choices[0].message.content
@@ -285,14 +286,16 @@ Difficulty: {scenario.difficulty}
 Required Terminology to use naturally: {', '.join(scenario.required_terminology)}
 
 Instructions:
+- CRITICAL: Keep responses extremely brief - reading time must be under 7 seconds (15-20 words maximum)
+- Use ONLY 1-2 short sentences (never more than 2 sentences)
 - Mix casual small talk naturally with business topics (like real conversations)
-- Keep responses conversational and natural (2-3 sentences)
 - Occasionally ask about personal things (weekend, lunch, weather) before/after business talk
 - Use the required terminology naturally when discussing business
 - Respond in {scenario.language} language
 - Be encouraging and supportive for language practice
 - If user makes grammatical errors, gently incorporate corrections in your response
-- Use realistic dates and times based on today's context"""
+- Use realistic dates and times based on today's context
+- REMINDER: Think "quick chat message" not "email" - be conversational and concise"""
 
             # 대화 히스토리 구성
             messages = [{"role": "system", "content": system_prompt}]
@@ -310,7 +313,7 @@ Instructions:
                 model="gpt-4o",
                 messages=messages,
                 temperature=0.8,
-                max_tokens=200
+                max_tokens=60  # 7초 이내 읽기 시간을 위해 60 토큰으로 제한
             )
 
             return response.choices[0].message.content
@@ -348,7 +351,8 @@ Instructions:
         scenario_id: str,
         user_message: str,
         detected_terms: List[str],
-        user_id: UUID
+        user_id: UUID,
+        audio_data: str = None
     ) -> Dict[str, Any]:
         """
         사용자 메시지에 대한 피드백 생성
@@ -358,9 +362,10 @@ Instructions:
             user_message: 사용자 메시지
             detected_terms: 감지된 전문용어
             user_id: 사용자 ID
+            audio_data: Base64 인코딩된 오디오 데이터 (선택)
 
         Returns:
-            피드백 (문법 교정, 용어 사용, 제안, 점수)
+            피드백 (문법 교정, 용어 사용, 제안, 점수, 상세 발음 정보)
         """
         try:
             # DB에서 시나리오 조회
@@ -374,6 +379,41 @@ Instructions:
 
             if not scenario:
                 raise ValueError(f"Scenario not found: {scenario_id}")
+
+            # Azure Pronunciation Assessment 수행 (오디오 데이터가 있는 경우)
+            pronunciation_details = None
+            if audio_data:
+                try:
+                    import base64
+                    from agent.pronunciation.pronunciation_agent import PronunciationAssessmentAgent
+
+                    logger.info("🎤 Running Azure Pronunciation Assessment...")
+                    audio_bytes = base64.b64decode(audio_data)
+
+                    # 발음 평가 수행
+                    agent = PronunciationAssessmentAgent.get_instance()
+                    pronunciation_result = await agent.assess_pronunciation(
+                        audio_data=audio_bytes,
+                        reference_text=user_message,
+                        language='en-US',
+                        granularity='Phoneme'
+                    )
+
+                    # 상세 발음 정보 저장
+                    pronunciation_details = {
+                        'pronunciation_score': pronunciation_result['pronunciation_score'],
+                        'accuracy_score': pronunciation_result['accuracy_score'],
+                        'fluency_score': pronunciation_result['fluency_score'],
+                        'prosody_score': pronunciation_result['prosody_score'],
+                        'completeness_score': pronunciation_result['completeness_score'],
+                        'words': pronunciation_result['words']
+                    }
+
+                    logger.info(f"✅ Pronunciation assessment completed: {pronunciation_result['pronunciation_score']:.1f}")
+
+                except Exception as e:
+                    logger.error(f"Pronunciation assessment failed: {str(e)}", exc_info=True)
+                    # 발음 평가 실패해도 피드백은 계속 생성
 
             # GPT-4o로 피드백 생성
             system_prompt = f"""You are an expert language tutor providing feedback on business conversation practice in KOREAN language.
@@ -397,9 +437,10 @@ IMPORTANT FEEDBACK RULES:
    - If the message is very poor, provide a complete sentence example with "이런 식으로 해보세요"
    - Consider the user's role and situation when making suggestions (e.g., formality, tone, context appropriateness)
 4. Scoring System (1-10):
-   - Grammar (40%): Correct sentence structure, tense, articles
-   - Vocabulary (30%): Word choice, natural expressions, terminology usage
-   - Fluency (30%): Natural flow, politeness, business context appropriateness
+   - Grammar (30%): Correct sentence structure, tense, articles
+   - Vocabulary (25%): Word choice, natural expressions, terminology usage
+   - Fluency (25%): Natural flow, politeness, business context appropriateness
+   - Pronunciation (20%): Estimate clarity and correctness of pronunciation based on word choice and sentence complexity
    - 9-10: Excellent, native-level
    - 7-8: Good, minor improvements needed
    - 5-6: Fair, several issues to fix
@@ -408,34 +449,61 @@ IMPORTANT FEEDBACK RULES:
 
 Provide feedback in JSON format with Korean text."""
 
+            # pronunciation_details가 있으면 추가 정보 제공
+            pronunciation_info = ""
+            if pronunciation_details:
+                pronunciation_info = f"""
+
+Azure Pronunciation Assessment Results:
+- Overall Pronunciation Score: {pronunciation_details['pronunciation_score']:.1f}/100
+- Accuracy Score: {pronunciation_details['accuracy_score']:.1f}/100
+- Fluency Score: {pronunciation_details['fluency_score']:.1f}/100
+- Prosody Score (억양/강세): {pronunciation_details['prosody_score']:.1f}/100
+- Completeness Score: {pronunciation_details['completeness_score']:.1f}/100
+
+Words with pronunciation issues (accuracy < 80):
+{chr(10).join([f"- '{word['word']}': {word['accuracy_score']:.1f}/100" for word in pronunciation_details['words'] if word['accuracy_score'] < 80][:5]) if any(w['accuracy_score'] < 80 for w in pronunciation_details['words']) else '(모든 단어가 잘 발음되었습니다)'}
+
+Based on these scores, provide specific feedback on:
+1. Prosody (운율): If prosody_score < 80, explain issues with intonation (억양), stress (강세), or rhythm (리듬)
+2. Problematic words: Mention specific words with low accuracy scores
+3. Overall pronunciation improvement tips"""
+
             user_prompt = f"""User's message: "{user_message}"
 
-Detected terminology used: {', '.join(detected_terms) if detected_terms else 'None'}
+Detected terminology used: {', '.join(detected_terms) if detected_terms else 'None'}{pronunciation_info}
 
 Provide feedback in this exact JSON format (ALL TEXT IN KOREAN):
 {{
   "grammar_corrections": [
-    "시제 문제: 'I was go'는 틀렸어요. 'I went' 또는 'I was going'이라고 해야 해요.",
-    "관사 누락: 'meeting'은 셀 수 있는 명사이므로 'a meeting' 또는 'the meeting'이라고 해야 해요."
+    "시제 문제: 'I was go'는 틀렸어요. 'I went' 또는 'I was going'이라고 해야 해요."
   ],
   "terminology_usage": {{
     "used": ["term1", "term2"],
     "missed": ["term3"]
   }},
   "suggestions": [
-    "더 공손한 표현으로는 'Could you please...' 또는 'Would you mind...'를 사용해보세요.",
-    "비즈니스 상황에서는 'I think'보다 'In my opinion' 또는 'From my perspective'가 더 적절해요.",
-    "이런 식으로 해보세요: 'I would appreciate it if you could review the proposal by Friday.'"
+    "더 공손한 표현으로는 'Could you please...' 또는 'Would you mind...'를 사용해보세요."
+  ],
+  "pronunciation_feedback": [
+    "억양 (Prosody): 문장 끝에서 억양이 올라가야 하는데 평평하게 발음했어요. 질문할 때는 끝을 올려서 말해보세요.",
+    "강세 (Stress): 'important'는 두 번째 음절 '-por-'에 강세를 주어야 해요. 'im-POR-tant'처럼 발음해보세요.",
+    "'needed' 단어의 /d/ 소리가 정확하지 않아요. 혀끝을 윗니 뒤에 대고 'd' 소리를 내보세요."
   ],
   "score": 7,
   "score_breakdown": {{
     "grammar": 6,
     "vocabulary": 8,
-    "fluency": 7
+    "fluency": 7,
+    "pronunciation": 7
   }}
 }}
 
-REMEMBER: All explanations must be in KOREAN (한글), but include English expressions/corrections within the Korean text."""
+IMPORTANT:
+- If pronunciation assessment data is provided, MUST include "pronunciation_feedback" array with specific tips
+- If prosody_score < 80: provide feedback on intonation (억양), stress (강세), or rhythm (리듬)
+- If any words have low accuracy: mention those specific words and how to improve
+- All explanations in KOREAN (한글), but include English words/corrections within the Korean text"""
 
             response = await self.client.chat.completions.create(
                 model="gpt-4o",
@@ -451,6 +519,10 @@ REMEMBER: All explanations must be in KOREAN (한글), but include English expre
             # JSON 파싱
             import json
             feedback = json.loads(response.choices[0].message.content)
+
+            # 발음 상세 정보 추가 (있는 경우)
+            if pronunciation_details:
+                feedback['pronunciation_details'] = pronunciation_details
 
             # 피드백을 마지막 사용자 메시지에 저장
             await self._save_feedback_to_message(

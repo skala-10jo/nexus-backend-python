@@ -2,12 +2,17 @@
 Configuration settings for the Python backend.
 Loads environment variables and provides application settings.
 """
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="allow"  # 추가 환경 변수 허용
+    )
 
     # Database
     DATABASE_URL: str = "postgresql://user:password@localhost:5432/nexus"
@@ -36,13 +41,13 @@ class Settings(BaseSettings):
     QDRANT_EMAIL_COLLECTION: str = "email_embeddings"
     QDRANT_BIZGUIDE_COLLECTION: str = "bizguide"
 
-    # Azure Speech
-    AZURE_SPEECH_KEY: str
-    AZURE_SPEECH_REGION: str
+    # Azure Speech (TTS/STT - Korea Central)
+    AZURE_SPEECH_KEY: str = ""
+    AZURE_SPEECH_REGION: str = "koreacentral"
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    # Azure Avatar (Southeast Asia)
+    AZURE_AVATAR_SPEECH_KEY: str = ""
+    AZURE_AVATAR_SPEECH_REGION: str = "southeastasia"
 
     @property
     def allowed_origins_list(self) -> List[str]:

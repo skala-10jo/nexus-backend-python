@@ -4,7 +4,7 @@ FastAPI application entry point for Python AI backend.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.api import glossary, translate, mail_agent, scenarios, conversations, video_translation, voice_translation, voice_stt, voice_stt_ws, azure_speech
+from app.api import glossary, translate, mail_agent, scenarios, conversations, video_translation, voice_translation, voice_stt, voice_stt_ws, azure_speech, azure_avatar, pronunciation
 import logging
 
 # Configure logging
@@ -43,6 +43,8 @@ app.include_router(voice_translation.router, tags=["Voice Translation AI"])
 app.include_router(voice_stt.router, prefix="/api/ai", tags=["Voice STT"])
 app.include_router(voice_stt_ws.router, prefix="/api/ai", tags=["Voice STT WebSocket"])
 app.include_router(azure_speech.router, prefix="/api/ai", tags=["Azure Speech"])
+app.include_router(azure_avatar.router, prefix="/api/ai", tags=["Azure Avatar"])
+app.include_router(pronunciation.router, prefix="/api/ai", tags=["Pronunciation Assessment"])
 
 
 @app.on_event("startup")
