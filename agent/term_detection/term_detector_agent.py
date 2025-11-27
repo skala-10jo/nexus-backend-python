@@ -63,6 +63,7 @@ class TermDetectorAgent(BaseAgent):
         self,
         text: str,
         glossary_terms: List[Dict[str, str]],
+        source_lang: str = "ko",
         case_sensitive: bool = False
     ) -> List[DetectedTerm]:
         """
@@ -75,6 +76,7 @@ class TermDetectorAgent(BaseAgent):
                 - korean_term (필수): 한글 용어
                 - english_term (선택): 영어 용어
                 - vietnamese_term (선택): 베트남어 용어
+            source_lang: 원본 언어 코드 (ko, en, vi 등) - 해당 언어 용어 매칭
             case_sensitive: 대소문자 구분 여부 (기본값: False)
 
         Returns:
@@ -91,10 +93,20 @@ class TermDetectorAgent(BaseAgent):
 
         detected_terms: List[DetectedTerm] = []
 
+        # source_lang에 따라 매칭할 필드 결정
+        lang_field_map = {
+            "ko": "korean_term",
+            "en": "english_term",
+            "vi": "vietnamese_term",
+            "ja": "korean_term",  # 일본어는 한글로 fallback
+            "zh": "korean_term",  # 중국어는 한글로 fallback
+        }
+        primary_field = lang_field_map.get(source_lang, "korean_term")
+
         # 길이가 긴 용어부터 매칭 (긴 용어 우선)
         sorted_terms = sorted(
             glossary_terms,
-            key=lambda t: len(t.get("korean_term", "")),
+            key=lambda t: len(t.get(primary_field, "") or ""),
             reverse=True
         )
 
@@ -103,19 +115,31 @@ class TermDetectorAgent(BaseAgent):
 
         for term_dict in sorted_terms:
             korean_term = term_dict.get("korean_term")
-            if not korean_term:
-                continue
-
             english_term = term_dict.get("english_term")
             vietnamese_term = term_dict.get("vietnamese_term")
 
-            # 정규식 패턴 생성
-            pattern = re.escape(korean_term)
-            if not case_sensitive:
-                pattern = f"(?i){pattern}"  # 대소문자 구분 안 함
+            # 매칭할 용어 선택 (primary_field 우선, 없으면 건너뜀)
+            search_term = term_dict.get(primary_field)
+            if not search_term:
+                continue
+
+            # 정규식 패턴 생성 (언어별 단어 경계 처리)
+            escaped_term = re.escape(search_term)
+
+            # ASCII 문자만 포함된 경우 (영어 등) → \b 사용
+            # 비ASCII 문자 포함 (한국어, 베트남어 등) → 다른 전략 사용
+            if search_term.isascii():
+                pattern = r'\b' + escaped_term + r'\b'
+            else:
+                # 한국어: 조사(은, 는, 이, 가, 을, 를, 에, 와, 과, 의, 로, 으로 등)가 붙을 수 있음
+                # 앞에는 한글이 아니어야 하고, 뒤에는 조사가 오거나 한글이 아니어야 함
+                # 간단히: 앞에 한글이 없어야만 매칭 (단어의 시작)
+                pattern = r'(?<![가-힣])' + escaped_term
+
+            flags = re.IGNORECASE if not case_sensitive else 0
 
             # 모든 매칭 찾기
-            for match in re.finditer(pattern, text):
+            for match in re.finditer(pattern, text, flags):
                 start, end = match.span()
 
                 # 이미 매칭된 위치와 겹치는지 확인

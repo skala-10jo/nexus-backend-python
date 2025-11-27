@@ -29,3 +29,9 @@ python-docx==1.1.0
 chardet==5.2.0
 beautifulsoup4==4.12.3
 PyJWT==2.10.1
+
+# Azure Speech Services
+azure-cognitiveservices-speech==1.40.0
+
+# Audio Processing
+pydub==0.25.1

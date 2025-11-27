@@ -203,15 +203,16 @@ class TranslationService:
         glossary_terms = self._fetch_project_glossary(project_id, db)
         logger.info(f"📚 용어집 조회: {len(glossary_terms)}개")
 
-        # Step 2: 용어 탐지
+        # Step 2: 용어 탐지 (source_lang에 따라 해당 언어 용어 매칭)
         detected_terms = await self.term_detector.process(
             text,
             [{"korean_term": t["korean_term"],
               "english_term": t.get("english_term"),
               "vietnamese_term": t.get("vietnamese_term")}
-             for t in glossary_terms]
+             for t in glossary_terms],
+            source_lang=source_lang
         )
-        logger.info(f"🔍 용어 탐지: {len(detected_terms)}개")
+        logger.info(f"🔍 용어 탐지: {len(detected_terms)}개 (source_lang={source_lang})")
 
         # Step 3: 용어 매칭 (상세 정보)
         matched_terms = await self.glossary_matcher.process(detected_terms, glossary_terms)
