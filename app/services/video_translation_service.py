@@ -151,8 +151,8 @@ class VideoTranslationService:
         file = self._get_file_by_id(video_file_id, db)
         video_file = self._get_video_file_by_file_id(video_file_id, db)
 
-        # 절대 경로로 변환
-        upload_base_dir = os.getenv('UPLOAD_BASE_DIR', settings.UPLOAD_BASE_DIR)
+        # 절대 경로로 변환 (환경에 따라 자동 감지)
+        upload_base_dir = settings.upload_dir
         full_video_path = os.path.join(upload_base_dir, file.file_path)
 
         if not os.path.exists(full_video_path):
@@ -408,8 +408,8 @@ class VideoTranslationService:
         if not subtitles:
             raise ValueError("자막이 비어있습니다")
 
-        # Step 3: 출력 파일 경로 생성
-        subtitle_dir = Path(settings.UPLOAD_BASE_DIR) / "subtitles"
+        # Step 3: 출력 파일 경로 생성 (환경에 따라 자동 감지)
+        subtitle_dir = Path(settings.upload_dir) / "subtitles"
         subtitle_dir.mkdir(parents=True, exist_ok=True)
 
         filename = f"{video_file.id}_{language_type}.srt"

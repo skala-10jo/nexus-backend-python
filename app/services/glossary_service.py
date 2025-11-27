@@ -91,7 +91,7 @@ class GlossaryService:
             logger.info(f"📝 Job {job_id}: Started processing")
 
             # 2. Extract text from document
-            full_path = os.path.join(settings.UPLOAD_BASE_DIR, file_path)
+            full_path = os.path.join(settings.upload_dir, file_path)
             logger.info(f"📄 Job {job_id}: Extracting text from {full_path}")
 
             text = extract_text_from_file(full_path)

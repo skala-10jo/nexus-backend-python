@@ -2,8 +2,33 @@
 Configuration settings for the Python backend.
 Loads environment variables and provides application settings.
 """
+import os
+from pathlib import Path
+from typing import List, Optional
+
 from pydantic_settings import BaseSettings
-from typing import List
+
+
+def _get_default_upload_dir() -> str:
+    """
+    Get default upload directory based on project structure.
+
+    Supports:
+    - Relative path from backend-python: ../backend-java/uploads/documents
+    - Automatically resolves to absolute path
+
+    Returns:
+        Absolute path to upload directory
+    """
+    # backend-python/app/config.py -> backend-python -> final_project
+    current_file = Path(__file__).resolve()
+    backend_python_dir = current_file.parent.parent  # backend-python/
+    project_root = backend_python_dir.parent  # final_project/
+
+    # Java backend uploads directory
+    upload_dir = project_root / "backend-java" / "uploads" / "documents"
+
+    return str(upload_dir)
 
 
 class Settings(BaseSettings):
@@ -24,8 +49,8 @@ class Settings(BaseSettings):
     PYTHON_BACKEND_PORT: int = 8000
     LOG_LEVEL: str = "info"
 
-    # File Storage
-    UPLOAD_BASE_DIR: str
+    # File Storage (optional - auto-detected from project structure if not set)
+    UPLOAD_BASE_DIR: Optional[str] = None
 
     # CORS
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
@@ -48,6 +73,23 @@ class Settings(BaseSettings):
     def allowed_origins_list(self) -> List[str]:
         """Convert CORS allowed origins string to list."""
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(',')]
+
+    @property
+    def upload_dir(self) -> str:
+        """
+        Get upload directory path.
+
+        Returns environment variable if set, otherwise auto-detects from project structure.
+        This ensures portability across different development environments and deployments.
+
+        Returns:
+            Absolute path to upload directory
+        """
+        if self.UPLOAD_BASE_DIR:
+            # Use environment variable if explicitly set
+            return self.UPLOAD_BASE_DIR
+        # Auto-detect from project structure
+        return _get_default_upload_dir()
 
 
 # Global settings instance
