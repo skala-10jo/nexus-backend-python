@@ -6,6 +6,7 @@ Java Backend V22 스키마와 호환되도록 설계되었습니다 (files/video
 """
 
 import logging
+import math
 import os
 from typing import List, Dict, Any
 from uuid import UUID
@@ -175,6 +176,16 @@ class VideoTranslationService:
 
         # Step 4: DB 저장 (각 세그먼트를 VideoSubtitle row로 저장)
         for segment_data in segments:
+            # Whisper avg_logprob은 음수값이므로 exp()로 0-1 확률로 변환
+            raw_confidence = segment_data.get("confidence")
+            if raw_confidence is not None and raw_confidence < 0:
+                # avg_logprob → probability: exp(logprob)
+                confidence = math.exp(raw_confidence)
+                # 0-1 범위로 클리핑
+                confidence = max(0.0, min(1.0, confidence))
+            else:
+                confidence = raw_confidence
+
             subtitle = VideoSubtitle(
                 video_file_id=video_file.id,
                 sequence_number=segment_data["sequence_number"],
@@ -184,7 +195,7 @@ class VideoTranslationService:
                 original_language=source_language,  # 원본 언어 저장
                 translations={},  # 빈 번역 딕셔너리로 초기화
                 translated_text=None,  # 레거시 필드 (하위 호환성)
-                confidence_score=segment_data.get("confidence")
+                confidence_score=confidence
             )
             db.add(subtitle)
 

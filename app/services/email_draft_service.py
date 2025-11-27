@@ -40,7 +40,8 @@ class EmailDraftService:
         original_message: str,
         keywords: Optional[List[str]] = None,
         target_language: str = "ko",
-        recipient: Optional[str] = None
+        recipient: Optional[str] = None,
+        conversation_history: Optional[List[Dict[str, str]]] = None
     ) -> Dict[str, Any]:
         """
         메일 초안을 작성합니다 (RAG 통합).
@@ -95,7 +96,8 @@ class EmailDraftService:
                 original_message=original_message,
                 rag_context=rag_context,
                 target_language=target_language,
-                recipient=recipient
+                recipient=recipient,
+                conversation_history=conversation_history
             )
 
             # 4. 응답 구성
@@ -120,7 +122,8 @@ class EmailDraftService:
         self,
         email_text: str,
         keywords: Optional[List[str]] = None,
-        target_language: str = "en"
+        target_language: str = "en",
+        conversation_history: Optional[List[Dict[str, str]]] = None
     ) -> Dict[str, Any]:
         """
         메일을 번역합니다 (RAG 통합).
@@ -167,7 +170,8 @@ class EmailDraftService:
             translate_result = await self.draft_agent.translate(
                 email_text=email_text,
                 rag_context=rag_context,
-                target_language=target_language
+                target_language=target_language,
+                conversation_history=conversation_history
             )
 
             # 4. 응답 구성

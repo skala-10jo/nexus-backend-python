@@ -75,9 +75,9 @@ class EmbeddingAgent(BaseAgent):
             ValueError: 본문이 너무 짧거나 비어있을 때
         """
         body = email_data.get('body', '')
-        if not body or len(body.strip()) < 50:
-            logger.warning(f"Email {email_data.get('email_id')}: Body too short, skipping")
-            raise ValueError("Email body is too short or empty (min 50 characters)")
+        if not body or len(body.strip()) == 0:
+            logger.warning(f"Email {email_data.get('email_id')}: Body is empty, skipping")
+            raise ValueError("Email body is empty")
 
         email_id = email_data.get('email_id')
         user_id = email_data.get('user_id')

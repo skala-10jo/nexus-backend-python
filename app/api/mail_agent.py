@@ -111,11 +111,12 @@ async def search_emails(
 @router.patch("/emails/{email_id}/project")
 async def update_email_project(
     email_id: str,
-    project_id: Optional[str] = None,    
+    project_id: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     """
     메일의 프로젝트 할당/해제.
+    임베딩이 없으면 자동 생성, 있으면 payload만 업데이트.
     """
 
     logger.info(f"Updating project for email: {email_id}, project_id={project_id}")
@@ -134,40 +135,75 @@ async def update_email_project(
                 raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
             project_name = project.name
 
-        # 3. Qdrant Payload 업데이트
+        # 3. Qdrant에 임베딩이 있는지 확인
         qdrant_client = get_qdrant_client()
 
-        payload_update = {
-            "project_id": str(project_id) if project_id else None,
-            "project_name": project_name
-        }
-
-        qdrant_client.set_payload(
+        existing = qdrant_client.scroll(
             collection_name=settings.QDRANT_EMAIL_COLLECTION,
-            payload=payload_update,
-            points=models.FilterSelector(
-                filter=models.Filter(
-                    must=[
-                        models.FieldCondition(
-                            key="email_id",
-                            match=models.MatchValue(value=str(email_id))
-                        )
-                    ]
+            scroll_filter=models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="email_id",
+                        match=models.MatchValue(value=str(email_id))
+                    )
+                ]
+            ),
+            limit=1
+        )
+
+        has_embeddings = len(existing[0]) > 0
+
+        # 4. 임베딩이 없으면 생성, 있으면 payload만 업데이트
+        if not has_embeddings:
+            logger.info(f"No embeddings found for email {email_id}, generating...")
+
+            # 임베딩 생성 (프로젝트 정보 포함)
+            result = await service.generate_embeddings_for_email(
+                email_id,
+                db,
+                force_regenerate=False
+            )
+
+            if result['status'] == 'success':
+                logger.info(f"Created embeddings for email {email_id} with project_name='{project_name}'")
+                message = "임베딩을 생성하고 프로젝트 정보를 저장했습니다"
+            else:
+                logger.warning(f"Failed to create embeddings: {result.get('reason', 'Unknown')}")
+                message = f"임베딩 생성 실패: {result.get('reason', 'Unknown')}"
+        else:
+            # 임베딩이 있으면 payload만 업데이트
+            payload_update = {
+                "project_id": str(project_id) if project_id else None,
+                "project_name": project_name
+            }
+
+            qdrant_client.set_payload(
+                collection_name=settings.QDRANT_EMAIL_COLLECTION,
+                payload=payload_update,
+                points=models.FilterSelector(
+                    filter=models.Filter(
+                        must=[
+                            models.FieldCondition(
+                                key="email_id",
+                                match=models.MatchValue(value=str(email_id))
+                            )
+                        ]
+                    )
                 )
             )
-        )
 
-        logger.info(
-            f"Updated Qdrant payload for email {email_id}: "
-            f"project_id={project_id}, project_name={project_name}"
-        )
+            logger.info(
+                f"Updated Qdrant payload for email {email_id}: "
+                f"project_id={project_id}, project_name={project_name}"
+            )
+            message = "프로젝트 정보가 업데이트되었습니다"
 
         return {
             "success": True,
             "email_id": str(email_id),
             "project_id": str(project_id) if project_id else None,
             "project_name": project_name,
-            "message": "프로젝트 정보가 업데이트되었습니다 (임베딩 재생성 없음)"
+            "message": message
         }
 
     except HTTPException:
@@ -175,7 +211,6 @@ async def update_email_project(
 
     except Exception as e:
         logger.error(f"Failed to update email project: {str(e)}")
-        # (4) 에러 처리 개선
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -263,7 +298,8 @@ async def chat_with_mail_search(
             draft_result = await draft_service.create_draft(
                 original_message=query_result.get("original_message", request.message),
                 keywords=query_result.get("keywords"),
-                target_language=query_result.get("target_language", "ko")
+                target_language=query_result.get("target_language", "ko"),
+                conversation_history=conversation_history
             )
 
             response_data.update({
@@ -281,7 +317,8 @@ async def chat_with_mail_search(
             translate_result = await draft_service.translate_email(
                 email_text=query_result.get("original_message", ""),
                 keywords=query_result.get("keywords"),
-                target_language=query_result.get("target_language", "en")
+                target_language=query_result.get("target_language", "en"),
+                conversation_history=conversation_history
             )
 
             response_data.update({
