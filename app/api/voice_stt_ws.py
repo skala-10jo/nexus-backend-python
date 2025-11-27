@@ -22,7 +22,7 @@ MAX_CONNECTIONS_PER_USER = 3
 CONNECTION_TIMEOUT = 60  # 60초 후 자동으로 연결 정리
 
 # 허용된 Origin (CORS 대응)
-ALLOWED_ORIGINS = ["http://localhost:5173", "http://localhost:3000"]
+ALLOWED_ORIGINS = settings.allowed_origins_list
 
 
 def cleanup_stale_connections(user_id: str):
