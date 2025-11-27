@@ -31,7 +31,7 @@ class RealtimeSTTAgent(BaseAgent):
 
     async def process(
         self,
-        audio_data: str,
+        audio_data,  # bytes 또는 str (base64) 모두 허용
         input_language: str = 'ko',
         audio_format: Dict = None
     ) -> Dict[str, any]:
@@ -39,7 +39,7 @@ class RealtimeSTTAgent(BaseAgent):
         오디오 청크를 텍스트로 변환
 
         Args:
-            audio_data: base64 인코딩된 오디오 데이터
+            audio_data: 오디오 데이터 (bytes 또는 base64 인코딩된 문자열)
             input_language: 입력 언어 코드 (ko, en, vi)
             audio_format: 오디오 형식 정보 (mimeType, extension)
                 예: {"mimeType": "audio/webm;codecs=opus", "extension": "webm"}
@@ -63,11 +63,26 @@ class RealtimeSTTAgent(BaseAgent):
                 f"지원 언어: {list(self.supported_languages.keys())}"
             )
 
-        # 2. base64 디코딩
-        try:
-            audio_bytes = base64.b64decode(audio_data)
-        except Exception as e:
-            raise ValueError(f"오디오 데이터 디코딩 실패: {str(e)}")
+        # 2. audio_data 타입에 따라 처리
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"🔍 RealtimeSTTAgent.process: type={type(audio_data)}, isinstance(str)={isinstance(audio_data, str)}, isinstance(bytes)={isinstance(audio_data, bytes)}")
+
+        if isinstance(audio_data, str):
+            # base64 인코딩된 문자열인 경우
+            logger.debug(f"🔍 Attempting base64 decode of string (length={len(audio_data)})")
+            try:
+                audio_bytes = base64.b64decode(audio_data)
+                logger.debug(f"🔍 Successfully decoded base64, resulting bytes length={len(audio_bytes)}")
+            except Exception as e:
+                logger.error(f"🔍 Base64 decode failed: {str(e)}")
+                raise ValueError(f"오디오 데이터 디코딩 실패: {str(e)}")
+        elif isinstance(audio_data, bytes):
+            # 이미 bytes인 경우 (WebSocket binary message)
+            logger.debug(f"🔍 Using raw bytes (length={len(audio_data)})")
+            audio_bytes = audio_data
+        else:
+            raise ValueError(f"지원하지 않는 오디오 데이터 타입: {type(audio_data)}")
 
         # 오디오가 너무 작으면 무시 (< 0.5초, 대략 8KB)
         if len(audio_bytes) < 8000:

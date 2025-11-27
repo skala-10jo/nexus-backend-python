@@ -238,6 +238,106 @@ class TranslationAgent(BaseAgent):
             logger.error(f"Batch translation failed: {str(e)}", exc_info=True)
             raise Exception(f"일괄 번역 실패: {str(e)}")
 
+    async def process_multi(
+        self,
+        text: str,
+        source_lang: str,
+        target_langs: List[str]
+    ) -> List[Dict[str, str]]:
+        """
+        하나의 텍스트를 여러 언어로 동시 번역 (WebSocket 실시간 번역용)
+
+        Azure Translator API의 멀티 타겟 기능을 사용하여
+        한 번의 API 호출로 여러 언어로 번역합니다.
+
+        Args:
+            text: 원본 텍스트
+            source_lang: 원본 언어 (ISO 639-1 코드, 예: ko, en, ja)
+            target_langs: 목표 언어 리스트 (ISO 639-1 코드)
+
+        Returns:
+            List[Dict[str, str]]: [
+                {"lang": "en", "text": "Hello"},
+                {"lang": "ja", "text": "こんにちは"}
+            ]
+
+        Raises:
+            Exception: 번역 실패 시
+        """
+        if not text or not text.strip():
+            logger.warning("Empty text provided for multi translation")
+            return []
+
+        if not target_langs:
+            logger.warning("Empty target_langs list provided")
+            return []
+
+        try:
+            logger.info(f"Multi translating: {source_lang} -> {target_langs}, length={len(text)}")
+
+            # Azure Translator API 엔드포인트
+            path = '/translate'
+            constructed_url = self.endpoint + path
+
+            # 요청 파라미터 (여러 target 언어 지정)
+            params = {
+                'api-version': '3.0',
+                'from': source_lang,
+                'to': target_langs  # 리스트로 전달 (Azure API가 지원함)
+            }
+
+            # 요청 헤더
+            headers = {
+                'Ocp-Apim-Subscription-Key': self.api_key,
+                'Ocp-Apim-Subscription-Region': self.region,
+                'Content-type': 'application/json',
+                'X-ClientTraceId': str(uuid.uuid4())
+            }
+
+            # 요청 본문
+            body = [{'text': text}]
+
+            # HTTP POST 요청 (비동기)
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    constructed_url,
+                    params=params,
+                    headers=headers,
+                    json=body,
+                    timeout=aiohttp.ClientTimeout(total=30)
+                ) as response:
+                    # 응답 확인
+                    if response.status != 200:
+                        error_text = await response.text()
+                        error_msg = f"Multi translation API error: {response.status}, {error_text}"
+                        logger.error(error_msg)
+                        raise Exception(error_msg)
+
+                    # 응답 파싱
+                    result = await response.json()
+
+                    # 번역 결과 추출
+                    translations = []
+                    if result and len(result) > 0:
+                        for translation in result[0].get('translations', []):
+                            target_lang = translation.get('to', '')
+                            translated_text = translation.get('text', '')
+                            translations.append({
+                                "lang": target_lang,
+                                "text": translated_text
+                            })
+
+                    logger.info(f"Multi translation success: {len(translations)} translations")
+                    return translations
+
+        except aiohttp.ClientError as e:
+            logger.error(f"HTTP client error during multi translation: {str(e)}", exc_info=True)
+            raise Exception(f"다중 번역 HTTP 오류: {str(e)}")
+
+        except Exception as e:
+            logger.error(f"Multi translation failed: {str(e)}", exc_info=True)
+            raise Exception(f"다중 번역 실패: {str(e)}")
+
 
 # 싱글톤 인스턴스 생성 함수
 def get_translation_agent() -> TranslationAgent:

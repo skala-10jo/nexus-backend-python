@@ -55,7 +55,7 @@ app.include_router(voice_translation.router, tags=["Voice Translation AI"])
 app.include_router(azure_speech.router, prefix="/api/ai", tags=["Azure Speech"])
 
 # Voice API 라우터 (새로운 Agent 기반 구조)
-app.include_router(voice_stt.router, prefix="/api/ai/voice", tags=["Voice STT"])
+app.include_router(voice_stt.router, tags=["Voice STT"])
 app.include_router(voice_translate.router, prefix="/api/ai/voice", tags=["Voice Translate"])
 app.include_router(voice_tts.router, prefix="/api/ai/voice", tags=["Voice TTS"])
 

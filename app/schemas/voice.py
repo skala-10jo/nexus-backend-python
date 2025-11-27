@@ -16,16 +16,11 @@ class STTRequest(BaseModel):
         default="ko-KR",
         description="BCP-47 언어 코드 (예: ko-KR, en-US, ja-JP)"
     )
-    enable_diarization: bool = Field(
-        default=True,
-        description="화자 분리 활성화 여부"
-    )
 
     class Config:
         json_schema_extra = {
             "example": {
-                "language": "ko-KR",
-                "enable_diarization": True
+                "language": "ko-KR"
             }
         }
 
@@ -34,7 +29,6 @@ class STTResponse(BaseModel):
     """STT 응답 스키마"""
 
     text: str = Field(..., description="인식된 텍스트")
-    speaker_id: str = Field(..., description="화자 ID (diarization 활성화 시)")
     confidence: float = Field(..., description="신뢰도 (0.0 ~ 1.0)")
     language: str = Field(..., description="인식된 언어 (BCP-47)")
 
@@ -42,9 +36,23 @@ class STTResponse(BaseModel):
         json_schema_extra = {
             "example": {
                 "text": "안녕하세요. 반갑습니다.",
-                "speaker_id": "Guest-1",
                 "confidence": 0.95,
                 "language": "ko-KR"
+            }
+        }
+
+
+class TranslationItem(BaseModel):
+    """번역 결과 아이템"""
+
+    lang: str = Field(..., description="목표 언어 (BCP-47 코드, 예: en-US, ja-JP)")
+    text: str = Field(..., description="번역된 텍스트")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "lang": "en-US",
+                "text": "Hello"
             }
         }
 
@@ -54,17 +62,28 @@ class STTStreamMessage(BaseModel):
 
     type: str = Field(..., description="메시지 타입 (recognizing, recognized, error, end)")
     text: Optional[str] = Field(None, description="인식된 텍스트")
-    speaker_id: Optional[str] = Field(None, description="화자 ID")
     confidence: Optional[float] = Field(None, description="신뢰도")
     error: Optional[str] = Field(None, description="에러 메시지")
+    detected_language: Optional[str] = Field(
+        None,
+        description="자동 감지된 언어 (BCP-47 코드, 예: ko-KR, en-US, ja-JP, vi-VN)"
+    )
+    translations: Optional[List[TranslationItem]] = Field(
+        None,
+        description="번역 결과 리스트"
+    )
 
     class Config:
         json_schema_extra = {
             "example": {
                 "type": "recognized",
                 "text": "안녕하세요",
-                "speaker_id": "Guest-1",
                 "confidence": 0.95,
+                "detected_language": "ko-KR",
+                "translations": [
+                    {"lang": "en-US", "text": "Hello"},
+                    {"lang": "ja-JP", "text": "こんにちは"}
+                ],
                 "error": None
             }
         }

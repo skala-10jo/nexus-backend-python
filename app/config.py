@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     AZURE_SPEECH_KEY: str
     AZURE_SPEECH_REGION: str
 
+    # Azure Translator
+    AZURE_TRANSLATOR_KEY: str
+    AZURE_TRANSLATOR_ENDPOINT: str
+    AZURE_TRANSLATOR_REGION: str
+
     class Config:
         env_file = ".env"
         case_sensitive = True
