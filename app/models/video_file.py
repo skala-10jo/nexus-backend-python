@@ -1,8 +1,8 @@
 """
-VideoDocument 관련 SQLAlchemy ORM 모델
+VideoFile 관련 SQLAlchemy ORM 모델
 
 영상 파일 메타데이터를 저장합니다.
-Java Backend의 V13 마이그레이션 스키마와 호환되도록 설계되었습니다.
+Java Backend의 V16 마이그레이션 스키마와 호환되도록 설계되었습니다.
 """
 from sqlalchemy import Column, String, Text, Integer, Boolean, ForeignKey, DateTime, DECIMAL
 from sqlalchemy.dialects.postgresql import UUID
@@ -12,18 +12,17 @@ from app.database import Base
 import uuid
 
 
-class VideoDocument(Base):
+class VideoFile(Base):
     """
-    영상 문서 모델
+    영상 파일 모델 (files 테이블 확장)
 
-    Java Backend V13 스키마와 호환:
-    - document_id: Document와 1:1 관계
+    Java Backend V16 스키마와 호환:
+    - id: File과 1:1 관계 (같은 ID 사용)
     - 영상 메타데이터 및 처리 상태 저장
     """
-    __tablename__ = "video_documents"
+    __tablename__ = "video_files"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, unique=True)
+    id = Column(UUID(as_uuid=True), ForeignKey("files.id", ondelete="CASCADE"), primary_key=True)
 
     # 영상 메타데이터
     duration_seconds = Column(Integer, nullable=True)
@@ -55,5 +54,5 @@ class VideoDocument(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # 관계
-    document = relationship("Document", back_populates="video_document")
-    subtitles = relationship("VideoSubtitle", back_populates="video_document", cascade="all, delete-orphan")
+    file = relationship("File", back_populates="video_file")
+    subtitles = relationship("VideoSubtitle", back_populates="video_file", cascade="all, delete-orphan")

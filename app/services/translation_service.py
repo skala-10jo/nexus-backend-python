@@ -19,7 +19,7 @@ from agent.summarization.document_summarizer_agent import DocumentSummarizerAgen
 # Model imports
 from app.models.translation import Translation, TranslationTerm
 from app.models.glossary import GlossaryTerm
-from app.models.document import Document
+from app.models.file import File
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class TranslationService:
         db: Session
     ) -> List[Dict[str, Any]]:
         """
-        프로젝트의 용어집 조회
+        프로젝트의 용어집 조회 (project_files를 통한 조인)
 
         Args:
             project_id: 프로젝트 ID
@@ -57,26 +57,43 @@ class TranslationService:
 
         Returns:
             용어집 리스트 (딕셔너리 형태)
-        """
-        glossary_terms = db.query(GlossaryTerm).filter(
-            GlossaryTerm.project_id == project_id
-        ).all()
 
-        return [
-            {
-                "id": term.id,
-                "korean_term": term.korean_term,
-                "english_term": term.english_term,
-                "vietnamese_term": term.vietnamese_term,
-                "definition": term.definition,
-                "context": term.context,
-                "example_sentence": term.example_sentence,
-                "note": term.note,
-                "domain": term.domain,
-                "confidence_score": float(term.confidence_score) if term.confidence_score else None
-            }
-            for term in glossary_terms
-        ]
+        Note:
+            project_id = NULL인 용어도 조회하기 위해
+            glossary_term_documents → project_files 경로로 조인합니다.
+            이는 파일을 프로젝트에 링크하기 전에 추출된 용어도 포함시킵니다.
+        """
+        from sqlalchemy import text
+
+        # Native SQL 쿼리: Java의 findTermsByProjectFiles()와 동일한 로직
+        query = text("""
+            SELECT DISTINCT t.*
+            FROM glossary_terms t
+            INNER JOIN glossary_term_documents gtd ON t.id = gtd.term_id
+            INNER JOIN project_files pf ON gtd.file_id = pf.file_id
+            WHERE pf.project_id = :project_id
+        """)
+
+        result = db.execute(query, {"project_id": str(project_id)})
+        rows = result.fetchall()
+
+        # Row를 딕셔너리로 변환
+        glossary_terms = []
+        for row in rows:
+            glossary_terms.append({
+                "id": row.id,
+                "korean_term": row.korean_term,
+                "english_term": row.english_term,
+                "vietnamese_term": row.vietnamese_term,
+                "definition": row.definition,
+                "context": row.context,
+                "example_sentence": row.example_sentence,
+                "note": row.note,
+                "domain": row.domain,
+                "confidence_score": float(row.confidence_score) if row.confidence_score else None
+            })
+
+        return glossary_terms
 
     def _fetch_project_documents_text(
         self,
@@ -96,10 +113,10 @@ class TranslationService:
             문서 텍스트 리스트
         """
         # 프로젝트와 연결된 문서 조회
-        documents = db.query(Document).join(
-            Document.projects
+        documents = db.query(File).join(
+            File.projects
         ).filter(
-            Document.projects.any(id=project_id)
+            File.projects.any(id=project_id)
         ).limit(max_docs).all()
 
         document_texts = []
@@ -186,15 +203,16 @@ class TranslationService:
         glossary_terms = self._fetch_project_glossary(project_id, db)
         logger.info(f"📚 용어집 조회: {len(glossary_terms)}개")
 
-        # Step 2: 용어 탐지
+        # Step 2: 용어 탐지 (source_lang에 따라 해당 언어 용어 매칭)
         detected_terms = await self.term_detector.process(
             text,
             [{"korean_term": t["korean_term"],
               "english_term": t.get("english_term"),
               "vietnamese_term": t.get("vietnamese_term")}
-             for t in glossary_terms]
+             for t in glossary_terms],
+            source_lang=source_lang
         )
-        logger.info(f"🔍 용어 탐지: {len(detected_terms)}개")
+        logger.info(f"🔍 용어 탐지: {len(detected_terms)}개 (source_lang={source_lang})")
 
         # Step 3: 용어 매칭 (상세 정보)
         matched_terms = await self.glossary_matcher.process(detected_terms, glossary_terms)

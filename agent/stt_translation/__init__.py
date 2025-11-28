@@ -1,11 +1,16 @@
 """
-Azure Speech STT + Translation Agent 패키지
+STT Translation Agent Module
 
-브라우저에서 Azure Speech SDK를 직접 사용하므로,
-이 Agent는 토큰 관리만 담당합니다.
-
-실제 STT 및 Translation은 프론트엔드에서 처리됩니다.
+Azure Speech Service를 사용한 음성→텍스트 변환 Agent
 """
-from agent.stt_translation.azure_speech_agent import AzureSpeechAgent, get_azure_speech_agent
+from .azure_speech_agent import AzureSpeechAgent, get_azure_speech_agent
+from .stt_agent import STTAgent, get_stt_agent
 
-__all__ = ["AzureSpeechAgent", "get_azure_speech_agent"]
+__all__ = [
+    'AzureSpeechAgent',
+    'get_azure_speech_agent',
+    'STTAgent',
+    'get_stt_agent',
+    'TranslationAgent',    
+    'get_translation_agent'
+]

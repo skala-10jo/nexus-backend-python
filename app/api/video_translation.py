@@ -54,7 +54,7 @@ async def process_video_stt(
     **요청 예시**:
     ```json
     {
-      "video_document_id": "123e4567-e89b-12d3-a456-426614174000",
+      "video_file_id": "123e4567-e89b-12d3-a456-426614174000",
       "source_language": "ko"
     }
     ```
@@ -63,7 +63,7 @@ async def process_video_stt(
     ```json
     {
       "subtitle_id": "...",
-      "video_document_id": "...",
+      "video_file_id": "...",
       "language": "ko",
       "subtitle_type": "ORIGINAL",
       "segments": [
@@ -80,7 +80,7 @@ async def process_video_stt(
     }
     ```
     """
-    logger.info(f"📥 STT 요청: video_document={request.video_document_id}, lang={request.source_language}")
+    logger.info(f"📥 STT 요청: video_file={request.video_file_id}, lang={request.source_language}")
 
     try:
         service = VideoTranslationService()
@@ -89,7 +89,7 @@ async def process_video_stt(
         user_id = UUID("00000000-0000-0000-0000-000000000000")
 
         result = await service.process_stt(
-            video_document_id=request.video_document_id,
+            video_file_id=request.video_file_id,
             source_language=request.source_language,
             user_id=user_id,
             db=db
@@ -138,7 +138,7 @@ async def translate_video_subtitle(
     **요청 예시**:
     ```json
     {
-      "video_document_id": "123e4567-e89b-12d3-a456-426614174000",
+      "video_file_id": "123e4567-e89b-12d3-a456-426614174000",
       "document_ids": ["789...", "012..."],
       "source_language": "ko",
       "target_language": "en"
@@ -149,7 +149,7 @@ async def translate_video_subtitle(
     ```json
     {
       "subtitle_id": "...",
-      "video_document_id": "...",
+      "video_file_id": "...",
       "source_language": "ko",
       "target_language": "en",
       "subtitle_type": "TRANSLATED",
@@ -170,7 +170,7 @@ async def translate_video_subtitle(
     ```
     """
     logger.info(
-        f"📥 자막 번역 요청: video={request.video_document_id}, "
+        f"📥 자막 번역 요청: video={request.video_file_id}, "
         f"{request.source_language} → {request.target_language}"
     )
 
@@ -181,7 +181,7 @@ async def translate_video_subtitle(
         user_id = UUID("00000000-0000-0000-0000-000000000000")
 
         result = await service.process_translation(
-            video_document_id=request.video_document_id,
+            video_file_id=request.video_file_id,
             document_ids=request.document_ids,
             source_language=request.source_language,
             target_language=request.target_language,
@@ -205,9 +205,9 @@ async def translate_video_subtitle(
         )
 
 
-@router.get("/subtitles/{video_document_id}", response_model=MultilingualSubtitlesResponse)
+@router.get("/subtitles/{video_file_id}", response_model=MultilingualSubtitlesResponse)
 async def get_video_subtitles(
-    video_document_id: UUID,
+    video_file_id: UUID,
     db: Session = Depends(get_db)
     # current_user = Depends(get_current_user)  # 추후 인증 추가
 ):
@@ -220,7 +220,7 @@ async def get_video_subtitles(
     **응답 예시**:
     ```json
     {
-      "video_document_id": "123e4567-e89b-12d3-a456-426614174000",
+      "video_file_id": "123e4567-e89b-12d3-a456-426614174000",
       "original_language": "ko",
       "available_languages": ["ko", "en", "ja"],
       "segments": [
@@ -241,13 +241,13 @@ async def get_video_subtitles(
     }
     ```
     """
-    logger.info(f"📥 다국어 자막 조회 요청: video_document_id={video_document_id}")
+    logger.info(f"📥 다국어 자막 조회 요청: video_file_id={video_file_id}")
 
     try:
         service = VideoTranslationService()
 
         result = await service.get_subtitles(
-            video_document_id=video_document_id,
+            video_file_id=video_file_id,
             db=db
         )
 

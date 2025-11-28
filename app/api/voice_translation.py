@@ -19,8 +19,7 @@ import logging
 import time
 import asyncio
 
-from agent.stt_translation.stt_agent import STTAgent
-from agent.stt_translation.translation_agent import TranslationAgent
+from app.services.voice_translation_service import VoiceTranslationService
 import azure.cognitiveservices.speech as speechsdk
 
 # 로거 설정
@@ -92,9 +91,8 @@ class VoiceTranslationSession:
         self.session_id = session_id
         self.websocket = websocket
 
-        # Agent 초기화 (Azure 기반)
-        self.stt_agent = STTAgent.get_instance()
-        self.translation_agent = TranslationAgent.get_instance()
+        # Service 초기화 (AI Agent 아키텍처 가이드 준수: API → Service → Agent)
+        self.service = VoiceTranslationService()
 
         # Azure Speech 리소스
         self.recognizer: Optional[speechsdk.SpeechRecognizer] = None
@@ -128,9 +126,9 @@ class VoiceTranslationSession:
         self.selected_languages = selected_languages
 
         try:
-            # Azure Speech 자동 언어 감지 스트림 생성
+            # Azure Speech 자동 언어 감지 스트림 생성 (Service를 통해 Agent 호출)
             logger.info(f"🔧 Azure Speech 자동 언어 감지 설정: {selected_languages}")
-            self.recognizer, self.push_stream = await self.stt_agent.process_stream_with_auto_detect(
+            self.recognizer, self.push_stream = await self.service.setup_stream_with_auto_detect(
                 candidate_languages=selected_languages
             )
 
@@ -247,8 +245,8 @@ class VoiceTranslationSession:
                 f"text='{text[:50]}...'"
             )
 
-            # Azure Translator 멀티 타겟 번역 (한 번의 API 호출)
-            translations = await self.translation_agent.process_multi(
+            # Azure Translator 멀티 타겟 번역 (Service를 통해 Agent 호출)
+            translations = await self.service.translate_to_multiple_languages(
                 text=text,
                 source_lang=detected_lang_iso,
                 target_langs=target_langs_iso

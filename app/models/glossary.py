@@ -43,11 +43,11 @@ class GlossaryTerm(Base):
 
 
 class GlossaryTermDocument(Base):
-    """Junction table for many-to-many relationship between terms and documents."""
+    """Junction table for many-to-many relationship between terms and files."""
     __tablename__ = "glossary_term_documents"
 
     term_id = Column(UUID(as_uuid=True), ForeignKey("glossary_terms.id", ondelete="CASCADE"), primary_key=True)
-    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True)
+    file_id = Column(UUID(as_uuid=True), primary_key=True)  # No FK constraint - managed by Java backend
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
@@ -57,7 +57,7 @@ class GlossaryExtractionJob(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+    file_id = Column(UUID(as_uuid=True), nullable=False)  # No FK constraint - managed by Java backend
 
     # Job status
     status = Column(String(20), nullable=False, default="PENDING")
@@ -71,5 +71,5 @@ class GlossaryExtractionJob(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     __table_args__ = (
-        UniqueConstraint('document_id', name='glossary_extraction_jobs_document_unique'),
+        UniqueConstraint('file_id', name='glossary_extraction_jobs_file_unique'),
     )

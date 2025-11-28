@@ -30,7 +30,7 @@ class GlossaryService:
         >>> service = GlossaryService()
         >>> await service.extract_and_save_terms(
         ...     job_id="job-123",
-        ...     document_id="doc-456",
+        ...     file_id="file-456",
         ...     file_path="uploads/document.pdf",
         ...     user_id="user-789",
         ...     project_id="proj-101",
@@ -45,7 +45,7 @@ class GlossaryService:
     async def extract_and_save_terms(
         self,
         job_id: str,
-        document_id: str,
+        file_id: str,
         file_path: str,
         user_id: str,
         project_id: str,
@@ -63,7 +63,7 @@ class GlossaryService:
 
         Args:
             job_id: Extraction job ID
-            document_id: Document ID
+            file_id: File ID
             file_path: Relative path to document file
             user_id: User ID
             project_id: Project ID (can be "None" or None for no project)
@@ -91,7 +91,7 @@ class GlossaryService:
             logger.info(f"📝 Job {job_id}: Started processing")
 
             # 2. Extract text from document
-            full_path = os.path.join(settings.UPLOAD_BASE_DIR, file_path)
+            full_path = os.path.join(settings.upload_dir, file_path)
             logger.info(f"📄 Job {job_id}: Extracting text from {full_path}")
 
             text = extract_text_from_file(full_path)
@@ -115,7 +115,7 @@ class GlossaryService:
             saved_count = self._save_terms(
                 db=db,
                 terms_data=terms_data,
-                document_id=document_id,
+                file_id=file_id,
                 user_id=user_id,
                 project_id=project_id
             )
@@ -135,6 +135,8 @@ class GlossaryService:
 
         except Exception as e:
             logger.error(f"❌ Job {job_id}: Failed with error: {str(e)}")
+            # Rollback before marking job as failed
+            db.rollback()
             self._mark_job_failed(db, job_id, str(e))
             return {
                 "status": "failed",
@@ -180,7 +182,7 @@ class GlossaryService:
         self,
         db: Session,
         terms_data: list,
-        document_id: str,
+        file_id: str,
         user_id: str,
         project_id: str
     ) -> int:
@@ -190,7 +192,7 @@ class GlossaryService:
         Args:
             db: Database session
             terms_data: List of term dictionaries from Agent
-            document_id: Document ID
+            file_id: File ID
             user_id: User ID
             project_id: Project ID (can be "None" or None)
 
@@ -207,6 +209,16 @@ class GlossaryService:
 
         for term_data in terms_data:
             try:
+                # Check if term already exists (중복 체크)
+                existing_term = db.query(GlossaryTerm).filter(
+                    GlossaryTerm.user_id == user_id,
+                    GlossaryTerm.korean_term == term_data['korean']
+                ).first()
+
+                if existing_term:
+                    logger.info(f"Term already exists, skipping: '{term_data['korean']}'")
+                    continue
+
                 # Create GlossaryTerm
                 term = GlossaryTerm(
                     project_id=actual_project_id,
@@ -226,15 +238,17 @@ class GlossaryService:
                 db.add(term)
                 db.flush()  # Get term ID
 
-                # Create term-document link
+                # Create term-file link
                 term_doc = GlossaryTermDocument(
                     term_id=term.id,
-                    document_id=document_id
+                    file_id=file_id
                 )
                 db.add(term_doc)
                 saved_count += 1
 
             except Exception as e:
+                # Rollback on error to prevent PendingRollbackError
+                db.rollback()
                 logger.warning(f"Failed to save term '{term_data.get('korean', 'unknown')}': {str(e)}")
                 continue
 

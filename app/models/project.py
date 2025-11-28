@@ -11,6 +11,19 @@ from app.database import Base
 import uuid
 
 
+class ProjectFile(Base):
+    """
+    Project-File Many-to-Many 관계를 위한 Junction Table
+
+    Java Backend의 project_files 테이블과 매핑됩니다.
+    """
+    __tablename__ = "project_files"
+
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True)
+    file_id = Column(UUID(as_uuid=True), ForeignKey("files.id", ondelete="CASCADE"), primary_key=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
 class Project(Base):
     """
     프로젝트 모델
@@ -33,9 +46,9 @@ class Project(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # 관계
-    # documents는 project_documents 테이블을 통한 다대다 관계
-    # document.py에서 정의된 project_documents 테이블 사용
-    documents = relationship("Document", secondary="project_documents", back_populates="projects")
+    # files는 project_files 테이블을 통한 다대다 관계 (Java Backend와 호환)
+    # File 모델과 Many-to-Many 관계 (Junction Table: ProjectFile)
+    files = relationship("File", secondary=ProjectFile.__table__, back_populates="projects")
 
     # glossary_terms는 일대다 관계 (GlossaryTerm의 project_id가 외래키)
     # Note: glossary.py에서 relationship이 이미 정의되어 있으므로 여기서는 back_populates만 설정

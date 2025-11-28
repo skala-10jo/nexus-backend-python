@@ -13,7 +13,7 @@ from datetime import datetime
 
 class VideoSTTRequest(BaseModel):
     """STT 처리 요청"""
-    video_document_id: UUID = Field(..., description="영상 문서 ID")
+    video_file_id: UUID = Field(..., description="영상 파일 ID")
     source_language: str = Field(..., description="음성 언어 코드 (ko, en, ja, vi)")
 
     @validator("source_language")
@@ -26,7 +26,7 @@ class VideoSTTRequest(BaseModel):
 
 class VideoTranslationRequest(BaseModel):
     """영상 자막 번역 요청"""
-    video_document_id: UUID = Field(..., description="영상 문서 ID")
+    video_file_id: UUID = Field(..., description="영상 파일 ID")
     document_ids: List[UUID] = Field(
         default=[],
         description="컨텍스트로 사용할 문서 ID 리스트 (선택사항)"
@@ -72,7 +72,7 @@ class MultilingualSubtitleSegmentResponse(BaseModel):
 
 class VideoSTTResponse(BaseModel):
     """STT 처리 응답"""
-    video_document_id: UUID = Field(..., description="영상 문서 ID")
+    video_file_id: UUID = Field(..., description="영상 파일 ID")
     language: str = Field(..., description="언어 코드")
     segments: List[SubtitleSegmentResponse] = Field(..., description="자막 세그먼트 리스트")
     total_segments: int = Field(..., description="전체 세그먼트 수")
@@ -84,7 +84,7 @@ class VideoSTTResponse(BaseModel):
 
 class MultilingualSubtitlesResponse(BaseModel):
     """다국어 자막 조회 응답"""
-    video_document_id: UUID = Field(..., description="영상 문서 ID")
+    video_file_id: UUID = Field(..., description="영상 파일 ID")
     original_language: str = Field(..., description="원본 언어 코드")
     available_languages: List[str] = Field(..., description="사용 가능한 언어 목록")
     segments: List[MultilingualSubtitleSegmentResponse] = Field(..., description="자막 세그먼트")
@@ -109,7 +109,7 @@ class TranslatedSegmentResponse(BaseModel):
 
 class VideoTranslationResponse(BaseModel):
     """영상 자막 번역 응답"""
-    video_document_id: UUID = Field(..., description="영상 문서 ID")
+    video_file_id: UUID = Field(..., description="영상 파일 ID")
     source_language: str = Field(..., description="원본 언어")
     target_language: str = Field(..., description="목표 언어")
     segments: List[TranslatedSegmentResponse] = Field(..., description="번역된 자막 세그먼트")

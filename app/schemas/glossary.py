@@ -11,7 +11,7 @@ from decimal import Decimal
 class ExtractionRequest(BaseModel):
     """Request schema for term extraction."""
     job_id: UUID
-    document_id: UUID
+    file_id: UUID
     file_path: str
     user_id: UUID
     project_id: Optional[UUID] = None

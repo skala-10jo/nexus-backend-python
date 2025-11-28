@@ -17,7 +17,7 @@ class STTAgent(BaseAgent):
     """
     Azure Speech STT Agent (싱글톤)
 
-    음성을 텍스트로 변환하는 Agent입니다.
+    음성을 텍스트로 변환하고 자동 언어 감지는 Agent입니다.
 
     Features:
     - Azure Speech SDK STT
