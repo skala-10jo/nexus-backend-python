@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import List, Optional
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _get_default_upload_dir() -> str:
@@ -33,6 +33,12 @@ def _get_default_upload_dir() -> str:
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True
+    )
 
     # Database
     DATABASE_URL: str = "postgresql://user:password@localhost:5432/nexus"
