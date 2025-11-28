@@ -11,9 +11,12 @@ from app.api import (
     scenarios,
     conversations,
     video_translation,
-    voice_translation,
     azure_speech,
-    expression_speech
+    expression_speech,
+    azure_avatar,
+    pronunciation,
+    voice_stt_ws,
+    voice_translate
 )
 
 import logging
@@ -50,9 +53,12 @@ app.include_router(mail_agent.router)  # prefix already defined in mail_agent.py
 app.include_router(scenarios.router, prefix="/api/ai/scenarios", tags=["Scenarios AI"])
 app.include_router(conversations.router, tags=["Conversations AI"])  # prefix already defined
 app.include_router(video_translation.router, tags=["Video Translation AI"])
-app.include_router(voice_translation.router, tags=["Voice Translation AI"])
 app.include_router(azure_speech.router, prefix="/api/ai", tags=["Azure Speech"])
 app.include_router(expression_speech.router, prefix="/api/ai", tags=["Expression Speech AI"])
+app.include_router(azure_avatar.router, prefix="/api/ai", tags=["Azure Avatar"])
+app.include_router(pronunciation.router, prefix="/api/ai", tags=["Pronunciation Assessment"])
+app.include_router(voice_stt_ws.router, tags=["Voice STT WebSocket"])  # WebSocket STT
+app.include_router(voice_translate.router, tags=["Voice Translation API"])  # Translation API
 
 
 @app.on_event("startup")

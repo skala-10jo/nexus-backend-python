@@ -61,14 +61,18 @@ class Settings(BaseSettings):
     QDRANT_EMAIL_COLLECTION: str = "email_embeddings"
     QDRANT_BIZGUIDE_COLLECTION: str = "bizguide"
 
-    # Azure Speech
-    AZURE_SPEECH_KEY: str
-    AZURE_SPEECH_REGION: str
+    # Azure Speech (TTS/STT - Korea Central)
+    AZURE_SPEECH_KEY: str = ""
+    AZURE_SPEECH_REGION: str = "koreacentral"
 
     # Azure Translator
     AZURE_TRANSLATOR_KEY: str
     AZURE_TRANSLATOR_ENDPOINT: str
     AZURE_TRANSLATOR_REGION: str
+
+    # Azure Avatar (Southeast Asia)
+    AZURE_AVATAR_SPEECH_KEY: str = ""
+    AZURE_AVATAR_SPEECH_REGION: str = "southeastasia"
 
     class Config:
         env_file = ".env"
