@@ -243,45 +243,45 @@ class ScenarioService:
         target_lang = lang_map.get(language, "English")
 
         # Prepare prompt
-        prompt = f"""Based on the following context, generate {count} realistic business conversation scenarios in {target_lang}.
+        prompt = f"""다음 컨텍스트를 바탕으로 {target_lang}로 된 현실적인 비즈니스 대화 시나리오 {count}개를 생성해줘.
 
-Context:
+컨텍스트:
 {context[:3000]}
 
-Requirements:
-- Difficulty level: {difficulty}
-- Target language: {target_lang}
-- Each scenario should represent realistic business situations
-- Identify 3-5 key technical terms from the context
-- Create diverse scenario types: Collaboration, Technical Support, Product Explanation, Problem Solving
-- Title and description MUST be in Korean (한글) regardless of target language
-- Role descriptions should be simple and concise (1-2 words)
+요구사항:
+- 난이도: {difficulty}
+- 목표 언어: {target_lang}
+- 각 시나리오는 현실적인 비즈니스 상황을 반영해야 함
+- 컨텍스트에서 3-5개의 핵심 기술 용어 식별
+- 다양한 시나리오 유형 생성: 협업, 기술 지원, 제품 설명, 문제 해결
+- 제목과 설명은 목표 언어와 관계없이 반드시 한국어(한글)로 작성
+- 역할 설명은 간단하고 명료하게 (1-2 단어)
 
-Generate scenarios in the following JSON format:
+다음 JSON 형식으로 시나리오를 생성해줘:
 {{
   "scenarios": [
     {{
-      "title": "Scenario title in Korean (한글)",
-      "description": "Brief description (2-3 sentences) in Korean (한글)",
-      "scenarioText": "Detailed scenario description (5-7 sentences) explaining situation, context, and objectives in {target_lang}",
+      "title": "한국어(한글) 시나리오 제목",
+      "description": "한국어(한글)로 된 간단한 설명 (2-3 문장)",
+      "scenarioText": "{target_lang}로 된 상세 시나리오 설명 (5-7 문장). 상황, 맥락, 목표를 설명",
       "category": "Collaboration|Technical Support|Product Explanation|Problem Solving",
       "roles": {{
-        "user": "Simple user role (1-2 words in {target_lang})",
-        "ai": "Simple counterpart role (1-2 words in {target_lang})"
+        "user": "{target_lang}로 된 간단한 사용자 역할 (1-2 단어)",
+        "ai": "{target_lang}로 된 간단한 상대방 역할 (1-2 단어)"
       }},
-      "requiredTerminology": ["term1", "term2", "term3"]
+      "requiredTerminology": ["용어1", "용어2", "용어3"]
     }}
   ]
 }}
 
-IMPORTANT:
-- title: ALWAYS in Korean (한글)
-- description: ALWAYS in Korean (한글)
-- scenarioText: In {target_lang}
-- roles.user: Simple 1-2 word role description in {target_lang} (e.g., "Project Manager", "Developer")
-- roles.ai: Simple 1-2 word counterpart role in {target_lang} (e.g., "Client", "Team Lead", "Colleague") - NOT "AI" or "Assistant"
+중요:
+- title: 항상 한국어(한글)
+- description: 항상 한국어(한글)
+- scenarioText: {target_lang}로 작성
+- roles.user: {target_lang}로 된 간단한 1-2 단어 역할 설명 (예: "Project Manager", "Developer")
+- roles.ai: {target_lang}로 된 간단한 1-2 단어 상대방 역할 (예: "Client", "Team Lead", "Colleague") - "AI"나 "Assistant" 사용 금지
 
-Generate exactly {count} scenarios in the "scenarios" array."""
+"scenarios" 배열에 정확히 {count}개의 시나리오를 생성해줘."""
 
         # Call GPT-4o
         logger.info(f"🤖 Calling GPT-4o for scenario generation (language={language}, difficulty={difficulty}, count={count})")
@@ -291,7 +291,7 @@ Generate exactly {count} scenarios in the "scenarios" array."""
             messages=[
                 {
                     "role": "system",
-                    "content": f"You are an expert at creating realistic business conversation scenarios. You generate well-structured scenarios in {target_lang} suitable for language practice. You ALWAYS write titles and descriptions in Korean (한글), and keep role descriptions simple (1-2 words). For the 'ai' role, use realistic counterpart roles like 'Client', 'Team Lead', 'Colleague', etc. - NEVER use 'AI' or 'Assistant'."
+                    "content": f"당신은 현실적인 비즈니스 대화 시나리오를 만드는 전문가이다. 언어 연습에 적합한 잘 구조화된 시나리오를 {target_lang}로 생성한다. 제목과 설명은 항상 한국어(한글)로 작성하며, 역할 설명은 간단하게(1-2 단어) 유지한다. 'ai' 역할의 경우 'Client', 'Team Lead', 'Colleague' 등과 같은 현실적인 상대방 역할을 사용하며, 절대 'AI'나 'Assistant'를 사용하지 않는다."
                 },
                 {
                     "role": "user",
