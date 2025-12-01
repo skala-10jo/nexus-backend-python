@@ -11,4 +11,6 @@ __all__ = [
     'get_azure_speech_agent',
     'STTAgent',
     'get_stt_agent',
+    'TranslationAgent',    
+    'get_translation_agent'
 ]

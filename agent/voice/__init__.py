@@ -7,7 +7,6 @@ Agents:
 - SpeakerDiarizationAgent: Speaker identification with VAD
 """
 
-from agent.voice.realtime_stt_agent import RealtimeSTTAgent
 from agent.voice.multi_translation_agent import MultiLanguageTranslationAgent
 from agent.voice.speaker_diarization_agent import SpeakerDiarizationAgent
 
