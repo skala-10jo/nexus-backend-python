@@ -101,6 +101,8 @@ async def create_manual_scenario(
             required_terminology=request.requiredTerminology,
             language=request.language,
             difficulty=request.difficulty,
+            project_id=request.projectId,
+            schedule_id=request.scheduleId,
             db=db
         )
 

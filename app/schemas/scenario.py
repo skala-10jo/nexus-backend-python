@@ -35,6 +35,8 @@ class ManualCreateRequest(BaseModel):
     requiredTerminology: List[str] = Field(default=[], alias="requiredTerminology", description="Required terminology")
     language: str = Field(default="en", description="Target language: en, ko, zh, ja")
     difficulty: str = Field(default="intermediate", description="Difficulty level: beginner, intermediate, advanced")
+    projectId: Optional[str] = Field(default=None, alias="projectId", description="Project ID to associate with")
+    scheduleId: Optional[str] = Field(default=None, alias="scheduleId", description="Schedule ID to associate with")
 
     class Config:
         populate_by_name = True
