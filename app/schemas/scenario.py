@@ -20,6 +20,7 @@ class GenerateFromProjectsRequest(BaseModel):
     language: str = Field(default="en", description="Target language: en, ko, zh, ja")
     difficulty: str = Field(default="intermediate", description="Difficulty level: beginner, intermediate, advanced")
     count: int = Field(default=5, ge=1, le=10, description="Number of scenarios to generate (1-10)")
+    saveToDb: bool = Field(default=True, alias="saveToDb", description="Whether to save generated scenarios to DB (false for preview)")
 
     class Config:
         populate_by_name = True

@@ -2,6 +2,7 @@
 회화 연습 서비스
 GPT-4o를 이용한 시나리오 기반 대화 생성
 """
+import json
 import logging
 from typing import List, Dict, Any
 from uuid import UUID
@@ -67,7 +68,7 @@ class ConversationService:
                         "category": scenario.category,
                         "language": scenario.language,
                         "roles": scenario.roles,
-                        "required_terminology": scenario.required_terminology,
+                        "requiredTerms": scenario.required_terminology,
                         "scenario_text": scenario.scenario_text
                     },
                     "initialMessage": None,  # 기존 대화가 있으므로 초기 메시지 없음
@@ -98,7 +99,7 @@ class ConversationService:
                     "category": scenario.category,
                     "language": scenario.language,
                     "roles": scenario.roles,
-                    "required_terminology": scenario.required_terminology,
+                    "requiredTerms": scenario.required_terminology,
                     "scenario_text": scenario.scenario_text
                 },
                 "initialMessage": initial_message,
@@ -537,9 +538,17 @@ Azure 발음 평가 결과:
 2. 문제 단어: 낮은 정확도 점수를 받은 특정 단어를 언급하세요
 3. 전반적인 발음 개선 팁"""
 
+            # 미사용 용어 계산
+            required_terms = scenario.required_terminology or []
+            missed_terms = [term for term in required_terms if term.lower() not in user_message.lower()]
+
             user_prompt = f"""사용자 메시지: "{user_message}"
 
-감지된 전문용어: {', '.join(detected_terms) if detected_terms else '없음'}{pronunciation_info}
+전문용어 분석:
+- 필수 전문용어: {', '.join(required_terms) if required_terms else '없음'}
+- 사용한 용어: {', '.join(detected_terms) if detected_terms else '없음'}
+- 미사용 용어: {', '.join(missed_terms) if missed_terms else '없음'}
+{pronunciation_info}
 
 다음의 정확한 JSON 형식으로 피드백을 제공하세요 (모든 텍스트 한글로):
 {{
@@ -547,8 +556,9 @@ Azure 발음 평가 결과:
     "시제 문제: 'I was go'는 틀렸어요. 'I went' 또는 'I was going'이라고 해야 해요."
   ],
   "terminology_usage": {{
-    "used": ["term1", "term2"],
-    "missed": ["term3"]
+    "used": {json.dumps(detected_terms or [], ensure_ascii=False)},
+    "missed": {json.dumps(missed_terms, ensure_ascii=False)},
+    "feedback": "필수 용어 사용에 대한 피드백을 여기에 작성하세요"
   }},
   "suggestions": [
     "더 공손한 표현으로는 'Could you please...' 또는 'Would you mind...'를 사용해보세요."
@@ -568,6 +578,8 @@ Azure 발음 평가 결과:
 }}
 
 중요:
+- terminology_usage의 used와 missed 배열은 위에서 제공한 값을 그대로 사용하세요
+- terminology_usage.feedback에는 용어 사용에 대한 구체적인 피드백을 한글로 작성하세요
 - 발음 평가 데이터가 제공되면, 구체적인 팁과 함께 "pronunciation_feedback" 배열을 반드시 포함해야 합니다
 - prosody_score < 80인 경우: 억양(intonation), 강세(stress), 또는 리듬(rhythm)에 대한 피드백을 제공하세요
 - 낮은 정확도를 가진 단어가 있다면: 해당 특정 단어와 개선 방법을 언급하세요
