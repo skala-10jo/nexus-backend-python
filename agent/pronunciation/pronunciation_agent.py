@@ -16,7 +16,7 @@ import asyncio
 from typing import Dict, Any, Optional, List
 import azure.cognitiveservices.speech as speechsdk
 from agent.base_agent import BaseAgent
-from agent.stt_translation.azure_speech_agent import AzureSpeechAgent
+from app.core.azure_speech_token_manager import AzureSpeechTokenManager as AzureSpeechAgent
 
 logger = logging.getLogger(__name__)
 

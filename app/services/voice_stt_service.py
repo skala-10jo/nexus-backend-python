@@ -156,9 +156,10 @@ class VoiceSTTService:
             )
 
             # 1. Agent 호출 (recognizer, push_stream 생성)
-            recognizer, push_stream = await self.agent.process_stream(
-                language=language,
-                enable_diarization=enable_diarization
+            # 자동 언어 감지 사용 (발화자 언어를 자동 인식)
+            # enable_diarization은 Azure SDK 실시간 스트리밍에서 미지원
+            recognizer, push_stream = await self.agent.process_stream_with_auto_detect(
+                candidate_languages=["ko-KR", "en-US", "ja-JP", "vi-VN", "zh-CN"]
             )
 
             # 2. 결과 전달을 위한 asyncio Queue
@@ -188,16 +189,26 @@ class VoiceSTTService:
                 """최종 인식 완료 (final result)"""
                 try:
                     if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
+                        # 감지된 언어 추출 (자동 언어 감지 시)
+                        detected_language = None
+                        try:
+                            detected_language = evt.result.properties.get(
+                                speechsdk.PropertyId.SpeechServiceConnection_AutoDetectSourceLanguageResult
+                            )
+                        except Exception:
+                            pass
+
                         # 다른 스레드에서 안전하게 coroutine 실행
                         asyncio.run_coroutine_threadsafe(
                             result_queue.put({
                                 "type": "final",
                                 "text": evt.result.text,
-                                "confidence": 0.95  # Azure는 confidence를 직접 제공하지 않음
+                                "confidence": 0.95,  # Azure는 confidence를 직접 제공하지 않음
+                                "detected_language": detected_language or language
                             }),
                             loop
                         )
-                        logger.info(f"Final result: {evt.result.text}")
+                        logger.info(f"Final result: {evt.result.text}, language={detected_language}")
                 except Exception as e:
                     logger.error(f"Error in recognized_handler: {str(e)}")
 

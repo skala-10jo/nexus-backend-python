@@ -16,7 +16,8 @@ from app.api import (
     azure_avatar,
     pronunciation,
     voice_stt_ws,
-    voice_translate
+    voice_translate,
+    voice_realtime
 )
 
 import logging
@@ -59,6 +60,7 @@ app.include_router(azure_avatar.router, prefix="/api/ai", tags=["Azure Avatar"])
 app.include_router(pronunciation.router, prefix="/api/ai", tags=["Pronunciation Assessment"])
 app.include_router(voice_stt_ws.router, tags=["Voice STT WebSocket"])  # WebSocket STT
 app.include_router(voice_translate.router, tags=["Voice Translation API"])  # Translation API
+app.include_router(voice_realtime.router, tags=["Voice Realtime WebSocket"])  # 실시간 음성 번역
 
 
 @app.on_event("startup")
@@ -82,6 +84,9 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Execute on application shutdown."""
+    # aiohttp 세션 정리
+    from agent.stt_translation.translation_agent import TranslationAgent
+    await TranslationAgent.close_session()
     logger.info("NEXUS Python AI Backend shutting down...")
 
 

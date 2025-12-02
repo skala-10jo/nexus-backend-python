@@ -8,7 +8,7 @@ import asyncio
 from typing import Optional, Dict, Any, List
 import azure.cognitiveservices.speech as speechsdk
 from agent.base_agent import BaseAgent
-from agent.stt_translation.azure_speech_agent import AzureSpeechAgent
+from app.core.azure_speech_token_manager import AzureSpeechTokenManager as AzureSpeechAgent
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +179,7 @@ class STTAgent(BaseAgent):
             )
             speech_config.speech_recognition_language = language
 
-            # PushAudioInputStream 생성
+            # PushAudioInputStream 생성 (포맷 지정 없음 - Azure가 자동 감지)
             push_stream = speechsdk.audio.PushAudioInputStream()
             audio_config = speechsdk.audio.AudioConfig(stream=push_stream)
 
@@ -203,10 +203,13 @@ class STTAgent(BaseAgent):
         """
         자동 언어 감지 + 실시간 스트리밍 STT
 
-        여러 언어 중 자동으로 감지하여 음성을 텍스트로 변환합니다.
+        모든 주요 언어를 자동 감지하여 음성을 텍스트로 변환합니다.
+        candidate_languages는 번역 대상 언어 판별용으로만 사용되고,
+        실제 STT 언어 감지는 모든 언어에 대해 자유롭게 수행됩니다.
 
         Args:
-            candidate_languages: 후보 언어 목록 (BCP-47 코드)
+            candidate_languages: 번역 목표 언어 목록 (BCP-47 코드)
+                이 파라미터는 번역 대상 필터링용이며, STT 감지 언어에는 영향 없음
                 기본값: ["ko-KR", "en-US", "ja-JP", "vi-VN"]
 
         Returns:
@@ -225,7 +228,8 @@ class STTAgent(BaseAgent):
             candidate_languages = ["ko-KR", "en-US", "ja-JP", "vi-VN"]
 
         try:
-            logger.info(f"Setting up auto-detect streaming STT: languages={candidate_languages}")
+            logger.info(f"Setting up auto-detect streaming STT")
+            logger.info(f"Candidate languages: {candidate_languages}")
 
             # Azure Speech 토큰 가져오기
             token, region = await self.speech_agent.get_token()
@@ -237,13 +241,26 @@ class STTAgent(BaseAgent):
                 auth_token=token
             )
 
-            # 자동 언어 감지 설정
+            # 자동 언어 감지 설정 (Azure 제한: 최대 4개 언어만 지원)
+            # 사용자가 선택한 언어 중 최대 4개까지만 자동 감지에 사용
+            languages_to_detect = candidate_languages[:4] if len(candidate_languages) > 4 else candidate_languages
+
+            if len(candidate_languages) > 4:
+                logger.warning(f"⚠️ Azure Speech SDK supports max 4 languages for auto-detect. Using first 4: {languages_to_detect}")
+
             auto_detect_config = speechsdk.AutoDetectSourceLanguageConfig(
-                languages=candidate_languages
+                languages=languages_to_detect
             )
 
-            # PushAudioInputStream 생성
-            push_stream = speechsdk.audio.PushAudioInputStream()
+            # 오디오 포맷 설정: 16kHz, 16bit, Mono PCM (프론트엔드 AudioWorklet과 일치)
+            audio_format = speechsdk.audio.AudioStreamFormat(
+                samples_per_second=16000,
+                bits_per_sample=16,
+                channels=1
+            )
+
+            # PushAudioInputStream 생성 (PCM 포맷 지정)
+            push_stream = speechsdk.audio.PushAudioInputStream(stream_format=audio_format)
             audio_config = speechsdk.audio.AudioConfig(stream=push_stream)
 
             # Speech Recognizer 생성 (자동 언어 감지 포함)
@@ -253,7 +270,7 @@ class STTAgent(BaseAgent):
                 audio_config=audio_config
             )
 
-            logger.info("Auto-detect streaming STT setup complete")
+            logger.info("Auto-detect streaming STT setup complete (PCM 16kHz 16bit Mono)")
             return recognizer, push_stream
 
         except Exception as e:

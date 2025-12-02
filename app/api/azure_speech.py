@@ -6,7 +6,7 @@ Azure Speech Service API 엔드포인트
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 import logging
-from agent.stt_translation.azure_speech_agent import AzureSpeechAgent
+from app.core.azure_speech_token_manager import AzureSpeechTokenManager as AzureSpeechAgent
 from app.schemas.azure_speech import SpeechTokenResponse
 
 logger = logging.getLogger(__name__)
