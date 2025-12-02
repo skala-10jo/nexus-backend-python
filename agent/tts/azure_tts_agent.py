@@ -107,13 +107,10 @@ class AzureTTSAgent(BaseAgent):
             # 음성 이름 설정
             speech_config.speech_synthesis_voice_name = voice_name
 
-            # 오디오 출력 설정 (메모리 스트림)
-            audio_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=False)
-
-            # Speech Synthesizer 생성
+            # Speech Synthesizer 생성 (audio_config=None이면 result.audio_data로 반환)
             synthesizer = speechsdk.SpeechSynthesizer(
                 speech_config=speech_config,
-                audio_config=audio_config
+                audio_config=None
             )
 
             # SSML 생성 (고급 음성 제어)
@@ -166,8 +163,9 @@ class AzureTTSAgent(BaseAgent):
         Returns:
             str: SSML 문자열
         """
-        # 속도를 퍼센트로 변환 (1.0 = 100%)
-        rate_percent = int(rate * 100)
+        # 속도를 상대적 퍼센트로 변환 (1.0 = 0%, 0.9 = -10%, 1.1 = +10%)
+        rate_relative = int((rate - 1.0) * 100)
+        rate_str = f"{'+' if rate_relative >= 0 else ''}{rate_relative}%"
 
         # 음높이가 범위 내에 있는지 확인
         pitch_percent = max(-50, min(50, pitch))
@@ -182,7 +180,7 @@ class AzureTTSAgent(BaseAgent):
         ssml = f"""
         <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
             <voice name="{voice_name}">
-                <prosody rate="{rate_percent}%" pitch="{'+' if pitch_percent >= 0 else ''}{pitch_percent}%" volume="{volume}">
+                <prosody rate="{rate_str}" pitch="{'+' if pitch_percent >= 0 else ''}{pitch_percent}%" volume="{volume}">
                     {escaped_text}
                 </prosody>
             </voice>

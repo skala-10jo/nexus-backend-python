@@ -43,7 +43,7 @@ async def synthesize_speech(
         settings: 애플리케이션 설정
 
     Returns:
-        MP3 오디오 파일 (바이너리)
+        WAV 오디오 파일 (바이너리)
 
     Example:
         >>> POST /api/ai/expression/speech/synthesize
@@ -52,31 +52,26 @@ async def synthesize_speech(
         >>>   "expression_id": "123e4567-e89b-12d3-a456-426614174000",
         >>>   "voice_name": "en-US-JennyNeural"
         >>> }
-        >>> Response: <binary MP3 audio>
+        >>> Response: <binary WAV audio>
     """
     logger.info(f"TTS 요청: expression_id={request.expression_id}, voice={request.voice_name}")
 
     # 서비스 호출
     service = ExpressionSpeechService(settings)
-    result = service.synthesize_speech(
+    audio_data = await service.synthesize_speech(
         expression_id=request.expression_id,
         voice_name=request.voice_name,
         db=db
     )
 
-    audio_data = result["audio_data"]
-    audio_format = result["audio_format"]
-    duration_ms = result["duration_ms"]
-
-    logger.info(f"TTS 완료: duration={duration_ms}ms, format={audio_format}")
+    logger.info(f"TTS 완료: {len(audio_data)} bytes")
 
     # 오디오 파일 반환
     return Response(
         content=audio_data,
-        media_type=f"audio/{audio_format}",
+        media_type="audio/wav",
         headers={
-            "Content-Disposition": f"attachment; filename=expression.{audio_format}",
-            "X-Duration-Ms": str(duration_ms)
+            "Content-Disposition": "attachment; filename=expression.wav"
         }
     )
 
@@ -94,7 +89,7 @@ async def synthesize_text(
         settings: 애플리케이션 설정
 
     Returns:
-        MP3 오디오 파일 (바이너리)
+        WAV 오디오 파일 (바이너리)
 
     Example:
         >>> POST /api/ai/expression/speech/synthesize-text
@@ -103,30 +98,25 @@ async def synthesize_text(
         >>>   "text": "I am writing to inform you of the meeting schedule",
         >>>   "voice_name": "en-US-JennyNeural"
         >>> }
-        >>> Response: <binary MP3 audio>
+        >>> Response: <binary WAV audio>
     """
     logger.info(f"TTS text 요청: text_length={len(request.text)}, voice={request.voice_name}")
 
     # 서비스 호출
     service = ExpressionSpeechService(settings)
-    result = service.synthesize_text(
+    audio_data = await service.synthesize_text(
         text=request.text,
         voice_name=request.voice_name
     )
 
-    audio_data = result["audio_data"]
-    audio_format = result["audio_format"]
-    duration_ms = result["duration_ms"]
-
-    logger.info(f"TTS 완료: duration={duration_ms}ms, format={audio_format}")
+    logger.info(f"TTS 완료: {len(audio_data)} bytes")
 
     # 오디오 파일 반환
     return Response(
         content=audio_data,
-        media_type=f"audio/{audio_format}",
+        media_type="audio/wav",
         headers={
-            "Content-Disposition": f"attachment; filename=speech.{audio_format}",
-            "X-Duration-Ms": str(duration_ms)
+            "Content-Disposition": "attachment; filename=speech.wav"
         }
     )
 

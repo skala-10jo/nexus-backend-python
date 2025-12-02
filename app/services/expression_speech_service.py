@@ -9,7 +9,7 @@ from fastapi import HTTPException
 
 from app.models.expression import Expression
 from app.config import Settings
-from agent.voice.tts_agent import TTSAgent
+from agent.tts.azure_tts_agent import AzureTTSAgent
 
 
 class ExpressionSpeechService:
@@ -26,16 +26,13 @@ class ExpressionSpeechService:
             settings: 애플리케이션 설정 (Azure 자격증명 포함)
         """
         self.settings = settings
-        self.tts_agent = TTSAgent(
-            speech_key=settings.AZURE_SPEECH_KEY,
-            speech_region=settings.AZURE_SPEECH_REGION
-        )
+        self.tts_agent = AzureTTSAgent.get_instance()
 
-    def synthesize_text(
+    async def synthesize_text(
         self,
         text: str,
         voice_name: str
-    ) -> dict:
+    ) -> bytes:
         """
         텍스트를 직접 음성으로 합성
 
@@ -44,22 +41,18 @@ class ExpressionSpeechService:
             voice_name: 음성 이름
 
         Returns:
-            {
-                "audio_data": bytes,
-                "audio_format": "mp3",
-                "duration_ms": 1500
-            }
+            bytes: WAV 오디오 데이터
 
         Raises:
             HTTPException: TTS 실패 시
         """
         try:
-            result = self.tts_agent.synthesize(
+            audio_data = await self.tts_agent.process(
                 text=text,
                 voice_name=voice_name,
-                audio_format="audio-16khz-32kbitrate-mono-mp3"
+                rate=0.9  # 원어민 자연스러운 속도
             )
-            return result
+            return audio_data
 
         except Exception as e:
             raise HTTPException(
@@ -67,12 +60,12 @@ class ExpressionSpeechService:
                 detail=f"TTS 합성 실패: {str(e)}"
             )
 
-    def synthesize_speech(
+    async def synthesize_speech(
         self,
         expression_id: UUID,
         voice_name: str,
         db: Session
-    ) -> dict:
+    ) -> bytes:
         """
         TTS 음성 합성
 
@@ -82,11 +75,7 @@ class ExpressionSpeechService:
             db: 데이터베이스 세션
 
         Returns:
-            {
-                "audio_data": bytes,
-                "audio_format": "mp3",
-                "duration_ms": 1500
-            }
+            bytes: WAV 오디오 데이터
 
         Raises:
             HTTPException: 표현을 찾을 수 없거나 TTS 실패 시
@@ -104,12 +93,12 @@ class ExpressionSpeechService:
 
         # 2. TTS 합성
         try:
-            result = self.tts_agent.synthesize(
+            audio_data = await self.tts_agent.process(
                 text=expression.expression,
                 voice_name=voice_name,
-                audio_format="audio-16khz-32kbitrate-mono-mp3"
+                rate=0.9  # 원어민 자연스러운 속도
             )
-            return result
+            return audio_data
 
         except Exception as e:
             raise HTTPException(
