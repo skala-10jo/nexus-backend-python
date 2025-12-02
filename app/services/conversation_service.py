@@ -202,38 +202,60 @@ class ConversationService:
             from datetime import datetime
             current_date = datetime.now().strftime("%Y-%m-%d")
 
+            # 난이도별 지침
+            difficulty_instructions = {
+                "beginner": """
+- 매우 간단하고 기본적인 인사를 사용하세요
+- 짧고 쉬운 문장 구조 사용 (5-8 단어)
+- 일상적이고 친근한 표현만 사용
+- 복잡한 어휘나 관용구 피하기""",
+                "intermediate": """
+- 자연스러운 비즈니스 인사 사용
+- 중간 길이의 문장 (8-12 단어)
+- 일반적인 비즈니스 용어 포함 가능
+- 약간의 관용적 표현 사용 가능""",
+                "advanced": """
+- 전문적이고 세련된 비즈니스 인사
+- 다양한 문장 구조 사용 가능
+- 전문 용어와 관용구 자유롭게 사용
+- 뉘앙스와 함축적 표현 활용"""
+            }
+
             # 시스템 프롬프트
-            system_prompt = f"""You are participating in a business conversation practice scenario.
+            system_prompt = f"""당신은 비즈니스 회화 연습 시나리오에 참여하고 있습니다.
 
-Today's date: {current_date}
+오늘 날짜: {current_date}
 
-Scenario: {scenario.title}
-Description: {scenario.description}
-Context: {scenario.scenario_text}
+시나리오: {scenario.title}
+설명: {scenario.description}
+상황: {scenario.scenario_text}
 
-Your Role: {scenario.roles.get('ai', 'AI')}
-User's Role: {scenario.roles.get('user', 'User')}
+당신의 역할: {scenario.roles.get('ai', 'AI')}
+사용자 역할: {scenario.roles.get('user', 'User')}
 
-Language: {scenario.language}
-Difficulty: {scenario.difficulty}
+언어: {scenario.language}
+난이도: {scenario.difficulty}
 
-Required Terminology to use naturally later: {', '.join(scenario.required_terminology)}
+나중에 자연스럽게 사용할 필수 전문용어: {', '.join(scenario.required_terminology)}
 
-Instructions:
-- Start with a brief, friendly greeting (1-2 sentences maximum)
-- Include a casual greeting AND subtly hint at the scenario context
-- Example: "Hi! How's it going? Ready for our meeting about the project?" or "Hey! How are you? Excited to discuss the proposal today?"
-- Keep it natural and conversational
-- Respond in {scenario.language} language
-- Be friendly and welcoming
-- Use realistic contexts based on today's date"""
+난이도별 지침:
+{difficulty_instructions.get(scenario.difficulty, difficulty_instructions['intermediate'])}
+
+기본 지침:
+- 짧고 친근한 인사로 시작하세요 (최대 1-2문장)
+- 캐주얼한 인사와 함께 시나리오 맥락을 은근히 암시하세요
+- 예시: "안녕하세요! 잘 지내셨어요? 프로젝트 미팅 준비되셨나요?" 또는 "Hi! How's it going? Ready for our meeting about the project?"
+- 자연스럽고 대화체로 작성하세요
+- {scenario.language} 언어로 응답하세요
+- 친근하고 환영하는 분위기를 만드세요
+- 오늘 날짜를 기반으로 현실적인 맥락을 사용하세요"""
 
             # GPT-4o 호출
             response = await self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": "Start with a friendly greeting (1-2 sentences). First sentence: casual greeting. Second sentence (optional): subtly reference the scenario context. Keep it brief and natural."}
+                    {"role": "user", "content": "친근한 인사로 시작하세요 (1-2문장). 첫 문장: 캐주얼한 인사. 두 번째 문장 (선택): 시나리오 맥락을 은근히 언급. 간결하고 자연스럽게 작성하세요."}
                 ],
                 temperature=0.7,
                 max_tokens=80
@@ -267,35 +289,60 @@ Instructions:
             current_date = datetime.now().strftime("%Y-%m-%d")
             current_time = datetime.now().strftime("%H:%M")
 
+            # 난이도별 대화 스타일 지침
+            conversation_style = {
+                "beginner": """
+- 매우 간단한 문장 구조 사용 (주어 + 동사 + 목적어)
+- 기본 어휘만 사용 (고등학교 수준)
+- 천천히 주제 전환하기
+- 한 번에 한 가지 아이디어만 다루기
+- 명확하고 직접적인 질문하기""",
+                "intermediate": """
+- 자연스러운 비즈니스 대화 스타일
+- 일반적인 비즈니스 용어 사용
+- 복합 문장 가능하지만 간결하게
+- 적절한 관용구 사용
+- 맥락을 고려한 질문과 응답""",
+                "advanced": """
+- 전문적이고 세련된 비즈니스 커뮤니케이션
+- 전문 용어와 산업 특화 어휘 자유롭게 사용
+- 복잡한 문장 구조와 뉘앙스 활용
+- 함축적 표현과 고급 관용구 사용
+- 전략적이고 다층적인 대화 진행"""
+            }
+
             # 시스템 프롬프트
-            system_prompt = f"""You are participating in a business conversation practice scenario.
+            system_prompt = f"""당신은 비즈니스 회화 연습 시나리오에 참여하고 있습니다.
 
-Today's date: {current_date}
-Current time: {current_time}
+오늘 날짜: {current_date}
+현재 시간: {current_time}
 
-Scenario: {scenario.title}
-Description: {scenario.description}
-Context: {scenario.scenario_text}
+시나리오: {scenario.title}
+설명: {scenario.description}
+상황: {scenario.scenario_text}
 
-Your Role: {scenario.roles.get('ai', 'AI')}
-User's Role: {scenario.roles.get('user', 'User')}
+당신의 역할: {scenario.roles.get('ai', 'AI')}
+사용자 역할: {scenario.roles.get('user', 'User')}
 
-Language: {scenario.language}
-Difficulty: {scenario.difficulty}
+언어: {scenario.language}
+난이도: {scenario.difficulty}
 
-Required Terminology to use naturally: {', '.join(scenario.required_terminology)}
+자연스럽게 사용할 필수 전문용어: {', '.join(scenario.required_terminology)}
 
-Instructions:
-- CRITICAL: Keep responses extremely brief - reading time must be under 7 seconds (15-20 words maximum)
-- Use ONLY 1-2 short sentences (never more than 2 sentences)
-- Mix casual small talk naturally with business topics (like real conversations)
-- Occasionally ask about personal things (weekend, lunch, weather) before/after business talk
-- Use the required terminology naturally when discussing business
-- Respond in {scenario.language} language
-- Be encouraging and supportive for language practice
-- If user makes grammatical errors, gently incorporate corrections in your response
-- Use realistic dates and times based on today's context
-- REMINDER: Think "quick chat message" not "email" - be conversational and concise"""
+난이도별 대화 스타일:
+{conversation_style.get(scenario.difficulty, conversation_style['intermediate'])}
+
+기본 지침:
+- 중요: 응답을 매우 간결하게 유지하세요 - 읽는 시간이 7초 이내여야 합니다 (최대 15-20 단어)
+- 1-2개의 짧은 문장만 사용하세요 (절대 2문장 이상 사용하지 마세요)
+- 실제 대화처럼 캐주얼한 스몰토크와 비즈니스 주제를 자연스럽게 섞으세요
+- 가끔은 비즈니스 대화 전후에 개인적인 것들(주말, 점심, 날씨 등)을 물어보세요
+- 비즈니스를 논의할 때 필수 전문용어를 자연스럽게 사용하세요
+- {scenario.language} 언어로 응답하세요
+- 언어 연습에 대해 격려하고 지원적으로 대하세요
+- 사용자가 문법 오류를 범하면, 응답에서 부드럽게 교정을 포함하세요
+- 오늘 맥락을 기반으로 현실적인 날짜와 시간을 사용하세요
+- 알림: "빠른 채팅 메시지"로 생각하세요, "이메일"이 아닙니다 - 대화체이고 간결하게"""
 
             # 대화 히스토리 구성
             messages = [{"role": "system", "content": system_prompt}]
@@ -416,64 +463,85 @@ Instructions:
                     # 발음 평가 실패해도 피드백은 계속 생성
 
             # GPT-4o로 피드백 생성
-            system_prompt = f"""You are an expert language tutor providing feedback on business conversation practice in KOREAN language.
+            system_prompt = f"""당신은 비즈니스 회화 연습에 대한 피드백을 한글로 제공하는 전문 언어 튜터입니다.
 
-Scenario Context:
-- Title: {scenario.title}
-- Description: {scenario.description}
-- Situation: {scenario.scenario_text}
-- User's Role: {scenario.roles.get('user', 'User')}
-- AI's Role: {scenario.roles.get('ai', 'AI')}
-- Language: {scenario.language}
-- Difficulty: {scenario.difficulty}
-- Required Terminology: {', '.join(scenario.required_terminology)}
+시나리오 맥락:
+- 제목: {scenario.title}
+- 설명: {scenario.description}
+- 상황: {scenario.scenario_text}
+- 사용자 역할: {scenario.roles.get('user', 'User')}
+- AI 역할: {scenario.roles.get('ai', 'AI')}
+- 언어: {scenario.language}
+- 난이도: {scenario.difficulty}
+- 필수 전문용어: {', '.join(scenario.required_terminology)}
 
-IMPORTANT FEEDBACK RULES:
-1. ALL feedback must be written in KOREAN (한글)
-2. Grammar corrections: Explain the issue in Korean, then suggest the English correction
-   - Example: "시제가 틀렸어요. 'I go yesterday' 대신 'I went yesterday'라고 해야 해요."
-3. Suggestions: Provide Korean explanation with English phrase recommendations
-   - Example: "더 자연스러운 표현으로는 'Could you please...' 또는 'Would you mind...'를 사용해보세요."
-   - If the message is very poor, provide a complete sentence example with "이런 식으로 해보세요"
-   - Consider the user's role and situation when making suggestions (e.g., formality, tone, context appropriateness)
-4. Scoring System (1-10):
-   - Grammar (30%): Correct sentence structure, tense, articles
-   - Vocabulary (25%): Word choice, natural expressions, terminology usage
-   - Fluency (25%): Natural flow, politeness, business context appropriateness
-   - Pronunciation (20%): Estimate clarity and correctness of pronunciation based on word choice and sentence complexity
-   - 9-10: Excellent, native-level
-   - 7-8: Good, minor improvements needed
-   - 5-6: Fair, several issues to fix
-   - 3-4: Poor, major improvements needed
-   - 1-2: Very poor, needs complete revision
+중요한 피드백 규칙:
+1. 모든 피드백은 반드시 한글로 작성해야 합니다
+2. 문법 교정: 한글로 문제를 설명한 후, 영어 교정을 제안하세요
+   - 예시: "시제가 틀렸어요. 'I go yesterday' 대신 'I went yesterday'라고 해야 해요."
+3. 제안: 한글 설명과 함께 영어 표현 추천을 제공하세요
+   - 예시: "더 자연스러운 표현으로는 'Could you please...' 또는 'Would you mind...'를 사용해보세요."
+   - 메시지가 매우 부족하다면, "이런 식으로 해보세요"와 함께 완전한 문장 예시를 제공하세요
+   - 제안할 때 사용자의 역할과 상황을 고려하세요 (예: 격식, 어조, 맥락 적절성)
+4. 난이도별 채점 기준 (1-10):
 
-Provide feedback in JSON format with Korean text."""
+**{scenario.difficulty.upper()} 난이도 기준:**
+
+{'BEGINNER 기준:' if scenario.difficulty == 'beginner' else ''}
+{'- 문법 (30%): 기본 문장 구조, 현재/과거 시제만 검사, 간단한 관사 사용' if scenario.difficulty == 'beginner' else ''}
+{'- 어휘 (25%): 기본 일상 어휘 사용 여부, 복잡한 표현 요구하지 않음' if scenario.difficulty == 'beginner' else ''}
+{'- 유창성 (25%): 의사소통 가능 여부에 집중, 완벽한 문장 구조 요구하지 않음' if scenario.difficulty == 'beginner' else ''}
+{'- 발음 (20%): 이해 가능한 수준이면 충분' if scenario.difficulty == 'beginner' else ''}
+{'- 평가 기준: 의미 전달 가능하면 7점 이상, 기본 문법만 맞아도 긍정적 평가' if scenario.difficulty == 'beginner' else ''}
+
+{'INTERMEDIATE 기준:' if scenario.difficulty == 'intermediate' else ''}
+{'- 문법 (30%): 다양한 시제, 관사, 전치사 정확도' if scenario.difficulty == 'intermediate' else ''}
+{'- 어휘 (25%): 비즈니스 용어 적절한 사용, 자연스러운 표현' if scenario.difficulty == 'intermediate' else ''}
+{'- 유창성 (25%): 자연스러운 흐름, 맥락 적절성, 비즈니스 예절' if scenario.difficulty == 'intermediate' else ''}
+{'- 발음 (20%): 명확하고 자신감 있는 발음' if scenario.difficulty == 'intermediate' else ''}
+{'- 평가 기준: 일반적인 비즈니스 소통 가능하면 7점 이상' if scenario.difficulty == 'intermediate' else ''}
+
+{'ADVANCED 기준:' if scenario.difficulty == 'advanced' else ''}
+{'- 문법 (30%): 완벽한 문법, 복잡한 구조, 미묘한 뉘앙스' if scenario.difficulty == 'advanced' else ''}
+{'- 어휘 (25%): 전문 용어 정확한 사용, 관용구, 세련된 표현' if scenario.difficulty == 'advanced' else ''}
+{'- 유창성 (25%): 원어민 수준의 자연스러움, 전략적 커뮤니케이션' if scenario.difficulty == 'advanced' else ''}
+{'- 발음 (20%): 원어민에 가까운 억양과 리듬' if scenario.difficulty == 'advanced' else ''}
+{'- 평가 기준: 원어민 수준 요구, 9-10점은 전문가 수준만 가능' if scenario.difficulty == 'advanced' else ''}
+
+점수 가이드:
+   - 9-10: 탁월함, 해당 난이도에서 최고 수준
+   - 7-8: 좋음, 해당 난이도 목표 달성
+   - 5-6: 보통, 개선 필요
+   - 3-4: 부족함, 주요 개선 필요
+   - 1-2: 매우 부족함, 기본부터 다시
+
+한글 텍스트로 JSON 형식의 피드백을 제공하세요."""
 
             # pronunciation_details가 있으면 추가 정보 제공
             pronunciation_info = ""
             if pronunciation_details:
                 pronunciation_info = f"""
 
-Azure Pronunciation Assessment Results:
-- Overall Pronunciation Score: {pronunciation_details['pronunciation_score']:.1f}/100
-- Accuracy Score: {pronunciation_details['accuracy_score']:.1f}/100
-- Fluency Score: {pronunciation_details['fluency_score']:.1f}/100
-- Prosody Score (억양/강세): {pronunciation_details['prosody_score']:.1f}/100
-- Completeness Score: {pronunciation_details['completeness_score']:.1f}/100
+Azure 발음 평가 결과:
+- 전체 발음 점수: {pronunciation_details['pronunciation_score']:.1f}/100
+- 정확도 점수: {pronunciation_details['accuracy_score']:.1f}/100
+- 유창성 점수: {pronunciation_details['fluency_score']:.1f}/100
+- 운율 점수 (억양/강세): {pronunciation_details['prosody_score']:.1f}/100
+- 완성도 점수: {pronunciation_details['completeness_score']:.1f}/100
 
-Words with pronunciation issues (accuracy < 80):
+발음 문제가 있는 단어들 (정확도 < 80):
 {chr(10).join([f"- '{word['word']}': {word['accuracy_score']:.1f}/100" for word in pronunciation_details['words'] if word['accuracy_score'] < 80][:5]) if any(w['accuracy_score'] < 80 for w in pronunciation_details['words']) else '(모든 단어가 잘 발음되었습니다)'}
 
-Based on these scores, provide specific feedback on:
-1. Prosody (운율): If prosody_score < 80, explain issues with intonation (억양), stress (강세), or rhythm (리듬)
-2. Problematic words: Mention specific words with low accuracy scores
-3. Overall pronunciation improvement tips"""
+이 점수를 기반으로 다음에 대한 구체적인 피드백을 제공하세요:
+1. 운율 (Prosody): prosody_score < 80인 경우, 억양(intonation), 강세(stress), 또는 리듬(rhythm) 문제를 설명하세요
+2. 문제 단어: 낮은 정확도 점수를 받은 특정 단어를 언급하세요
+3. 전반적인 발음 개선 팁"""
 
-            user_prompt = f"""User's message: "{user_message}"
+            user_prompt = f"""사용자 메시지: "{user_message}"
 
-Detected terminology used: {', '.join(detected_terms) if detected_terms else 'None'}{pronunciation_info}
+감지된 전문용어: {', '.join(detected_terms) if detected_terms else '없음'}{pronunciation_info}
 
-Provide feedback in this exact JSON format (ALL TEXT IN KOREAN):
+다음의 정확한 JSON 형식으로 피드백을 제공하세요 (모든 텍스트 한글로):
 {{
   "grammar_corrections": [
     "시제 문제: 'I was go'는 틀렸어요. 'I went' 또는 'I was going'이라고 해야 해요."
@@ -499,11 +567,11 @@ Provide feedback in this exact JSON format (ALL TEXT IN KOREAN):
   }}
 }}
 
-IMPORTANT:
-- If pronunciation assessment data is provided, MUST include "pronunciation_feedback" array with specific tips
-- If prosody_score < 80: provide feedback on intonation (억양), stress (강세), or rhythm (리듬)
-- If any words have low accuracy: mention those specific words and how to improve
-- All explanations in KOREAN (한글), but include English words/corrections within the Korean text"""
+중요:
+- 발음 평가 데이터가 제공되면, 구체적인 팁과 함께 "pronunciation_feedback" 배열을 반드시 포함해야 합니다
+- prosody_score < 80인 경우: 억양(intonation), 강세(stress), 또는 리듬(rhythm)에 대한 피드백을 제공하세요
+- 낮은 정확도를 가진 단어가 있다면: 해당 특정 단어와 개선 방법을 언급하세요
+- 모든 설명은 한글로 작성하되, 한글 텍스트 안에 영어 단어/교정을 포함하세요"""
 
             response = await self.client.chat.completions.create(
                 model="gpt-4o",
@@ -565,9 +633,9 @@ IMPORTANT:
 
             target_lang_name = language_names.get(target_language, "Korean (한국어)")
 
-            system_prompt = f"""You are a professional translator.
-Translate the given text to {target_lang_name}.
-Provide ONLY the translated text without any explanations or additional comments."""
+            system_prompt = f"""당신은 전문 번역가입니다.
+주어진 텍스트를 {target_lang_name}로 번역하세요.
+설명이나 추가 코멘트 없이 번역된 텍스트만 제공하세요."""
 
             response = await self.client.chat.completions.create(
                 model="gpt-4o",

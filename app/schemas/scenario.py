@@ -35,6 +35,8 @@ class ManualCreateRequest(BaseModel):
     requiredTerminology: List[str] = Field(default=[], alias="requiredTerminology", description="Required terminology")
     language: str = Field(default="en", description="Target language: en, ko, zh, ja")
     difficulty: str = Field(default="intermediate", description="Difficulty level: beginner, intermediate, advanced")
+    projectId: Optional[str] = Field(default=None, alias="projectId", description="Project ID to associate with")
+    scheduleId: Optional[str] = Field(default=None, alias="scheduleId", description="Schedule ID to associate with")
 
     class Config:
         populate_by_name = True
@@ -62,3 +64,23 @@ class ScenarioListResponse(BaseModel):
     """Response schema for scenario list."""
     scenarios: List[ScenarioResponse]
     total: int = Field(..., description="Total number of scenarios")
+
+
+class ModifyWithChatRequest(BaseModel):
+    """Request schema for modifying scenario with chat."""
+    currentScenario: dict = Field(..., alias="currentScenario", description="Current scenario state")
+    userMessage: str = Field(..., alias="userMessage", min_length=1, description="User's modification request")
+    language: str = Field(..., description="Target language")
+    difficulty: str = Field(..., description="Difficulty level")
+
+    class Config:
+        populate_by_name = True
+
+
+class ModifyWithChatResponse(BaseModel):
+    """Response schema for chat-based scenario modification."""
+    modifiedScenario: dict = Field(..., alias="modifiedScenario", description="Modified scenario fields")
+    message: str = Field(..., description="AI assistant response message")
+
+    class Config:
+        populate_by_name = True

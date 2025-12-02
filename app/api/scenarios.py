@@ -12,7 +12,9 @@ from app.auth import get_current_user
 from app.schemas.scenario import (
     GenerateFromProjectsRequest,
     ManualCreateRequest,
-    ScenarioResponse
+    ScenarioResponse,
+    ModifyWithChatRequest,
+    ModifyWithChatResponse
 )
 from app.services.scenario_service import ScenarioService
 from app.models.scenario import Scenario
@@ -101,6 +103,8 @@ async def create_manual_scenario(
             required_terminology=request.requiredTerminology,
             language=request.language,
             difficulty=request.difficulty,
+            project_id=request.projectId,
+            schedule_id=request.scheduleId,
             db=db
         )
 
@@ -368,3 +372,39 @@ async def delete_scenario(
         logger.error(f"❌ Failed to delete scenario: {str(e)}")
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to delete scenario: {str(e)}")
+
+
+@router.post("/modify-with-chat", response_model=dict)
+async def modify_scenario_with_chat(
+    request: ModifyWithChatRequest,
+    user: dict = Depends(get_current_user)
+):
+    """
+    채팅을 통한 시나리오 수정
+
+    사용자의 자연어 요청을 받아 GPT-4o를 사용하여 시나리오를 수정합니다.
+    현재 시나리오 상태를 컨텍스트로 전달하고, 수정된 필드만 반환합니다.
+
+    **Authentication required**: JWT token from Java backend
+    """
+    try:
+        user_id = str(user["user_id"])
+
+        logger.info(f"💬 Chat modification request: user={user_id}, message='{request.userMessage[:50]}...'")
+
+        result = await scenario_service.modify_with_chat(
+            current_scenario=request.currentScenario,
+            user_message=request.userMessage,
+            language=request.language,
+            difficulty=request.difficulty
+        )
+
+        return {
+            "success": True,
+            "message": "Scenario modification successful",
+            "data": result
+        }
+
+    except Exception as e:
+        logger.error(f"❌ Scenario modification failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Scenario modification failed: {str(e)}")
