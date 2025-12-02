@@ -1,16 +1,17 @@
 """
-Scenario generation service with OpenAI GPT-4o integration.
+Scenario generation service with Agent pattern integration.
 Generates conversation scenarios from projects and schedules.
 """
 import logging
 from typing import List, Dict, Any, Optional
-from openai import AsyncOpenAI
 import httpx
-import json
 
 from app.config import settings
 from app.models.scenario import Scenario
 from sqlalchemy.orm import Session
+
+from agent.scenario.generator_agent import ScenarioGeneratorAgent
+from agent.scenario.modifier_agent import ScenarioModifierAgent
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +20,9 @@ class ScenarioService:
     """Service for generating and managing conversation scenarios."""
 
     def __init__(self):
-        """Initialize OpenAI client."""
-        self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        """Initialize with Agent pattern."""
+        self.generator_agent = ScenarioGeneratorAgent()
+        self.modifier_agent = ScenarioModifierAgent()
 
     async def generate_from_projects(
         self,
@@ -32,7 +34,8 @@ class ScenarioService:
         count: int,
         user_id: str,
         jwt_token: str,
-        db: Session
+        db: Session,
+        save_to_db: bool = True
     ) -> List[Dict[str, Any]]:
         """
         Generate scenarios from projects and schedules using GPT-4o.
@@ -47,6 +50,7 @@ class ScenarioService:
             user_id: User UUID
             jwt_token: JWT token for Java API calls
             db: Database session
+            save_to_db: Whether to save scenarios to DB (False for preview mode)
 
         Returns:
             List of generated scenario dictionaries
@@ -57,56 +61,83 @@ class ScenarioService:
         context = await self._fetch_context(project_ids, schedule_ids, document_ids, jwt_token)
         logger.info(f"📝 Context fetched: {len(context)} characters")
 
-        # 2. Generate scenarios with GPT-4o
-        scenarios_data = await self._generate_with_gpt(context, language, difficulty, count)
-        logger.info(f"🤖 GPT-4o generated {len(scenarios_data)} scenarios")
+        # 2. Generate scenarios with Agent pattern
+        is_everyday = context == "General business communication scenarios for professional practice."
+        scenarios_data = await self.generator_agent.process(
+            context=context,
+            language=language,
+            difficulty=difficulty,
+            count=count,
+            is_everyday=is_everyday
+        )
+        logger.info(f"🤖 Agent generated {len(scenarios_data)} scenarios")
 
-        # 3. Save to PostgreSQL
-        saved_scenarios = []
+        # 3. Prepare response (and optionally save to PostgreSQL)
+        result_scenarios = []
         for idx, scenario_data in enumerate(scenarios_data):
             try:
-                scenario = Scenario(
-                    user_id=user_id,
-                    title=scenario_data["title"],
-                    description=scenario_data["description"],
-                    scenario_text=scenario_data["scenarioText"],
-                    language=language,
-                    difficulty=difficulty,
-                    category=scenario_data["category"],
-                    roles=scenario_data["roles"],
-                    required_terminology=scenario_data.get("requiredTerminology", []),
-                    project_ids=project_ids,
-                    schedule_ids=schedule_ids,
-                    document_ids=document_ids,
-                    auto_generated=True
-                )
-                db.add(scenario)
-                db.flush()
+                if save_to_db:
+                    # Save to DB mode
+                    scenario = Scenario(
+                        user_id=user_id,
+                        title=scenario_data["title"],
+                        description=scenario_data["description"],
+                        scenario_text=scenario_data["scenarioText"],
+                        language=language,
+                        difficulty=difficulty,
+                        category=scenario_data["category"],
+                        roles=scenario_data["roles"],
+                        required_terminology=scenario_data.get("requiredTerminology", []),
+                        project_ids=project_ids,
+                        schedule_ids=schedule_ids,
+                        document_ids=document_ids,
+                        auto_generated=True
+                    )
+                    db.add(scenario)
+                    db.flush()
 
-                saved_scenarios.append({
-                    "id": str(scenario.id),
-                    "title": scenario.title,
-                    "description": scenario.description,
-                    "scenarioText": scenario.scenario_text,
-                    "language": scenario.language,
-                    "difficulty": scenario.difficulty,
-                    "category": scenario.category,
-                    "roles": scenario.roles,
-                    "requiredTerminology": scenario.required_terminology,
-                    "autoGenerated": scenario.auto_generated,
-                    "createdAt": scenario.created_at.isoformat()
-                })
+                    result_scenarios.append({
+                        "id": str(scenario.id),
+                        "title": scenario.title,
+                        "description": scenario.description,
+                        "scenarioText": scenario.scenario_text,
+                        "language": scenario.language,
+                        "difficulty": scenario.difficulty,
+                        "category": scenario.category,
+                        "roles": scenario.roles,
+                        "requiredTerminology": scenario.required_terminology,
+                        "autoGenerated": scenario.auto_generated,
+                        "createdAt": scenario.created_at.isoformat()
+                    })
 
-                logger.info(f"💾 Saved scenario {idx + 1}/{len(scenarios_data)}: {scenario.title}")
+                    logger.info(f"💾 Saved scenario {idx + 1}/{len(scenarios_data)}: {scenario.title}")
+                else:
+                    # Preview mode - don't save to DB
+                    result_scenarios.append({
+                        "title": scenario_data["title"],
+                        "description": scenario_data["description"],
+                        "scenarioText": scenario_data["scenarioText"],
+                        "language": language,
+                        "difficulty": difficulty,
+                        "category": scenario_data["category"],
+                        "roles": scenario_data["roles"],
+                        "requiredTerminology": scenario_data.get("requiredTerminology", []),
+                        "autoGenerated": True
+                    })
+
+                    logger.info(f"📋 Generated preview scenario {idx + 1}/{len(scenarios_data)}: {scenario_data['title']}")
 
             except Exception as e:
-                logger.error(f"❌ Failed to save scenario {idx + 1}: {str(e)}")
+                logger.error(f"❌ Failed to process scenario {idx + 1}: {str(e)}")
                 continue
 
-        db.commit()
-        logger.info(f"✅ Successfully saved {len(saved_scenarios)}/{len(scenarios_data)} scenarios")
+        if save_to_db:
+            db.commit()
+            logger.info(f"✅ Successfully saved {len(result_scenarios)}/{len(scenarios_data)} scenarios")
+        else:
+            logger.info(f"✅ Generated {len(result_scenarios)} preview scenarios (not saved to DB)")
 
-        return saved_scenarios
+        return result_scenarios
 
     async def _fetch_context(
         self,
@@ -214,175 +245,7 @@ class ScenarioService:
 
         return "\n\n".join(context_parts)
 
-    async def _generate_with_gpt(
-        self,
-        context: str,
-        language: str,
-        difficulty: str,
-        count: int
-    ) -> List[Dict[str, Any]]:
-        """
-        Generate scenarios using GPT-4o.
-
-        Args:
-            context: Context from projects/schedules
-            language: Target language
-            difficulty: Difficulty level
-            count: Number of scenarios to generate
-
-        Returns:
-            List of scenario dictionaries
-        """
-        # Language mapping
-        lang_map = {
-            "en": "English",
-            "ko": "Korean (한국어)",
-            "zh": "Chinese (中文)",
-            "ja": "Japanese (日本語)",
-            "vi": "Vietnamese (Tiếng Việt)"
-        }
-        target_lang = lang_map.get(language, "English")
-
-        # Check if this is everyday scenario (no project selected)
-        is_everyday_scenario = context == "General business communication scenarios for professional practice."
-
-        if is_everyday_scenario:
-            # Everyday conversation scenarios
-            prompt = f"""다음은 일상생활에서 자주 접하는 {count}개의 실용적인 회화 시나리오를 생성해주세요.
-이 시나리오는 {target_lang} 언어 연습을 위한 것입니다.
-
-시나리오 타입 (다양하게 선택):
-- 식당에서의 대화 (주문, 예약, 불만 처리)
-- 호텔 체크인/체크아웃
-- 쇼핑 (옷, 전자제품, 식료품)
-- 병원/약국 방문
-- 은행 업무
-- 우체국/택배
-- 카페에서 주문
-- 교통 수단 이용 (택시, 지하철, 버스)
-- 헬스장/피트니스 센터
-- 미용실/헤어샵
-- 부동산 문의
-- 렌터카 대여
-
-요구사항:
-- 난이도: {difficulty}
-- 목표 언어: {target_lang}
-- 각 시나리오는 일상생활에서 실제로 겪을 수 있는 상황을 반영
-- 해당 상황에서 자주 사용하는 3-5개의 실용적인 표현이나 어휘를 포함
-- 다양한 일상 상황을 다루세요
-- 제목과 설명은 반드시 한글로 작성
-- 역할 설명은 간단하고 간결하게 (1-2 단어)
-
-다음 JSON 형식으로 시나리오를 생성하세요:
-{{
-  "scenarios": [
-    {{
-      "title": "한글로 된 시나리오 제목 (예: 식당에서 음식 주문하기, 호텔 체크인하기)",
-      "description": "한글로 된 간단한 설명 (2-3 문장). 어떤 상황인지 명확하게 설명",
-      "scenarioText": "개조식으로 작성된 상세한 시나리오 설명 (한글). 각 항목을 '-'로 시작하여 줄바꿈으로 구분합니다.",
-      "category": "Restaurant|Hotel|Shopping|Hospital|Bank|Post Office|Cafe|Transportation|Fitness|Beauty|Real Estate|Car Rental|Daily Life",
-      "roles": {{
-        "user": "{target_lang}로 된 간단한 사용자 역할 (예: Customer, Patient, Guest 등)",
-        "ai": "{target_lang}로 된 간단한 상대방 역할 (예: Waiter, Receptionist, Sales Clerk 등)"
-      }},
-      "requiredTerminology": ["해당 상황에서 유용한 표현1", "표현2", "표현3"]
-    }}
-  ]
-}}
-
-중요 사항:
-- title: 반드시 한글로 작성 (일상 상황 명확히 표현)
-- description: 반드시 한글로 작성
-- scenarioText: 반드시 개조식으로 작성 (각 항목은 '-'로 시작하고 줄바꿈으로 구분)
-  예시 형식:
-  "scenarioText": "- 상황: 해외 호텔에서 체크인하는 상황입니다\\n- 목표: 예약 확인, 방 배정, 시설 이용 안내를 {target_lang}로 대화합니다\\n- 연습 내용: 예약 정보 확인, 여권 제시, 결제 방법 설명\\n- 주요 표현: 'reservation confirmation', 'check-in', 'amenities'\\n- 난이도: {difficulty} 수준에 맞는 표현 사용"
-- category: 일상 생활 카테고리 사용 (비즈니스 관련 카테고리 사용 금지)
-- roles.user: {target_lang}로 된 간단한 역할 (예: "Customer", "Patient", "손님", "환자")
-- roles.ai: {target_lang}로 된 간단한 서비스 제공자 역할 (예: "Waiter", "Doctor", "웨이터", "의사") - "AI"나 "Assistant" 사용 금지
-- requiredTerminology: 해당 상황에서 실제로 사용하는 유용한 표현이나 어휘
-
-정확히 {count}개의 일상 회화 시나리오를 "scenarios" 배열에 생성하세요."""
-
-            system_content = f"당신은 일상생활 회화 시나리오를 만드는 전문가입니다. {target_lang} 언어 연습에 적합한 실용적이고 현실적인 일상 대화 시나리오를 생성합니다. 제목, 설명, 시나리오 텍스트는 항상 한글로 작성하고, 역할 설명은 간단하게 (1-2 단어) 작성합니다. 'ai' 역할은 '웨이터', '직원', '의사' 같은 현실적인 서비스 제공자 역할을 사용하며, 절대 'AI'나 'Assistant'를 사용하지 않습니다. 비즈니스나 업무 관련 시나리오는 생성하지 않습니다."
-
-        else:
-            # Business scenarios with project context
-            prompt = f"""다음 컨텍스트를 기반으로 {count}개의 현실적인 비즈니스 회화 시나리오를 생성해주세요.
-이 시나리오는 {target_lang} 언어 연습을 위한 것입니다.
-
-컨텍스트:
-{context[:3000]}
-
-요구사항:
-- 난이도: {difficulty}
-- 목표 언어: {target_lang}
-- 각 시나리오는 현실적인 비즈니스 상황을 반영해야 합니다
-- 컨텍스트에서 3-5개의 핵심 전문 용어를 식별하세요
-- 다양한 시나리오 타입 사용: Collaboration, Technical Support, Product Explanation, Problem Solving
-- 제목과 설명은 반드시 한글로 작성
-- 역할 설명은 간단하고 간결하게 (1-2 단어)
-
-다음 JSON 형식으로 시나리오를 생성하세요:
-{{
-  "scenarios": [
-    {{
-      "title": "한글로 된 시나리오 제목",
-      "description": "한글로 된 간단한 설명 (2-3 문장)",
-      "scenarioText": "개조식으로 작성된 상세한 시나리오 설명 (한글). 각 항목을 '-'로 시작하여 줄바꿈으로 구분합니다.",
-      "category": "Collaboration|Technical Support|Product Explanation|Problem Solving",
-      "roles": {{
-        "user": "{target_lang}로 된 간단한 사용자 역할 (1-2 단어)",
-        "ai": "{target_lang}로 된 간단한 상대방 역할 (1-2 단어)"
-      }},
-      "requiredTerminology": ["용어1", "용어2", "용어3"]
-    }}
-  ]
-}}
-
-중요 사항:
-- title: 반드시 한글로 작성
-- description: 반드시 한글로 작성
-- scenarioText: 반드시 개조식으로 작성 (각 항목은 '-'로 시작하고 줄바꿈으로 구분)
-  예시 형식:
-  "scenarioText": "- 상황: 프로젝트 킥오프 미팅 진행\\n- 목표: 프로젝트 일정, 역할 분담, 마일스톤 논의를 {target_lang}로 진행\\n- 연습 내용: 프로젝트 범위 설명, 일정 확인, 담당자 지정\\n- 주요 용어: 'milestone', 'deadline', 'deliverable'\\n- 난이도: {difficulty} 수준의 비즈니스 표현 사용"
-- roles.user: {target_lang}로 된 간단한 역할 설명 (예: "Project Manager", "Developer", "프로젝트 매니저", "개발자")
-- roles.ai: {target_lang}로 된 간단한 상대방 역할 (예: "Client", "Team Lead", "Colleague", "고객", "팀장", "동료") - "AI"나 "Assistant" 사용 금지
-
-정확히 {count}개의 시나리오를 "scenarios" 배열에 생성하세요."""
-
-            system_content = f"당신은 현실적인 비즈니스 회화 시나리오를 만드는 전문가입니다. {target_lang} 언어 연습에 적합한 잘 구조화된 시나리오를 생성합니다. 제목, 설명, 시나리오 텍스트는 항상 한글로 작성하고, 역할 설명은 간단하게 (1-2 단어) 작성합니다. 'ai' 역할은 '고객', '팀장', '동료' 같은 현실적인 상대방 역할을 사용하며, 절대 'AI'나 'Assistant'를 사용하지 않습니다."
-
-        # Call GPT-4o
-        scenario_type = "일상 회화" if is_everyday_scenario else "비즈니스"
-        logger.info(f"🤖 Calling GPT-4o for {scenario_type} scenario generation (language={language}, difficulty={difficulty}, count={count})")
-
-        response = await self.client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {
-                    "role": "system",
-                    "content": system_content
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.8
-        )
-
-        # Parse response
-        result = json.loads(response.choices[0].message.content)
-        scenarios = result.get("scenarios", [])
-
-        if not scenarios:
-            logger.error("❌ GPT-4o returned no scenarios")
-            raise ValueError("Failed to generate scenarios from GPT-4o")
-
-        logger.info(f"✅ GPT-4o returned {len(scenarios)} {scenario_type} scenarios")
-        return scenarios
+    # NOTE: _generate_with_gpt 메서드는 agent/scenario/generator_agent.py로 이동됨
 
     async def create_manual(
         self,
@@ -470,7 +333,7 @@ class ScenarioService:
         difficulty: str
     ) -> Dict[str, Any]:
         """
-        채팅을 통한 시나리오 수정
+        채팅을 통한 시나리오 수정 (Agent 패턴 사용)
 
         Args:
             current_scenario: 현재 시나리오 상태
@@ -481,85 +344,10 @@ class ScenarioService:
         Returns:
             수정된 시나리오 필드와 AI 응답 메시지
         """
-        logger.info(f"🤖 시나리오 수정 요청: message='{user_message[:50]}...'")
-
-        # 언어 매핑
-        lang_map = {
-            "en": "English",
-            "ko": "Korean (한국어)",
-            "zh": "Chinese (中文)",
-            "ja": "Japanese (日本語)",
-            "vi": "Vietnamese (Tiếng Việt)"
-        }
-        target_lang = lang_map.get(language, "English")
-
-        # 시스템 프롬프트
-        system_prompt = f"""당신은 비즈니스 회화 시나리오를 수정하는 전문 AI 어시스턴트입니다.
-
-사용자가 현재 시나리오에 대해 수정 요청을 하면, 요청사항을 분석하고 적절하게 시나리오를 수정해야 합니다.
-
-현재 시나리오 상태:
-- 제목: {current_scenario.get('title', '(없음)')}
-- 설명: {current_scenario.get('description', '(없음)')}
-- 시나리오 텍스트: {current_scenario.get('scenarioText', '(없음)')}
-- 사용자 역할: {current_scenario.get('userRole', '(없음)')}
-- AI 역할: {current_scenario.get('aiRole', '(없음)')}
-- 카테고리: {current_scenario.get('category', 'General')}
-- 필수 전문용어: {current_scenario.get('requiredTerminology', '(없음)')}
-
-목표 언어: {target_lang}
-난이도: {difficulty}
-
-수정 지침:
-1. 사용자의 요청을 정확하게 이해하고 해당 필드만 수정하세요
-2. 요청하지 않은 필드는 그대로 유지하세요
-3. 제목과 설명은 반드시 한글로 작성하세요
-4. 시나리오 텍스트는 반드시 개조식으로 작성하세요 (각 항목을 '-'로 시작하고 줄바꿈으로 구분)
-5. 시나리오 텍스트 예시: "- 상황: ...\\n- 목표: ...\\n- 연습 내용: ...\\n- 주요 표현/용어: ...\\n- 난이도: ..."
-6. 역할은 간단하게 1-2 단어로 {target_lang}로 작성하세요
-7. AI 역할은 "AI"나 "Assistant"가 아닌 현실적인 역할 (예: "Client", "고객", "팀장")을 사용하세요
-8. 난이도 {difficulty}에 맞는 적절한 복잡도로 조정하세요
-
-다음 JSON 형식으로 응답하세요:
-{{
-  "modifiedFields": {{
-    "title": "수정된 제목 (한글, 변경 시에만)",
-    "description": "수정된 설명 (한글, 변경 시에만)",
-    "scenarioText": "수정된 시나리오 텍스트 (개조식, 한글, 변경 시에만)",
-    "userRole": "수정된 사용자 역할 ({target_lang}, 변경 시에만)",
-    "aiRole": "수정된 AI 역할 ({target_lang}, 변경 시에만)",
-    "category": "수정된 카테고리 (변경 시에만)",
-    "requiredTerminology": "수정된 전문용어 (변경 시에만)"
-  }},
-  "assistantMessage": "사용자에게 보낼 한글 응답 메시지 (어떤 부분을 수정했는지 간단히 설명)"
-}}
-
-중요:
-- modifiedFields에는 실제로 변경된 필드만 포함하세요
-- 변경하지 않은 필드는 포함하지 마세요
-- scenarioText를 수정할 때는 반드시 개조식으로 작성하세요 (각 항목 '-'로 시작, 줄바꿈 구분)
-- assistantMessage는 친근하고 간결하게 작성하세요 (1-2문장)"""
-
-        # GPT-4o 호출
-        response = await self.client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message}
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.7
+        return await self.modifier_agent.process(
+            current_scenario=current_scenario,
+            user_message=user_message,
+            language=language,
+            difficulty=difficulty
         )
-
-        # 응답 파싱
-        result = json.loads(response.choices[0].message.content)
-        modified_fields = result.get("modifiedFields", {})
-        assistant_message = result.get("assistantMessage", "시나리오를 수정했습니다.")
-
-        logger.info(f"✅ 시나리오 수정 완료: {len(modified_fields)} 필드 수정됨")
-
-        return {
-            "modifiedScenario": modified_fields,
-            "message": assistant_message
-        }
 

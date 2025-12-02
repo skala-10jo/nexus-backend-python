@@ -138,8 +138,10 @@ class VoiceTranslationSession:
             self.recognizer.recognized.connect(self._on_recognized)
             self.recognizer.canceled.connect(self._on_canceled)
 
-            # 연속 인식 시작
-            self.recognizer.start_continuous_recognition()
+            # 연속 인식 시작 (비동기)
+            logger.info(f"🚀 Starting continuous recognition for session: {self.session_id}")
+            self.recognizer.start_continuous_recognition_async()
+            logger.info(f"✅ Continuous recognition started for session: {self.session_id}")
 
         except Exception as e:
             logger.error(f"❌ 세션 초기화 실패: {str(e)}", exc_info=True)
@@ -150,6 +152,7 @@ class VoiceTranslationSession:
 
     def _on_recognizing(self, evt: speechsdk.SpeechRecognitionEventArgs):
         """중간 인식 결과 핸들러 (recognizing)"""
+        logger.info(f"🎤 [Recognizing] reason={evt.result.reason}, text='{evt.result.text}'")
         if evt.result.reason == speechsdk.ResultReason.RecognizingSpeech:
             text = evt.result.text
             if text and text.strip():
@@ -166,6 +169,11 @@ class VoiceTranslationSession:
 
     def _on_recognized(self, evt: speechsdk.SpeechRecognitionEventArgs):
         """최종 인식 결과 핸들러 (recognized)"""
+        # NoMatch는 무시 (음성이 감지되지 않은 경우)
+        if evt.result.reason == speechsdk.ResultReason.NoMatch:
+            logger.debug(f"⚪ [NoMatch] 음성 감지 안됨")
+            return
+        logger.info(f"✅ [Recognized] reason={evt.result.reason}, text='{evt.result.text}'")
         if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
             text = evt.result.text
 

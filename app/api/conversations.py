@@ -2,46 +2,22 @@
 회화 연습 API 엔드포인트
 """
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-from typing import List, Dict, Optional
-from uuid import UUID
 import logging
 
 from app.auth import get_current_user
 from app.services.conversation_service import ConversationService
+from app.schemas.conversation import (
+    StartConversationRequest,
+    SendMessageRequest,
+    EndConversationRequest,
+    MessageFeedbackRequest,
+    TranslateMessageRequest
+)
 
 router = APIRouter(prefix="/api/ai/conversations", tags=["Conversations"])
 logger = logging.getLogger(__name__)
 
 conversation_service = ConversationService()
-
-
-# Request/Response Models
-class StartConversationRequest(BaseModel):
-    scenarioId: str
-
-
-class SendMessageRequest(BaseModel):
-    scenarioId: str
-    message: str
-    history: List[Dict[str, str]] = []
-
-
-class EndConversationRequest(BaseModel):
-    scenarioId: str
-    history: List[Dict[str, str]] = []
-
-
-class MessageFeedbackRequest(BaseModel):
-    scenarioId: str
-    message: str
-    detectedTerms: List[str] = []
-    audioData: Optional[str] = None  # Base64 encoded audio for pronunciation assessment
-
-
-class TranslateMessageRequest(BaseModel):
-    message: str
-    targetLanguage: str = "ko"  # Default to Korean
 
 
 @router.post("/start")

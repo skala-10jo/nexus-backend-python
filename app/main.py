@@ -16,7 +16,9 @@ from app.api import (
     azure_avatar,
     pronunciation,
     voice_stt_ws,
+    voice_stt,
     voice_translate,
+    voice_tts,
     voice_realtime
 )
 
@@ -59,7 +61,9 @@ app.include_router(expression_speech.router, prefix="/api/ai", tags=["Expression
 app.include_router(azure_avatar.router, prefix="/api/ai", tags=["Azure Avatar"])
 app.include_router(pronunciation.router, prefix="/api/ai", tags=["Pronunciation Assessment"])
 app.include_router(voice_stt_ws.router, tags=["Voice STT WebSocket"])  # WebSocket STT
-app.include_router(voice_translate.router, tags=["Voice Translation API"])  # Translation API
+app.include_router(voice_stt.router, prefix="/api/ai/voice", tags=["Voice STT REST"])  # REST STT
+app.include_router(voice_translate.router, prefix="/api/ai/voice", tags=["Voice Translation API"])  # Translation API
+app.include_router(voice_tts.router, prefix="/api/ai/voice", tags=["Voice TTS API"])  # TTS API
 app.include_router(voice_realtime.router, tags=["Voice Realtime WebSocket"])  # 실시간 음성 번역
 
 

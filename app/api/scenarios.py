@@ -58,7 +58,8 @@ async def generate_from_projects(
             count=request.count,
             user_id=user_id,
             jwt_token=jwt_token,
-            db=db
+            db=db,
+            save_to_db=request.saveToDb
         )
 
         return {
