@@ -35,3 +35,11 @@ class TranslateMessageRequest(BaseModel):
     """메시지 번역 요청"""
     message: str
     targetLanguage: str = "ko"  # Default to Korean
+
+
+class HintRequest(BaseModel):
+    """힌트 생성 요청"""
+    scenarioId: str
+    history: List[Dict[str, str]] = []
+    lastAiMessage: str = ""
+    hintCount: int = 3
