@@ -151,17 +151,14 @@ class AzureAvatarAgent:
 
     async def synthesize_avatar_video(self, text: str, language: str = "en-US") -> bytes:
         """
-        텍스트를 Avatar 비디오로 변환 (음성만 반환 - 현재 Azure 구독 제한)
-
-        주의: 현재 Azure 구독에서는 Avatar 비디오 생성이 지원되지 않습니다.
-        대신 고품질 음성만 생성하여 반환합니다.
+        텍스트를 Avatar 비디오로 변환 (음성만 반환 - Batch 합성 대체)
 
         Args:
             text: 변환할 텍스트
             language: 언어 코드 (기본값: en-US)
 
         Returns:
-            오디오 파일 바이너리 데이터 (WebM Opus)
+            오디오 파일 바이너리 데이터 (MP3)
 
         Raises:
             Exception: 음성 합성 실패 시
@@ -177,7 +174,6 @@ class AzureAvatarAgent:
             voice_name = voice_map.get(language, 'en-US-JennyNeural')
 
             # SSML 생성 (표준 TTS)
-            # 주의: Avatar SSML은 현재 구독에서 무시됨
             ssml = f"""<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis'
                        xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='{language}'>
                 <voice name='{voice_name}'>
@@ -185,12 +181,12 @@ class AzureAvatarAgent:
                 </voice>
             </speak>"""
 
-            # Azure TTS API 호출 (음성만 생성)
+            # Azure TTS API 호출
             url = f"https://{self.region}.tts.speech.microsoft.com/cognitiveservices/v1"
             headers = {
                 "Ocp-Apim-Subscription-Key": self.subscription_key,
                 "Content-Type": "application/ssml+xml",
-                "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",  # 음성 전용 포맷
+                "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
                 "User-Agent": "NEXUS-TTS"
             }
 
@@ -206,9 +202,70 @@ class AzureAvatarAgent:
             response.raise_for_status()
 
             logger.info(f"Audio synthesized successfully, size: {len(response.content)} bytes")
-            logger.warning("Note: Avatar video not available in current subscription - returning audio only")
             return response.content
 
         except Exception as e:
             logger.error(f"Failed to synthesize audio: {str(e)}")
             raise Exception(f"음성 합성 실패: {str(e)}")
+
+    async def get_avatar_config(self) -> dict:
+        """
+        Azure Avatar WebRTC 연결을 위한 설정 정보 반환
+
+        Returns:
+            dict: Avatar 연결 설정 (endpoint, token, ice_servers 등)
+        """
+        try:
+            # 토큰 가져오기
+            token, region = await self.process()
+
+            # ICE 서버 정보 가져오기
+            ice_servers = await self.get_ice_servers()
+
+            # WebSocket endpoint
+            ws_endpoint = f"wss://{region}.tts.speech.microsoft.com/cognitiveservices/websocket/v1"
+
+            return {
+                "token": token,
+                "region": region,
+                "endpoint": ws_endpoint,
+                "ice_servers": ice_servers,
+                "avatar_character": "lisa",  # 기본 아바타 캐릭터
+                "avatar_style": "casual-sitting"  # 기본 스타일
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to get avatar config: {str(e)}")
+            raise Exception(f"Avatar 설정 조회 실패: {str(e)}")
+
+    async def create_avatar_session(self, character: str = "lisa", style: str = "casual-sitting") -> dict:
+        """
+        Azure Avatar 실시간 세션 생성
+
+        Args:
+            character: 아바타 캐릭터 (lisa, harry 등)
+            style: 아바타 스타일 (casual-sitting, graceful-standing 등)
+
+        Returns:
+            dict: 세션 정보 (session_id, ws_url, ice_servers)
+        """
+        try:
+            token, region = await self.process()
+            ice_servers = await self.get_ice_servers()
+
+            # Avatar WebSocket URL
+            avatar_ws_url = f"wss://{region}.tts.speech.microsoft.com/cognitiveservices/websocket/v2"
+
+            return {
+                "session_id": f"avatar_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                "ws_url": avatar_ws_url,
+                "token": token,
+                "region": region,
+                "ice_servers": ice_servers,
+                "character": character,
+                "style": style
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to create avatar session: {str(e)}")
+            raise Exception(f"Avatar 세션 생성 실패: {str(e)}")
