@@ -11,7 +11,8 @@ from app.schemas.conversation import (
     SendMessageRequest,
     EndConversationRequest,
     MessageFeedbackRequest,
-    TranslateMessageRequest
+    TranslateMessageRequest,
+    HintRequest
 )
 
 router = APIRouter(prefix="/api/ai/conversations", tags=["Conversations"])
@@ -259,3 +260,46 @@ async def get_conversation_history(
     except Exception as e:
         logger.error(f"Failed to get conversation history: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get conversation history: {str(e)}")
+
+
+@router.post("/hint")
+async def generate_hint(
+    request: HintRequest,
+    user: dict = Depends(get_current_user)
+):
+    """
+    대화 힌트 생성
+
+    시나리오 맥락과 대화 히스토리를 기반으로 사용자가
+    자연스럽게 응답할 수 있는 힌트를 생성합니다.
+
+    Args:
+        request: 힌트 요청 (시나리오 ID, 히스토리, 마지막 AI 메시지)
+        user: 현재 사용자 정보
+
+    Returns:
+        hints: 제안 응답 목록
+        hint_explanations: 각 힌트에 대한 한국어 설명
+        terminology_suggestions: 사용 권장 용어
+    """
+    try:
+        user_id = user["user_id"]
+
+        result = await conversation_service.generate_hint(
+            scenario_id=request.scenarioId,
+            conversation_history=request.history,
+            last_ai_message=request.lastAiMessage,
+            user_id=user_id,
+            hint_count=request.hintCount
+        )
+
+        return {
+            "success": True,
+            **result
+        }
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to generate hint: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate hint: {str(e)}")
