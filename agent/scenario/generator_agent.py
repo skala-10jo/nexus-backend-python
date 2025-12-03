@@ -97,11 +97,11 @@ class ScenarioGeneratorAgent(BaseAgent):
 
     def _create_everyday_system_prompt(self, target_lang: str) -> str:
         """Create system prompt for everyday scenarios."""
-        return f"당신은 일상생활 회화 시나리오를 만드는 전문가입니다. {target_lang} 언어 연습에 적합한 실용적이고 현실적인 일상 대화 시나리오를 생성합니다. 제목, 설명, 시나리오 텍스트는 항상 한글로 작성하고, 역할 설명은 간단하게 (1-2 단어) 작성합니다. 'ai' 역할은 '웨이터', '직원', '의사' 같은 현실적인 서비스 제공자 역할을 사용하며, 절대 'AI'나 'Assistant'를 사용하지 않습니다. 비즈니스나 업무 관련 시나리오는 생성하지 않습니다."
+        return f"당신은 일상생활 회화 시나리오를 만드는 전문가입니다. {target_lang} 언어 연습에 적합한 실용적이고 현실적인 일상 대화 시나리오를 생성합니다. 제목, 설명, 시나리오 텍스트는 항상 한글로 작성합니다. 역할(roles)은 반드시 한국어로 작성하고 (예: 손님, 웨이터, 직원), 절대 'AI'나 'Assistant'를 사용하지 않습니다. requiredTerminology(핵심 표현)는 반드시 {target_lang}로 작성합니다. 비즈니스나 업무 관련 시나리오는 생성하지 않습니다."
 
     def _create_business_system_prompt(self, target_lang: str) -> str:
         """Create system prompt for business scenarios."""
-        return f"당신은 현실적인 비즈니스 회화 시나리오를 만드는 전문가입니다. {target_lang} 언어 연습에 적합한 잘 구조화된 시나리오를 생성합니다. 제목, 설명, 시나리오 텍스트는 항상 한글로 작성하고, 역할 설명은 간단하게 (1-2 단어) 작성합니다. 'ai' 역할은 '고객', '팀장', '동료' 같은 현실적인 상대방 역할을 사용하며, 절대 'AI'나 'Assistant'를 사용하지 않습니다."
+        return f"당신은 현실적인 비즈니스 회화 시나리오를 만드는 전문가입니다. {target_lang} 언어 연습에 적합한 잘 구조화된 시나리오를 생성합니다. 제목, 설명, 시나리오 텍스트는 항상 한글로 작성합니다. 역할(roles)은 반드시 한국어로 작성하고 (예: 개발자, 팀장, 고객, PM), PM, CEO, CTO 같은 영어 약어는 그대로 사용 가능합니다. 절대 'AI'나 'Assistant'를 사용하지 않습니다. requiredTerminology(핵심 용어)는 반드시 {target_lang}로 작성합니다."
 
     def _create_everyday_prompt(self, target_lang: str, difficulty: str, count: int) -> str:
         """Create prompt for everyday conversation scenarios."""
@@ -126,10 +126,10 @@ class ScenarioGeneratorAgent(BaseAgent):
 - 난이도: {difficulty}
 - 목표 언어: {target_lang}
 - 각 시나리오는 일상생활에서 실제로 겪을 수 있는 상황을 반영
-- 해당 상황에서 자주 사용하는 3-5개의 실용적인 표현이나 어휘를 포함
 - 다양한 일상 상황을 다루세요
 - 제목과 설명은 반드시 한글로 작성
-- 역할 설명은 간단하고 간결하게 (1-2 단어)
+- 역할(roles)은 반드시 한국어로 작성 (단, PM, CEO, CTO 같은 영어 약어는 그대로 사용 가능)
+- requiredTerminology(핵심 표현)는 반드시 {target_lang}로 작성 (학습자가 연습할 목표 언어 표현)
 
 다음 JSON 형식으로 시나리오를 생성하세요:
 {{
@@ -140,10 +140,10 @@ class ScenarioGeneratorAgent(BaseAgent):
       "scenarioText": "개조식으로 작성된 상세한 시나리오 설명 (한글)",
       "category": "Restaurant|Hotel|Shopping|Hospital|Bank|Post Office|Cafe|Transportation|Fitness|Beauty|Real Estate|Car Rental|Daily Life",
       "roles": {{
-        "user": "{target_lang}로 된 간단한 사용자 역할",
-        "ai": "{target_lang}로 된 간단한 상대방 역할"
+        "user": "한국어로 된 간단한 사용자 역할 (예: 손님, 고객)",
+        "ai": "한국어로 된 간단한 상대방 역할 (예: 웨이터, 직원)"
       }},
-      "requiredTerminology": ["표현1", "표현2", "표현3"]
+      "requiredTerminology": ["{target_lang}로 된 표현1", "{target_lang}로 된 표현2", "{target_lang}로 된 표현3"]
     }}
   ]
 }}
@@ -162,10 +162,10 @@ class ScenarioGeneratorAgent(BaseAgent):
 - 난이도: {difficulty}
 - 목표 언어: {target_lang}
 - 각 시나리오는 현실적인 비즈니스 상황을 반영해야 합니다
-- 컨텍스트에서 3-5개의 핵심 전문 용어를 식별하세요
 - 다양한 시나리오 타입 사용: Collaboration, Technical Support, Product Explanation, Problem Solving
 - 제목과 설명은 반드시 한글로 작성
-- 역할 설명은 간단하고 간결하게 (1-2 단어)
+- 역할(roles)은 반드시 한국어로 작성 (단, PM, CEO, CTO, QA 같은 영어 약어는 그대로 사용 가능)
+- requiredTerminology(핵심 용어)는 반드시 {target_lang}로 작성 (학습자가 연습할 목표 언어 전문 용어)
 
 다음 JSON 형식으로 시나리오를 생성하세요:
 {{
@@ -176,10 +176,10 @@ class ScenarioGeneratorAgent(BaseAgent):
       "scenarioText": "개조식으로 작성된 상세한 시나리오 설명 (한글)",
       "category": "Collaboration|Technical Support|Product Explanation|Problem Solving",
       "roles": {{
-        "user": "{target_lang}로 된 간단한 사용자 역할 (1-2 단어)",
-        "ai": "{target_lang}로 된 간단한 상대방 역할 (1-2 단어)"
+        "user": "한국어로 된 간단한 사용자 역할 (예: 개발자, PM)",
+        "ai": "한국어로 된 간단한 상대방 역할 (예: 고객, 팀장)"
       }},
-      "requiredTerminology": ["용어1", "용어2", "용어3"]
+      "requiredTerminology": ["{target_lang}로 된 전문 용어1", "{target_lang}로 된 전문 용어2", "{target_lang}로 된 전문 용어3"]
     }}
   ]
 }}
