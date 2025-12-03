@@ -226,6 +226,8 @@ class GlossaryService:
                     korean_term=term_data['korean'],
                     english_term=term_data.get('english'),
                     vietnamese_term=term_data.get('vietnamese'),
+                    japanese_term=term_data.get('japanese'),
+                    chinese_term=term_data.get('chinese'),
                     abbreviation=term_data.get('abbreviation'),
                     definition=term_data['definition'],
                     context=term_data.get('context'),

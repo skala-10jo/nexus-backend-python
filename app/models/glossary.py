@@ -20,6 +20,8 @@ class GlossaryTerm(Base):
     korean_term = Column(String(255), nullable=False)
     english_term = Column(String(255), nullable=True)
     vietnamese_term = Column(String(255), nullable=True)
+    japanese_term = Column(String(255), nullable=True)
+    chinese_term = Column(String(255), nullable=True)
     abbreviation = Column(String(100), nullable=True)
     definition = Column(Text, nullable=False)
     context = Column(Text, nullable=True)
