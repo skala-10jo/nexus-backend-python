@@ -147,12 +147,12 @@ class STTAgent(BaseAgent):
         language: str = "ko-KR"
     ) -> tuple:
         """
-        실시간 스트리밍 STT을 위한 Recognizer 및 PushStream 반환
+        단일 언어 실시간 스트리밍 STT (언어 감지 없이 빠른 인식)
 
         WebSocket에서 사용하기 위한 스트리밍 인터페이스입니다.
 
         Args:
-            language: BCP-47 언어 코드
+            language: BCP-47 언어 코드 (예: "en-US", "ko-KR")
 
         Returns:
             tuple: (recognizer, push_stream) - 호출자가 직접 관리
@@ -179,8 +179,15 @@ class STTAgent(BaseAgent):
             )
             speech_config.speech_recognition_language = language
 
-            # PushAudioInputStream 생성 (포맷 지정 없음 - Azure가 자동 감지)
-            push_stream = speechsdk.audio.PushAudioInputStream()
+            # 오디오 포맷 설정: 16kHz, 16bit, Mono PCM (프론트엔드 AudioWorklet과 일치)
+            audio_format = speechsdk.audio.AudioStreamFormat(
+                samples_per_second=16000,
+                bits_per_sample=16,
+                channels=1
+            )
+
+            # PushAudioInputStream 생성 (PCM 포맷 지정)
+            push_stream = speechsdk.audio.PushAudioInputStream(stream_format=audio_format)
             audio_config = speechsdk.audio.AudioConfig(stream=push_stream)
 
             # Speech Recognizer 생성
@@ -189,7 +196,7 @@ class STTAgent(BaseAgent):
                 audio_config=audio_config
             )
 
-            logger.info("Streaming STT setup complete")
+            logger.info(f"Streaming STT setup complete (PCM 16kHz 16bit Mono, language={language})")
             return recognizer, push_stream
 
         except Exception as e:

@@ -41,16 +41,15 @@ class VoiceTranslationService:
         self.translation_agent = TranslationAgent.get_instance()
         logger.info("VoiceTranslationService initialized")
 
-    async def setup_stream_with_auto_detect(
+    async def setup_stream_single_language(
         self,
-        candidate_languages: List[str]
+        language: str
     ) -> Tuple[speechsdk.SpeechRecognizer, speechsdk.audio.PushAudioInputStream]:
         """
-        자동 언어 감지 기반 STT 스트림 설정
+        단일 언어 STT 스트림 설정 (언어 감지 없이 빠른 인식)
 
         Args:
-            candidate_languages: 후보 언어 목록 (BCP-47 코드)
-                예: ["ko-KR", "en-US", "ja-JP"]
+            language: 인식 언어 (BCP-47 코드, 예: "en-US")
 
         Returns:
             tuple: (recognizer, push_stream)
@@ -61,11 +60,11 @@ class VoiceTranslationService:
             Exception: STT 스트림 설정 실패 시
         """
         try:
-            logger.info(f"Setting up STT stream with auto-detect: {candidate_languages}")
+            logger.info(f"Setting up STT stream with single language: {language}")
 
-            # STT Agent를 통한 스트림 설정
-            recognizer, push_stream = await self.stt_agent.process_stream_with_auto_detect(
-                candidate_languages=candidate_languages
+            # STT Agent를 통한 단일 언어 스트림 설정
+            recognizer, push_stream = await self.stt_agent.process_stream(
+                language=language
             )
 
             logger.info("STT stream setup complete")
