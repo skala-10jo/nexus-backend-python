@@ -183,6 +183,8 @@ class SessionListItem(BaseModel):
     speakerCount: int = Field(..., alias="speakerCount")
     utteranceCount: int = Field(..., alias="utteranceCount")
     durationSeconds: Optional[float] = Field(default=None, alias="durationSeconds")
+    language: Optional[str] = Field(default="en-US", description="Language code")
+    summary: Optional[str] = Field(default=None, description="AI-generated meeting summary")
     createdAt: datetime = Field(..., alias="createdAt")
 
     class Config:
