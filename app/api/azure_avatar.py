@@ -6,8 +6,14 @@ Azure Avatar API 엔드포인트
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 import logging
+import uuid
 from agent.avatar.azure_avatar_agent import AzureAvatarAgent
-from app.schemas.azure_avatar import AvatarTokenResponse
+from app.schemas.azure_avatar import (
+    AvatarTokenResponse,
+    AvatarApplyRequest,
+    AvatarApplyResponse,
+    VisemeData
+)
 
 logger = logging.getLogger(__name__)
 
@@ -272,3 +278,194 @@ async def synthesize_avatar(request: Request):
             status_code=500,
             detail=f"Avatar 비디오 합성 실패: {str(e)}"
         )
+
+
+@router.post(
+    "/apply",
+    response_model=dict,
+    summary="TTS 결과를 아바타에 적용",
+    description="""
+    기존 TTS 결과(텍스트, 오디오URL)를 받아 아바타 시각화에 필요한 정보를 반환합니다.
+
+    - 기존 TTS 파이프라인은 그대로 유지
+    - Avatar 모듈은 독립적으로 TTS 결과를 구독하여 동작
+    - WebRTC 모드: SDP 교환 정보 제공
+    - Viseme 모드: 입모양 타임라인 제공
+
+    **주의**: 기존 STT→LLM→TTS 흐름은 변경하지 않음
+    """
+)
+async def apply_avatar(request: AvatarApplyRequest):
+    """
+    TTS 결과를 아바타에 적용
+
+    Args:
+        request: AvatarApplyRequest (text, audio_url, language, avatar_style)
+
+    Returns:
+        dict: 아바타 세션 정보 및 viseme 데이터
+    """
+    try:
+        logger.info(f"Avatar apply request: text={request.text[:50]}..., lang={request.language}")
+
+        # 세션 ID 생성
+        session_id = str(uuid.uuid4())
+
+        # Viseme 데이터 생성 (간단한 시뮬레이션)
+        # 실제 구현에서는 Azure Speech SDK의 viseme 이벤트를 사용
+        visemes = _generate_viseme_timeline(request.text, request.language)
+
+        # 응답 생성
+        response_data = AvatarApplyResponse(
+            session_id=session_id,
+            avatar_type="viseme",  # 현재는 viseme 모드만 지원
+            audio_url=request.audio_url,
+            visemes=visemes,
+            duration_ms=len(request.text) * 80  # 대략적인 음성 길이 추정
+        )
+
+        logger.info(f"Avatar session created: {session_id}, visemes={len(visemes)}")
+
+        return {
+            "success": True,
+            "message": "Avatar apply 성공",
+            "data": response_data.model_dump()
+        }
+
+    except Exception as e:
+        logger.error(f"Avatar apply 실패: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Avatar apply 실패: {str(e)}"
+        )
+
+
+@router.post(
+    "/session",
+    response_model=dict,
+    summary="Azure Avatar WebRTC 세션 생성",
+    description="""
+    Azure Avatar 실시간 WebRTC 연결을 위한 세션을 생성합니다.
+
+    - 토큰, ICE 서버, WebSocket URL 등 연결에 필요한 모든 정보 제공
+    - 프론트엔드에서 RTCPeerConnection 설정에 사용
+    """
+)
+async def create_avatar_session(request: Request):
+    """
+    Azure Avatar WebRTC 세션 생성
+
+    Request Body (optional):
+        {
+            "character": "lisa",  // 아바타 캐릭터
+            "style": "casual-sitting"  // 아바타 스타일
+        }
+
+    Returns:
+        dict: 세션 정보 (session_id, ws_url, token, ice_servers 등)
+    """
+    try:
+        body = {}
+        try:
+            body = await request.json()
+        except:
+            pass
+
+        character = body.get("character", "lisa")
+        style = body.get("style", "casual-sitting")
+
+        # Agent 인스턴스에서 세션 생성
+        agent = AzureAvatarAgent.get_instance()
+        session_data = await agent.create_avatar_session(character, style)
+
+        return {
+            "success": True,
+            "message": "Avatar session created",
+            "data": session_data
+        }
+
+    except Exception as e:
+        logger.error(f"Avatar session 생성 실패: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Avatar session 생성 실패: {str(e)}"
+        )
+
+
+@router.get(
+    "/config",
+    response_model=dict,
+    summary="Azure Avatar 연결 설정 조회",
+    description="""
+    Azure Avatar WebRTC 연결에 필요한 모든 설정 정보를 반환합니다.
+
+    - Speech token
+    - ICE servers (TURN)
+    - WebSocket endpoint
+    - 기본 아바타 캐릭터/스타일
+    """
+)
+async def get_avatar_config(request: Request):
+    """
+    Azure Avatar 연결 설정 조회
+
+    Returns:
+        dict: 연결 설정 정보
+    """
+    try:
+        agent = AzureAvatarAgent.get_instance()
+        config = await agent.get_avatar_config()
+
+        return {
+            "success": True,
+            "message": "Avatar config retrieved",
+            "data": config
+        }
+
+    except Exception as e:
+        logger.error(f"Avatar config 조회 실패: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Avatar config 조회 실패: {str(e)}"
+        )
+
+
+def _generate_viseme_timeline(text: str, language: str) -> list:
+    """
+    텍스트에서 viseme 타임라인 생성 (간단한 시뮬레이션)
+
+    실제 구현에서는 Azure Speech SDK의 viseme 콜백을 사용해야 함.
+    여기서는 데모용으로 기본 패턴 생성.
+
+    Viseme ID (0-21):
+    - 0: 입 다물기 (silence)
+    - 1-6: 모음 (a, e, i, o, u 등)
+    - 7-21: 자음들
+
+    Args:
+        text: 변환할 텍스트
+        language: 언어 코드
+
+    Returns:
+        list: VisemeData 리스트
+    """
+    visemes = []
+    offset = 0
+    avg_phoneme_duration = 80  # ms
+
+    # 간단한 문자 → viseme 매핑
+    char_to_viseme = {
+        'a': 1, 'e': 2, 'i': 3, 'o': 4, 'u': 5,
+        'ㅏ': 1, 'ㅓ': 2, 'ㅣ': 3, 'ㅗ': 4, 'ㅜ': 5,
+        ' ': 0, '.': 0, ',': 0, '!': 0, '?': 0
+    }
+
+    for char in text.lower():
+        viseme_id = char_to_viseme.get(char, 10)  # 기본값: 자음
+        visemes.append(VisemeData(offset_ms=offset, viseme_id=viseme_id))
+        offset += avg_phoneme_duration
+
+    # 마지막에 입 다물기
+    visemes.append(VisemeData(offset_ms=offset, viseme_id=0))
+
+    return visemes
