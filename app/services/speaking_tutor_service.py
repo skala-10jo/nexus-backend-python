@@ -509,7 +509,7 @@ class SpeakingTutorService:
         self,
         session_id: str,
         user_id: str,
-        speaker_id: Optional[int],
+        speaker_ids: Optional[List[int]],
         db: Session
     ) -> Dict[str, Any]:
         """Get learning mode data for a session."""
@@ -530,8 +530,9 @@ class SpeakingTutorService:
             SpeakingUtterance.feedback.isnot(None)
         )
 
-        if speaker_id is not None:
-            query = query.filter(SpeakingUtterance.speaker_id == speaker_id)
+        # Filter by multiple speaker IDs
+        if speaker_ids is not None and len(speaker_ids) > 0:
+            query = query.filter(SpeakingUtterance.speaker_id.in_(speaker_ids))
 
         utterances = query.order_by(SpeakingUtterance.sequence_number).all()
 
@@ -544,8 +545,12 @@ class SpeakingTutorService:
                         "utteranceId": str(utt.id),
                         "originalText": utt.text,
                         "improvedText": improved,
-                        "grammarPoints": utt.feedback.get("grammar_corrections", []),
-                        "practiceCount": 0  # TODO: Track practice count
+                        "grammarCorrections": utt.feedback.get("grammar_corrections", []),
+                        "suggestions": utt.feedback.get("suggestions", []),
+                        "score": utt.feedback.get("score", 0),
+                        "scoreBreakdown": utt.feedback.get("score_breakdown", {}),
+                        "speakerId": utt.speaker_id,
+                        "practiceCount": 0
                     })
 
         return {

@@ -196,7 +196,7 @@ async def update_speaker_label(
 @router.get("/learning/{session_id}", response_model=LearningModeResponse)
 async def get_learning_data(
     session_id: str,
-    speaker_id: Optional[int] = Query(default=None, alias="speakerId"),
+    speaker_ids: Optional[str] = Query(default=None, alias="speakerIds"),
     user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -206,16 +206,22 @@ async def get_learning_data(
     Returns utterances that have improvement suggestions,
     formatted for practice/learning mode.
 
-    Optionally filter by speaker ID.
+    Optionally filter by speaker IDs (comma-separated).
     """
     try:
         user_id = str(user["user_id"])
-        logger.info(f"📚 Learning data request: session={session_id}, speaker={speaker_id}")
+
+        # Parse comma-separated speaker IDs
+        parsed_speaker_ids = None
+        if speaker_ids:
+            parsed_speaker_ids = [int(sid.strip()) for sid in speaker_ids.split(',') if sid.strip()]
+
+        logger.info(f"📚 Learning data request: session={session_id}, speakers={parsed_speaker_ids}")
 
         result = speaking_tutor_service.get_learning_data(
             session_id=session_id,
             user_id=user_id,
-            speaker_id=speaker_id,
+            speaker_ids=parsed_speaker_ids,
             db=db
         )
 

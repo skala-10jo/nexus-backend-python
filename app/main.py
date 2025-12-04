@@ -20,6 +20,7 @@ from app.api import (
     voice_translate,
     voice_tts,
     voice_realtime,
+    small_talk,
     speaking_tutor
 )
 
@@ -66,6 +67,7 @@ app.include_router(voice_stt.router, prefix="/api/ai/voice", tags=["Voice STT RE
 app.include_router(voice_translate.router, prefix="/api/ai/voice", tags=["Voice Translation API"])  # Translation API
 app.include_router(voice_tts.router, prefix="/api/ai/voice", tags=["Voice TTS API"])  # TTS API
 app.include_router(voice_realtime.router, tags=["Voice Realtime WebSocket"])  # 실시간 음성 번역
+app.include_router(small_talk.router, tags=["Small Talk"])  # 스몰토크 대화
 app.include_router(speaking_tutor.router, prefix="/api/ai/speaking-tutor", tags=["Speaking Tutor AI"])
 
 
