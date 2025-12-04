@@ -114,6 +114,27 @@ class AzureSpeechTokenManager:
 
         return datetime.now() < self._token_expiry
 
+    async def refresh_token(self) -> Tuple[str, str]:
+        """
+        토큰 강제 갱신 (캐시 무효화)
+
+        Returns:
+            Tuple[str, str]: (token, region)
+        """
+        logger.info("Forcing Azure Speech token refresh")
+        self._cached_token = None
+        self._token_expiry = None
+        return await self.get_token()
+
+    def get_region(self) -> str:
+        """
+        리전 반환
+
+        Returns:
+            str: Azure Speech 리전
+        """
+        return self.region
+
 
 # 하위 호환성을 위한 별칭 (deprecated)
 AzureSpeechAgent = AzureSpeechTokenManager

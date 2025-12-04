@@ -47,7 +47,7 @@ async def get_speech_token(request: Request):
     try:
         # 싱글톤 Agent 인스턴스 가져오기
         agent = AzureSpeechAgent.get_instance()
-        token, region = await agent.process()
+        token, region = await agent.get_token()
 
         response_data = SpeechTokenResponse(
             token=token,
