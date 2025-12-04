@@ -545,8 +545,12 @@ class SpeakingTutorService:
                         "utteranceId": str(utt.id),
                         "originalText": utt.text,
                         "improvedText": improved,
-                        "grammarPoints": utt.feedback.get("grammar_corrections", []),
-                        "practiceCount": 0  # TODO: Track practice count
+                        "grammarCorrections": utt.feedback.get("grammar_corrections", []),
+                        "suggestions": utt.feedback.get("suggestions", []),
+                        "score": utt.feedback.get("score", 0),
+                        "scoreBreakdown": utt.feedback.get("score_breakdown", {}),
+                        "speakerId": utt.speaker_id,
+                        "practiceCount": 0
                     })
 
         return {
