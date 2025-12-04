@@ -28,6 +28,8 @@ class TermData(BaseModel):
     korean: str = Field(..., description="Korean term")
     english: Optional[str] = Field(None, description="English term")
     vietnamese: Optional[str] = Field(None, description="Vietnamese term")
+    japanese: Optional[str] = Field(None, description="Japanese term")
+    chinese: Optional[str] = Field(None, description="Chinese term")
     abbreviation: Optional[str] = Field(None, description="Abbreviation if exists")
     definition: str = Field(..., description="Clear definition of the term")
     context: Optional[str] = Field(None, description="Context where term was used in document")
