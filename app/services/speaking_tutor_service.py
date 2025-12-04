@@ -499,8 +499,6 @@ class SpeakingTutorService:
         flag_modified(session, "speaker_labels")
         db.commit()
 
-        logger.info(f"✅ Updated speaker {speaker_id} label to '{label}' in session {session_id}")
-
         return {
             "speaker_id": speaker_id,
             "label": label,
