@@ -159,7 +159,11 @@ class LearningItem(BaseModel):
     utteranceId: str = Field(..., alias="utteranceId")
     originalText: str = Field(..., alias="originalText")
     improvedText: str = Field(..., alias="improvedText")
-    grammarPoints: List[str] = Field(default=[], alias="grammarPoints")
+    grammarCorrections: List[str] = Field(default=[], alias="grammarCorrections")
+    suggestions: List[str] = Field(default=[])
+    score: int = Field(default=0, ge=0, le=10)
+    scoreBreakdown: Optional[Dict[str, int]] = Field(default={}, alias="scoreBreakdown")
+    speakerId: Optional[int] = Field(default=None, alias="speakerId")
     practiceCount: int = Field(default=0, alias="practiceCount")
 
     class Config:
