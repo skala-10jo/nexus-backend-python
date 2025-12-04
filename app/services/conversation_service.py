@@ -596,8 +596,7 @@ Azure 발음 평가 결과:
                 response_format={"type": "json_object"}
             )
 
-            # JSON 파싱
-            import json
+            # JSON 파싱 (json은 파일 상단에서 이미 import됨)
             feedback = json.loads(response.choices[0].message.content)
 
             # 발음 상세 정보 추가 (있는 경우)
@@ -899,3 +898,70 @@ Azure 발음 평가 결과:
             logger.info(f"Saved feedback for message: session={session.id}, seq={message.sequence_number}")
         else:
             logger.warning(f"User message not found for feedback: {user_message[:50]}...")
+
+    async def generate_hint(
+        self,
+        scenario_id: str,
+        conversation_history: List[Dict[str, str]],
+        last_ai_message: str,
+        user_id: UUID,
+        hint_count: int = 3
+    ) -> Dict[str, Any]:
+        """
+        대화 힌트 생성
+
+        시나리오 맥락과 대화 히스토리를 기반으로 사용자가
+        자연스럽게 응답할 수 있는 힌트를 생성합니다.
+
+        Args:
+            scenario_id: 시나리오 ID
+            conversation_history: 대화 히스토리
+            last_ai_message: 마지막 AI 메시지
+            user_id: 사용자 ID
+            hint_count: 생성할 힌트 개수
+
+        Returns:
+            힌트 목록 및 설명
+        """
+        try:
+            # DB에서 시나리오 조회
+            db = next(get_db())
+            from app.models.scenario import Scenario
+            from agent.scenario.hint_agent import HintAgent
+
+            scenario = db.query(Scenario).filter(
+                Scenario.id == UUID(scenario_id),
+                Scenario.user_id == user_id
+            ).first()
+
+            if not scenario:
+                raise ValueError(f"Scenario not found: {scenario_id}")
+
+            # 시나리오 컨텍스트 구성
+            scenario_context = {
+                "title": scenario.title,
+                "description": scenario.description,
+                "scenario_text": scenario.scenario_text,
+                "roles": scenario.roles,
+                "required_terminology": scenario.required_terminology or [],
+                "difficulty": scenario.difficulty,
+                "language": scenario.language,
+                "category": scenario.category
+            }
+
+            # HintAgent 호출
+            hint_agent = HintAgent()
+            result = await hint_agent.process(
+                scenario_context=scenario_context,
+                conversation_history=conversation_history,
+                last_ai_message=last_ai_message,
+                hint_count=hint_count
+            )
+
+            logger.info(f"Generated {len(result.get('hints', []))} hints for scenario {scenario_id}")
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Error generating hint: {str(e)}")
+            raise
