@@ -9,6 +9,7 @@ import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import desc
 
 from app.config import settings
@@ -492,9 +493,10 @@ class SpeakingTutorService:
             raise ValueError("Session not found or access denied")
 
         # Update speaker labels
-        labels = session.speaker_labels or {}
+        labels = dict(session.speaker_labels or {})
         labels[str(speaker_id)] = label
         session.speaker_labels = labels
+        flag_modified(session, "speaker_labels")
         db.commit()
 
         logger.info(f"✅ Updated speaker {speaker_id} label to '{label}' in session {session_id}")
