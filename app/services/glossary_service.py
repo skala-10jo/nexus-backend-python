@@ -200,14 +200,19 @@ class GlossaryService:
             Number of terms successfully saved
 
         Note:
-            Handles "None" string and None values for project_id
+            Handles "None" string and None values for project_id.
+            Uses savepoints for error isolation - if one term fails,
+            only that term is rolled back, not the entire batch.
         """
         saved_count = 0
+        link_count = 0
 
         # Convert string "None" to actual None
         actual_project_id = None if project_id in ["None", None] else project_id
 
         for term_data in terms_data:
+            # Create savepoint for each term so we can rollback individually
+            savepoint = db.begin_nested()
             try:
                 # Check if term already exists (중복 체크)
                 existing_term = db.query(GlossaryTerm).filter(
@@ -216,7 +221,25 @@ class GlossaryService:
                 ).first()
 
                 if existing_term:
-                    logger.info(f"Term already exists, skipping: '{term_data['korean']}'")
+                    # 기존 용어가 있어도 새 문서와의 연결은 추가해야 함
+                    existing_link = db.query(GlossaryTermDocument).filter(
+                        GlossaryTermDocument.term_id == existing_term.id,
+                        GlossaryTermDocument.file_id == file_id
+                    ).first()
+
+                    if not existing_link:
+                        # 용어-문서 연결 추가 (새 문서에서도 이 용어가 발견됨)
+                        term_doc = GlossaryTermDocument(
+                            term_id=existing_term.id,
+                            file_id=file_id
+                        )
+                        db.add(term_doc)
+                        savepoint.commit()  # Commit the savepoint
+                        link_count += 1
+                        logger.info(f"Term already exists, added document link: '{term_data['korean']}'")
+                    else:
+                        savepoint.commit()  # Nothing to save, but commit savepoint
+                        logger.debug(f"Term and document link already exist, skipping: '{term_data['korean']}'")
                     continue
 
                 # Create GlossaryTerm
@@ -246,18 +269,20 @@ class GlossaryService:
                     file_id=file_id
                 )
                 db.add(term_doc)
+                savepoint.commit()  # Commit the savepoint
                 saved_count += 1
 
             except Exception as e:
-                # Rollback on error to prevent PendingRollbackError
-                db.rollback()
+                # Rollback only this savepoint, not the entire transaction
+                savepoint.rollback()
                 logger.warning(f"Failed to save term '{term_data.get('korean', 'unknown')}': {str(e)}")
                 continue
 
+        # Commit the main transaction
         db.commit()
-        logger.info(f"💾 Job: Saved {saved_count}/{len(terms_data)} terms")
+        logger.info(f"💾 Job: Saved {saved_count} new terms, {link_count} document links (from {len(terms_data)} extracted)")
 
-        return saved_count
+        return saved_count + link_count
 
     def _mark_job_failed(
         self,
