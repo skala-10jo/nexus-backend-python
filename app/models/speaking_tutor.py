@@ -22,7 +22,7 @@ class SpeakingAnalysisSession(Base):
 
     # Primary key
     id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(PGUUID(as_uuid=True), nullable=False, index=True)
+    user_id = Column(PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # File information
     original_filename = Column(String(255), nullable=False)
