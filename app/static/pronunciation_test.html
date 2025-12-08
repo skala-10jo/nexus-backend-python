@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure 발음 평가 테스트</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 24px;
+        }
+        .section {
+            margin-bottom: 24px;
+        }
+        .section-title {
+            font-weight: 600;
+            color: #444;
+            margin-bottom: 12px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .sample-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        .sample-card {
+            background: #f8f9fa;
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .sample-card:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+        }
+        .sample-card.selected {
+            border-color: #667eea;
+            background: #f0f1ff;
+        }
+        .sample-card .level {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+        .level.easy { background: #d4edda; color: #155724; }
+        .level.medium { background: #fff3cd; color: #856404; }
+        .level.hard { background: #f8d7da; color: #721c24; }
+        .sample-card .text {
+            font-size: 14px;
+            color: #333;
+            line-height: 1.4;
+        }
+        .sample-card .korean {
+            font-size: 12px;
+            color: #888;
+            margin-top: 8px;
+        }
+        .custom-text {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 80px;
+            transition: border-color 0.2s;
+        }
+        .custom-text:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .record-section {
+            text-align: center;
+            padding: 32px;
+            background: #f8f9fa;
+            border-radius: 16px;
+        }
+        .record-btn {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+        }
+        .record-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        .record-btn.recording {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            animation: pulse 1.5s infinite;
+        }
+        .record-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); }
+            50% { box-shadow: 0 0 0 20px rgba(231, 76, 60, 0); }
+        }
+        .record-btn svg {
+            width: 32px;
+            height: 32px;
+            margin-bottom: 4px;
+        }
+        .status {
+            color: #666;
+            font-size: 14px;
+        }
+        .status.recording {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+        .results {
+            display: none;
+            margin-top: 24px;
+        }
+        .results.show {
+            display: block;
+        }
+        .score-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .score-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .score-card .label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .score-card .value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #333;
+        }
+        .score-card .value.excellent { color: #27ae60; }
+        .score-card .value.good { color: #3498db; }
+        .score-card .value.fair { color: #f39c12; }
+        .score-card .value.poor { color: #e74c3c; }
+        .overall-score {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .overall-score .label { color: rgba(255,255,255,0.8); }
+        .overall-score .value { color: white; font-size: 48px; }
+        .recognized-text {
+            background: #e8f4fd;
+            border-left: 4px solid #3498db;
+            padding: 16px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 24px;
+        }
+        .recognized-text .label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        .recognized-text .text {
+            font-size: 18px;
+            color: #333;
+        }
+        .words-detail {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .words-detail h3 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 16px;
+        }
+        .word-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .word-chip {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .word-chip.excellent { background: #d4edda; color: #155724; }
+        .word-chip.good { background: #cce5ff; color: #004085; }
+        .word-chip.fair { background: #fff3cd; color: #856404; }
+        .word-chip.poor { background: #f8d7da; color: #721c24; }
+        .word-chip .score {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-left: 4px;
+        }
+        .error-msg {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+            display: none;
+        }
+        .error-msg.show {
+            display: block;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 32px;
+        }
+        .loading.show {
+            display: block;
+        }
+        .loading .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #e9ecef;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .prosody-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .prosody-toggle input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Azure 발음 평가 테스트</h1>
+        <p class="subtitle">마이크로 영어 문장을 읽고 발음 평가를 받아보세요</p>
+
+        <div class="section">
+            <div class="section-title">1. 읽을 문장 선택</div>
+            <div class="sample-cards" id="sampleCards">
+                <!-- 샘플 문장들이 동적으로 로드됩니다 -->
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">또는 직접 입력</div>
+            <textarea class="custom-text" id="customText" placeholder="평가받을 영어 문장을 입력하세요..."></textarea>
+            <div class="prosody-toggle">
+                <input type="checkbox" id="enableProsody" checked>
+                <label for="enableProsody">억양/리듬(Prosody) 평가 활성화</label>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">2. 녹음하기</div>
+            <div class="record-section">
+                <button class="record-btn" id="recordBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3 8V7a.5.5 0 0 1 .5-.5z"/>
+                        <path d="M10 8a2 2 0 1 1-4 0V3a2 2 0 1 1 4 0v5zM8 0a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V3a3 3 0 0 0-3-3z"/>
+                    </svg>
+                    녹음
+                </button>
+                <p class="status" id="status">버튼을 클릭하여 녹음을 시작하세요</p>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>발음 평가 중...</p>
+        </div>
+
+        <div class="error-msg" id="errorMsg"></div>
+
+        <div class="results" id="results">
+            <div class="section-title">3. 평가 결과</div>
+
+            <div class="recognized-text">
+                <div class="label">인식된 텍스트</div>
+                <div class="text" id="recognizedText"></div>
+            </div>
+
+            <div class="score-grid">
+                <div class="score-card overall-score">
+                    <div class="label">종합 점수</div>
+                    <div class="value" id="pronunciationScore">-</div>
+                </div>
+                <div class="score-card">
+                    <div class="label">정확도</div>
+                    <div class="value" id="accuracyScore">-</div>
+                </div>
+                <div class="score-card">
+                    <div class="label">유창성</div>
+                    <div class="value" id="fluencyScore">-</div>
+                </div>
+                <div class="score-card">
+                    <div class="label">완성도</div>
+                    <div class="value" id="completenessScore">-</div>
+                </div>
+                <div class="score-card" id="prosodyCard" style="display: none;">
+                    <div class="label">억양/리듬</div>
+                    <div class="value" id="prosodyScore">-</div>
+                </div>
+            </div>
+
+            <div class="words-detail">
+                <h3>단어별 평가</h3>
+                <div class="word-chips" id="wordChips"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/ai/pronunciation-test';
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+
+        // 요소 참조
+        const recordBtn = document.getElementById('recordBtn');
+        const status = document.getElementById('status');
+        const results = document.getElementById('results');
+        const loading = document.getElementById('loading');
+        const errorMsg = document.getElementById('errorMsg');
+        const customText = document.getElementById('customText');
+        const enableProsody = document.getElementById('enableProsody');
+
+        // 샘플 문장 로드
+        async function loadSamples() {
+            try {
+                const response = await fetch(`${API_BASE}/sample-texts`);
+                const data = await response.json();
+                const container = document.getElementById('sampleCards');
+
+                container.innerHTML = data.samples.map((sample, idx) => `
+                    <div class="sample-card" data-text="${sample.text}" onclick="selectSample(this)">
+                        <span class="level ${sample.level}">${sample.level}</span>
+                        <div class="text">${sample.text}</div>
+                        <div class="korean">${sample.korean}</div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('샘플 로드 실패:', e);
+            }
+        }
+
+        // 샘플 선택
+        function selectSample(card) {
+            document.querySelectorAll('.sample-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            customText.value = card.dataset.text;
+        }
+
+        // 녹음 시작/중지
+        recordBtn.addEventListener('click', async () => {
+            if (!customText.value.trim()) {
+                showError('먼저 읽을 문장을 선택하거나 입력해주세요.');
+                return;
+            }
+
+            if (isRecording) {
+                stopRecording();
+            } else {
+                await startRecording();
+            }
+        });
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => {
+                    audioChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    await sendAudioForAssessment(audioBlob);
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                recordBtn.classList.add('recording');
+                recordBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M5 3.5h6A1.5 1.5 0 0 1 12.5 5v6a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 11V5A1.5 1.5 0 0 1 5 3.5z"/>
+                    </svg>
+                    중지
+                `;
+                status.textContent = '녹음 중... 문장을 읽은 후 중지 버튼을 클릭하세요';
+                status.classList.add('recording');
+                hideError();
+                results.classList.remove('show');
+            } catch (e) {
+                showError('마이크 접근 권한이 필요합니다. 브라우저 설정을 확인해주세요.');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            isRecording = false;
+            recordBtn.classList.remove('recording');
+            recordBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3 8V7a.5.5 0 0 1 .5-.5z"/>
+                    <path d="M10 8a2 2 0 1 1-4 0V3a2 2 0 1 1 4 0v5zM8 0a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V3a3 3 0 0 0-3-3z"/>
+                </svg>
+                녹음
+            `;
+            status.textContent = '처리 중...';
+            status.classList.remove('recording');
+        }
+
+        async function sendAudioForAssessment(audioBlob) {
+            loading.classList.add('show');
+            recordBtn.disabled = true;
+
+            try {
+                // WebM을 WAV로 변환
+                const wavBlob = await convertToWav(audioBlob);
+
+                const formData = new FormData();
+                formData.append('audio', wavBlob, 'recording.wav');
+                formData.append('reference_text', customText.value.trim());
+                formData.append('enable_prosody', enableProsody.checked);
+
+                const response = await fetch(`${API_BASE}/assess`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || '평가 실패');
+                }
+
+                const result = await response.json();
+                displayResults(result);
+            } catch (e) {
+                showError(`평가 중 오류 발생: ${e.message}`);
+            } finally {
+                loading.classList.remove('show');
+                recordBtn.disabled = false;
+                status.textContent = '버튼을 클릭하여 녹음을 시작하세요';
+            }
+        }
+
+        // WebM to WAV 변환
+        async function convertToWav(webmBlob) {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const arrayBuffer = await webmBlob.arrayBuffer();
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+            const numChannels = 1; // 모노
+            const sampleRate = 16000; // Azure 권장
+            const bitsPerSample = 16;
+
+            // 리샘플링
+            const offlineContext = new OfflineAudioContext(numChannels, audioBuffer.duration * sampleRate, sampleRate);
+            const source = offlineContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(offlineContext.destination);
+            source.start();
+
+            const resampledBuffer = await offlineContext.startRendering();
+            const samples = resampledBuffer.getChannelData(0);
+
+            // WAV 헤더 생성
+            const buffer = new ArrayBuffer(44 + samples.length * 2);
+            const view = new DataView(buffer);
+
+            // RIFF header
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + samples.length * 2, true);
+            writeString(view, 8, 'WAVE');
+
+            // fmt chunk
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true); // PCM
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * numChannels * bitsPerSample / 8, true);
+            view.setUint16(32, numChannels * bitsPerSample / 8, true);
+            view.setUint16(34, bitsPerSample, true);
+
+            // data chunk
+            writeString(view, 36, 'data');
+            view.setUint32(40, samples.length * 2, true);
+
+            // 샘플 데이터
+            let offset = 44;
+            for (let i = 0; i < samples.length; i++) {
+                const s = Math.max(-1, Math.min(1, samples[i]));
+                view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+                offset += 2;
+            }
+
+            return new Blob([buffer], { type: 'audio/wav' });
+        }
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+
+        function displayResults(result) {
+            results.classList.add('show');
+
+            document.getElementById('recognizedText').textContent = result.recognized_text || '(인식된 텍스트 없음)';
+
+            // 점수 표시 및 색상 적용
+            setScore('pronunciationScore', result.pronunciation_score);
+            setScore('accuracyScore', result.accuracy_score);
+            setScore('fluencyScore', result.fluency_score);
+            setScore('completenessScore', result.completeness_score);
+
+            // Prosody 점수
+            if (result.prosody_score !== null && result.prosody_score !== undefined) {
+                document.getElementById('prosodyCard').style.display = 'block';
+                setScore('prosodyScore', result.prosody_score);
+            } else {
+                document.getElementById('prosodyCard').style.display = 'none';
+            }
+
+            // 단어별 평가
+            const wordChips = document.getElementById('wordChips');
+            if (result.words && result.words.length > 0) {
+                wordChips.innerHTML = result.words.map(word => {
+                    const scoreClass = getScoreClass(word.accuracy_score);
+                    return `<span class="word-chip ${scoreClass}">${word.word}<span class="score">${Math.round(word.accuracy_score)}</span></span>`;
+                }).join('');
+            } else {
+                wordChips.innerHTML = '<span style="color: #888;">단어별 상세 정보 없음</span>';
+            }
+        }
+
+        function setScore(elementId, score) {
+            const el = document.getElementById(elementId);
+            const rounded = Math.round(score);
+            el.textContent = rounded;
+            el.className = 'value ' + getScoreClass(score);
+        }
+
+        function getScoreClass(score) {
+            if (score >= 80) return 'excellent';
+            if (score >= 60) return 'good';
+            if (score >= 40) return 'fair';
+            return 'poor';
+        }
+
+        function showError(message) {
+            errorMsg.textContent = message;
+            errorMsg.classList.add('show');
+        }
+
+        function hideError() {
+            errorMsg.classList.remove('show');
+        }
+
+        // 초기화
+        loadSamples();
+    </script>
+</body>
+</html>
