@@ -147,12 +147,12 @@ class STTAgent(BaseAgent):
         language: str = "ko-KR"
     ) -> tuple:
         """
-        단일 언어 실시간 스트리밍 STT (언어 감지 없이 빠른 인식)
+        실시간 스트리밍 STT을 위한 Recognizer 및 PushStream 반환
 
         WebSocket에서 사용하기 위한 스트리밍 인터페이스입니다.
 
         Args:
-            language: BCP-47 언어 코드 (예: "en-US", "ko-KR")
+            language: BCP-47 언어 코드
 
         Returns:
             tuple: (recognizer, push_stream) - 호출자가 직접 관리
@@ -179,15 +179,8 @@ class STTAgent(BaseAgent):
             )
             speech_config.speech_recognition_language = language
 
-            # 오디오 포맷 설정: 16kHz, 16bit, Mono PCM (프론트엔드 AudioWorklet과 일치)
-            audio_format = speechsdk.audio.AudioStreamFormat(
-                samples_per_second=16000,
-                bits_per_sample=16,
-                channels=1
-            )
-
-            # PushAudioInputStream 생성 (PCM 포맷 지정)
-            push_stream = speechsdk.audio.PushAudioInputStream(stream_format=audio_format)
+            # PushAudioInputStream 생성 (포맷 지정 없음 - Azure가 자동 감지)
+            push_stream = speechsdk.audio.PushAudioInputStream()
             audio_config = speechsdk.audio.AudioConfig(stream=push_stream)
 
             # Speech Recognizer 생성
@@ -196,7 +189,7 @@ class STTAgent(BaseAgent):
                 audio_config=audio_config
             )
 
-            logger.info(f"Streaming STT setup complete (PCM 16kHz 16bit Mono, language={language})")
+            logger.info("Streaming STT setup complete")
             return recognizer, push_stream
 
         except Exception as e:
@@ -257,6 +250,31 @@ class STTAgent(BaseAgent):
 
             auto_detect_config = speechsdk.AutoDetectSourceLanguageConfig(
                 languages=languages_to_detect
+            )
+
+            # Continuous 언어 감지 모드 (문장마다 언어 재감지)
+            speech_config.set_property(
+                speechsdk.PropertyId.SpeechServiceConnection_LanguageIdMode,
+                "Continuous"
+            )
+
+            # 발화 종료 판단 시간 (기본 500ms → 300ms로 단축)
+            speech_config.set_property(
+                speechsdk.PropertyId.Speech_SegmentationSilenceTimeoutMs,
+                "300"
+            )
+
+            # 끝 침묵 타임아웃 (300ms)
+            speech_config.set_property(
+                speechsdk.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
+                "300"
+            )
+
+            # 초기 침묵 타임아웃 (기본 5000ms → 2000ms로 단축)
+            # 처음 말하기 전 대기 시간
+            speech_config.set_property(
+                speechsdk.PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs,
+                "2000"
             )
 
             # 오디오 포맷 설정: 16kHz, 16bit, Mono PCM (프론트엔드 AudioWorklet과 일치)

@@ -1,17 +1,18 @@
 """
-실시간 음성 인식 WebSocket API (Azure Speech)
+실시간 음성 번역 WebSocket API (Azure Speech + Azure Translator)
 
 엔드포인트:
-- WS /api/ai/voice/realtime: 실시간 음성 인식 WebSocket 연결
+- WS /api/ai/voice/realtime: 실시간 음성 번역 WebSocket 연결
 
 최적화:
-- 단일 언어 STT (언어 감지 없음, 빠른 응답)
+- Azure Speech SDK 자동 언어 감지
+- Azure Translator API 멀티 타겟 번역
 - WebSocket 압축 (permessage-deflate)
 - 비동기 처리 (asyncio)
 - 에러 처리 강화
 """
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 import json
 import uuid
 import logging
@@ -31,7 +32,27 @@ router = APIRouter()
 active_connections: Dict[str, WebSocket] = {}
 
 # 세션별 Session 인스턴스 관리
-session_instances: Dict[str, 'VoiceRealtimeSession'] = {}
+session_instances: Dict[str, 'VoiceTranslationSession'] = {}
+
+
+# ============================================================
+# 언어 코드 변환 헬퍼
+# ============================================================
+def bcp47_to_iso639(bcp47_code: str) -> str:
+    """BCP-47 → ISO 639-1 변환 (ko-KR → ko)"""
+    return bcp47_code.split('-')[0]
+
+
+def iso639_to_bcp47(iso_code: str) -> str:
+    """ISO 639-1 → BCP-47 변환 (ko → ko-KR)"""
+    mapping = {
+        "ko": "ko-KR",
+        "en": "en-US",
+        "ja": "ja-JP",
+        "vi": "vi-VN",
+        "zh": "zh-CN"
+    }
+    return mapping.get(iso_code, f"{iso_code}-XX")
 
 
 # ============================================================
@@ -63,8 +84,8 @@ async def send_standard_message(websocket: WebSocket, message_type: str, **kwarg
     logger.debug(f"📤 표준 메시지 전송: type={message_type}, keys={list(kwargs.keys())}")
 
 
-class VoiceRealtimeSession:
-    """실시간 음성 인식 세션 관리 (단일 언어 STT)"""
+class VoiceTranslationSession:
+    """실시간 음성 번역 세션 관리 (Azure Speech + Azure Translator)"""
 
     def __init__(self, session_id: str, websocket: WebSocket, loop: asyncio.AbstractEventLoop):
         self.session_id = session_id
@@ -79,35 +100,40 @@ class VoiceRealtimeSession:
         self.push_stream: Optional[speechsdk.audio.PushAudioInputStream] = None
 
         # 세션 설정
-        self.language: str = "en-US"  # 인식 언어 (BCP-47)
+        self.selected_languages: List[str] = []  # BCP-47 코드 (ko-KR, en-US, ja-JP)
 
         # 통계
         self.processed_chunks = 0
+        self.total_translations = 0
         self.start_time = time.time()
 
-        logger.info(f"✅ VoiceRealtimeSession 생성: session_id={session_id}")
+        # WebSocket 연결 상태 플래그 (닫힌 후 메시지 전송 방지)
+        self.is_closed = False
 
-    async def initialize(self, language: str):
+        logger.info(f"✅ VoiceTranslationSession 생성: session_id={session_id}")
+
+    async def initialize(self, selected_languages: List[str]):
         """
-        세션 초기화 및 Azure Speech 단일 언어 설정
+        세션 초기화 및 Azure Speech 자동 언어 감지 설정
 
         Args:
-            language: 인식 언어 (BCP-47 코드, 예: "en-US")
+            selected_languages: 선택된 언어 목록 (BCP-47 코드)
+                예: ["ko-KR", "en-US", "ja-JP"]
         """
-        if not language:
+        if not selected_languages or len(selected_languages) < 2:
             await send_standard_message(
                 self.websocket, "error",
-                error="언어가 지정되지 않았습니다"
+                error="최소 2개 이상의 언어를 선택해야 합니다"
             )
             return
 
-        self.language = language
+        self.selected_languages = selected_languages
 
         try:
-            # Azure Speech 단일 언어 스트림 생성 (Service를 통해 Agent 호출)
-            logger.info(f"🔧 Azure Speech 단일 언어 설정: {language}")
-            self.recognizer, self.push_stream = await self.service.setup_stream_single_language(
-                language=language
+            # Azure Speech 자동 언어 감지 스트림 생성 (Service를 통해 Agent 호출)
+            logger.info(f"🔧 Azure Speech 자동 언어 감지 설정: {selected_languages}")
+            self.recognizer, self.push_stream = await self.service.setup_stream_with_auto_detect(
+                candidate_languages=selected_languages
             )
 
             # 이벤트 핸들러 등록 (필수 핸들러만)
@@ -129,6 +155,8 @@ class VoiceRealtimeSession:
 
     def _on_recognizing(self, evt: speechsdk.SpeechRecognitionEventArgs):
         """중간 인식 결과 핸들러 (recognizing)"""
+        if self.is_closed:
+            return
         logger.info(f"🎤 [Recognizing] reason={evt.result.reason}, text='{evt.result.text}'")
         if evt.result.reason == speechsdk.ResultReason.RecognizingSpeech:
             text = evt.result.text
@@ -146,6 +174,8 @@ class VoiceRealtimeSession:
 
     def _on_recognized(self, evt: speechsdk.SpeechRecognitionEventArgs):
         """최종 인식 결과 핸들러 (recognized)"""
+        if self.is_closed:
+            return
         # NoMatch는 무시 (음성이 감지되지 않은 경우)
         if evt.result.reason == speechsdk.ResultReason.NoMatch:
             logger.debug(f"⚪ [NoMatch] 음성 감지 안됨")
@@ -157,14 +187,77 @@ class VoiceRealtimeSession:
             if not text or not text.strip():
                 return
 
+            # 자동 감지된 언어 추출
+            detected_lang_bcp47 = evt.result.properties.get(
+                speechsdk.PropertyId.SpeechServiceConnection_AutoDetectSourceLanguageResult
+            ) or "ko-KR"
+
             # 별도 스레드에서 메인 이벤트 루프로 코루틴 스케줄링
-            # 번역 없이 바로 recognized 메시지 전송
             asyncio.run_coroutine_threadsafe(
-                send_standard_message(
-                    self.websocket, "recognized",
-                    text=text
-                ),
+                self._translate_and_send(text, detected_lang_bcp47, evt),
                 self.loop
+            )
+
+    async def _translate_and_send(
+        self,
+        text: str,
+        detected_lang_bcp47: str,
+        evt: speechsdk.SpeechRecognitionEventArgs
+    ):
+        """
+        번역 수행 및 recognized 메시지 전송
+
+        Args:
+            text: 인식된 텍스트
+            detected_lang_bcp47: 자동 감지된 언어 (BCP-47)
+            evt: 인식 이벤트
+        """
+        if self.is_closed:
+            return
+        try:
+            # 감지된 언어를 제외한 타겟 언어 목록 생성
+            target_langs_bcp47 = [
+                lang for lang in self.selected_languages
+                if lang != detected_lang_bcp47
+            ]
+
+            if not target_langs_bcp47:
+                await send_standard_message(
+                    self.websocket, "recognized",
+                    text=text, detected_language=detected_lang_bcp47,
+                    translations=[], confidence=0.9
+                )
+                return
+
+            # BCP-47 → ISO 639-1 변환
+            detected_lang_iso = bcp47_to_iso639(detected_lang_bcp47)
+            target_langs_iso = [bcp47_to_iso639(lang) for lang in target_langs_bcp47]
+
+            # Azure Translator 멀티 타겟 번역
+            translations = await self.service.translate_to_multiple_languages(
+                text=text,
+                source_lang=detected_lang_iso,
+                target_langs=target_langs_iso
+            )
+
+            # ISO 639-1 → BCP-47 변환
+            translations_bcp47 = [
+                {"lang": iso639_to_bcp47(t["lang"]), "text": t["text"]}
+                for t in translations
+            ]
+
+            # recognized 메시지 전송
+            await send_standard_message(
+                self.websocket, "recognized",
+                text=text, detected_language=detected_lang_bcp47,
+                translations=translations_bcp47, confidence=0.9
+            )
+
+        except Exception as e:
+            logger.error(f"❌ 번역 실패: {str(e)}", exc_info=True)
+            await send_standard_message(
+                self.websocket, "error",
+                error=f"번역 중 오류 발생: {str(e)}"
             )
 
     def _on_canceled(self, evt: speechsdk.SpeechRecognitionCanceledEventArgs):
@@ -221,6 +314,7 @@ class VoiceRealtimeSession:
 
     async def cleanup(self):
         """세션 정리 (Azure Speech 리소스 해제)"""
+        self.is_closed = True  # 먼저 플래그 설정하여 콜백 차단
         try:
             if self.recognizer:
                 self.recognizer.stop_continuous_recognition()
@@ -240,23 +334,24 @@ class VoiceRealtimeSession:
             "session_id": self.session_id,
             "elapsed_time": round(elapsed_time, 2),
             "processed_chunks": self.processed_chunks,
-            "language": self.language
+            "total_translations": self.total_translations,
+            "selected_languages": self.selected_languages
         }
 
 
 @router.websocket("/api/ai/voice/realtime")
-async def voice_realtime_websocket(websocket: WebSocket):
+async def voice_translation_websocket(websocket: WebSocket):
     """
-    실시간 음성 인식 WebSocket 엔드포인트 (단일 언어)
+    실시간 음성 번역 WebSocket 엔드포인트
 
-    클라이언트와 WebSocket 연결을 맺고 실시간으로 음성 인식을 수행합니다.
+    클라이언트와 WebSocket 연결을 맺고 실시간으로 음성 번역을 수행합니다.
 
     프로토콜:
-    1. 클라이언트 → 서버 (JSON): {"language": "en-US"}
-    2. 클라이언트 → 서버 (Binary): 오디오 청크 (PCM, 16kHz, mono)
+    1. 클라이언트 → 서버 (JSON): {"selected_languages": ["ko-KR", "en-US", "ja-JP"]}
+    2. 클라이언트 → 서버 (Binary): 오디오 청크 (WebM/Opus, 16kHz, mono)
     3. 서버 → 클라이언트 (JSON):
        - {"type": "recognizing", "text": "..."}
-       - {"type": "recognized", "text": "..."}
+       - {"type": "recognized", "text": "...", "detected_language": "ko-KR", "translations": [...]}
        - {"type": "error", "error": "..."}
        - {"type": "end"}
     """
@@ -269,7 +364,7 @@ async def voice_realtime_websocket(websocket: WebSocket):
 
     # 세션 ID 생성
     session_id = str(uuid.uuid4())
-    session: Optional[VoiceRealtimeSession] = None
+    session: Optional[VoiceTranslationSession] = None
 
     # 활성 연결 등록
     active_connections[session_id] = websocket
@@ -292,15 +387,15 @@ async def voice_realtime_websocket(websocket: WebSocket):
                     await send_standard_message(websocket, "error", error="잘못된 JSON 형식입니다")
                     continue
 
-                # language로 세션 초기화 (단일 언어)
-                if "language" in data:
-                    language = data["language"]
-                    logger.info(f"📝 [WS-Backend] 세션 초기화 요청: {language}")
+                # selected_languages로 세션 초기화
+                if "selected_languages" in data:
+                    selected_languages = data["selected_languages"]
+                    logger.info(f"📝 [WS-Backend] 세션 초기화 요청: {selected_languages}")
 
                     # 세션 생성 및 초기화 (현재 이벤트 루프 전달 - SDK 콜백의 스레드 안전성 확보)
                     loop = asyncio.get_event_loop()
-                    session = VoiceRealtimeSession(session_id, websocket, loop)
-                    await session.initialize(language)
+                    session = VoiceTranslationSession(session_id, websocket, loop)
+                    await session.initialize(selected_languages)
 
                     # 세션 저장
                     session_instances[session_id] = session
@@ -325,7 +420,7 @@ async def voice_realtime_websocket(websocket: WebSocket):
                 if not session:
                     await send_standard_message(
                         websocket, "error",
-                        error="세션이 초기화되지 않았습니다. language를 먼저 보내세요"
+                        error="세션이 초기화되지 않았습니다. selected_languages를 먼저 보내세요"
                     )
                     continue
 
