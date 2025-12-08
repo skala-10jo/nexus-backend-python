@@ -21,7 +21,8 @@ from app.api import (
     voice_tts,
     voice_realtime,
     small_talk,
-    speaking_tutor
+    speaking_tutor,
+    slack_agent
 )
 
 import logging
@@ -69,6 +70,7 @@ app.include_router(voice_tts.router, prefix="/api/ai/voice", tags=["Voice TTS AP
 app.include_router(voice_realtime.router, tags=["Voice Realtime WebSocket"])  # 실시간 음성 번역
 app.include_router(small_talk.router, tags=["Small Talk"])  # 스몰토크 대화
 app.include_router(speaking_tutor.router, prefix="/api/ai/speaking-tutor", tags=["Speaking Tutor AI"])
+app.include_router(slack_agent.router, tags=["Slack Agent"])  # prefix already defined in slack_agent.py
 
 
 @app.on_event("startup")
