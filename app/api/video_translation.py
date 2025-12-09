@@ -182,7 +182,7 @@ async def translate_video_subtitle(
 
         result = await service.process_translation(
             video_file_id=request.video_file_id,
-            document_ids=request.document_ids,
+            project_id=request.project_id,  # Text.vue 방식: projectId로 용어집 자동 조회
             source_language=request.source_language,
             target_language=request.target_language,
             user_id=user_id,
