@@ -110,6 +110,9 @@ class VoiceTranslationSession:
         self.total_translations = 0
         self.start_time = time.time()
 
+        # WebSocket 연결 상태 플래그 (닫힌 후 메시지 전송 방지)
+        self.is_closed = False
+
         logger.info(f"✅ VoiceTranslationSession 생성: session_id={session_id}")
 
     async def initialize(self, selected_languages: List[str]):
@@ -155,10 +158,8 @@ class VoiceTranslationSession:
 
     def _on_recognizing(self, evt: speechsdk.SpeechRecognitionEventArgs):
         """중간 인식 결과 핸들러 (recognizing)"""
-        # 세션이 닫혔으면 무시
         if self.is_closed:
             return
-
         logger.info(f"🎤 [Recognizing] reason={evt.result.reason}, text='{evt.result.text}'")
         if evt.result.reason == speechsdk.ResultReason.RecognizingSpeech:
             text = evt.result.text
@@ -176,10 +177,8 @@ class VoiceTranslationSession:
 
     def _on_recognized(self, evt: speechsdk.SpeechRecognitionEventArgs):
         """최종 인식 결과 핸들러 (recognized)"""
-        # 세션이 닫혔으면 무시
         if self.is_closed:
             return
-
         # NoMatch는 무시 (음성이 감지되지 않은 경우)
         if evt.result.reason == speechsdk.ResultReason.NoMatch:
             logger.debug(f"⚪ [NoMatch] 음성 감지 안됨")
@@ -216,11 +215,8 @@ class VoiceTranslationSession:
             detected_lang_bcp47: 자동 감지된 언어 (BCP-47)
             evt: 인식 이벤트
         """
-        # 세션이 닫혔으면 번역/전송 스킵
         if self.is_closed:
-            logger.debug(f"⏭️ 세션이 닫혀 번역 스킵: text='{text[:30]}...'")
             return
-
         try:
             # 감지된 언어를 제외한 타겟 언어 목록 생성
             target_langs_bcp47 = [
@@ -321,9 +317,7 @@ class VoiceTranslationSession:
 
     async def cleanup(self):
         """세션 정리 (Azure Speech 리소스 해제)"""
-        # 세션을 닫힘 상태로 설정 (먼저 설정해서 진행 중인 콜백 차단)
-        self.is_closed = True
-
+        self.is_closed = True  # 먼저 플래그 설정하여 콜백 차단
         try:
             if self.recognizer:
                 self.recognizer.stop_continuous_recognition()

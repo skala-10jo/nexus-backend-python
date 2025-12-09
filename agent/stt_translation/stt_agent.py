@@ -260,6 +260,31 @@ class STTAgent(BaseAgent):
                 languages=languages_to_detect
             )
 
+            # Continuous 언어 감지 모드 (문장마다 언어 재감지)
+            speech_config.set_property(
+                speechsdk.PropertyId.SpeechServiceConnection_LanguageIdMode,
+                "Continuous"
+            )
+
+            # 발화 종료 판단 시간 (기본 500ms → 300ms로 단축)
+            speech_config.set_property(
+                speechsdk.PropertyId.Speech_SegmentationSilenceTimeoutMs,
+                "300"
+            )
+
+            # 끝 침묵 타임아웃 (300ms)
+            speech_config.set_property(
+                speechsdk.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
+                "300"
+            )
+
+            # 초기 침묵 타임아웃 (기본 5000ms → 2000ms로 단축)
+            # 처음 말하기 전 대기 시간
+            speech_config.set_property(
+                speechsdk.PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs,
+                "2000"
+            )
+
             # 오디오 포맷 설정: 16kHz, 16bit, Mono PCM (프론트엔드 AudioWorklet과 일치)
             audio_format = speechsdk.audio.AudioStreamFormat(
                 samples_per_second=16000,

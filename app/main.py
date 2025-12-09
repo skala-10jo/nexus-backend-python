@@ -20,8 +20,11 @@ from app.api import (
     voice_translate,
     voice_tts,
     voice_realtime,
+    voice_stt_stream,  # STT 전용 WebSocket (번역 없음)
     small_talk,
-    speaking_tutor
+    speaking_tutor,
+    slack_agent,
+    expression_match
 )
 
 import logging
@@ -66,9 +69,12 @@ app.include_router(voice_stt_ws.router, tags=["Voice STT WebSocket"])  # WebSock
 app.include_router(voice_stt.router, prefix="/api/ai/voice", tags=["Voice STT REST"])  # REST STT
 app.include_router(voice_translate.router, prefix="/api/ai/voice", tags=["Voice Translation API"])  # Translation API
 app.include_router(voice_tts.router, prefix="/api/ai/voice", tags=["Voice TTS API"])  # TTS API
-app.include_router(voice_realtime.router, tags=["Voice Realtime WebSocket"])  # 실시간 음성 번역
+app.include_router(voice_realtime.router, tags=["Voice Realtime WebSocket"])  # 실시간 음성 번역 (자동감지 + 번역)
+app.include_router(voice_stt_stream.router, tags=["Voice STT Stream WebSocket"])  # STT 전용 (번역 없음, 회화연습용)
 app.include_router(small_talk.router, tags=["Small Talk"])  # 스몰토크 대화
 app.include_router(speaking_tutor.router, prefix="/api/ai/speaking-tutor", tags=["Speaking Tutor AI"])
+app.include_router(slack_agent.router, tags=["Slack Agent"])  # prefix already defined in slack_agent.py
+app.include_router(expression_match.router, prefix="/api/ai", tags=["Expression Match AI"])
 
 
 @app.on_event("startup")
