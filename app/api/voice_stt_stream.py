@@ -5,7 +5,7 @@
 - WS /api/ai/voice/stt-stream: 단일 언어 실시간 음성 인식
 
 용도:
-- 시나리오 회화연습 페이지
+- 실무 시나리오 회화연습 페이지
 - Speaking Tutor Learning Mode
 - 번역이 필요 없는 순수 STT 작업
 

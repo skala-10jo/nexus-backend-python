@@ -23,7 +23,8 @@ from app.api import (
     voice_stt_stream,  # STT 전용 WebSocket (번역 없음)
     small_talk,
     speaking_tutor,
-    slack_agent
+    slack_agent,
+    expression_match
 )
 
 import logging
@@ -73,6 +74,7 @@ app.include_router(voice_stt_stream.router, tags=["Voice STT Stream WebSocket"])
 app.include_router(small_talk.router, tags=["Small Talk"])  # 스몰토크 대화
 app.include_router(speaking_tutor.router, prefix="/api/ai/speaking-tutor", tags=["Speaking Tutor AI"])
 app.include_router(slack_agent.router, tags=["Slack Agent"])  # prefix already defined in slack_agent.py
+app.include_router(expression_match.router, prefix="/api/ai", tags=["Expression Match AI"])
 
 
 @app.on_event("startup")

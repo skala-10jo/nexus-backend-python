@@ -257,6 +257,14 @@ class STTAgent(BaseAgent):
                 auth_token=token
             )
 
+            # Continuous Language Identification 모드 활성화
+            # 기본값(AtStart)은 발화 시작 시에만 언어 감지 → 느림
+            # Continuous는 실시간으로 언어 변화를 감지 → 빠른 전환
+            speech_config.set_property(
+                speechsdk.PropertyId.SpeechServiceConnection_LanguageIdMode,
+                "Continuous"
+            )
+
             # 자동 언어 감지 설정 (Azure 제한: 최대 4개 언어만 지원)
             # 사용자가 선택한 언어 중 최대 4개까지만 자동 감지에 사용
             languages_to_detect = candidate_languages[:4] if len(candidate_languages) > 4 else candidate_languages

@@ -27,9 +27,9 @@ class VideoSTTRequest(BaseModel):
 class VideoTranslationRequest(BaseModel):
     """영상 자막 번역 요청"""
     video_file_id: UUID = Field(..., description="영상 파일 ID")
-    document_ids: List[UUID] = Field(
-        default=[],
-        description="컨텍스트로 사용할 문서 ID 리스트 (선택사항)"
+    project_id: Optional[UUID] = Field(
+        default=None,
+        description="프로젝트 ID (용어집 컨텍스트 자동 조회) - Text.vue 방식과 동일"
     )
     source_language: str = Field(..., description="원본 언어 코드")
     target_language: str = Field(..., description="목표 언어 코드")
