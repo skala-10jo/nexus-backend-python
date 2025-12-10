@@ -89,6 +89,7 @@ class STTOnlySession:
 
         # 세션 설정
         self.language: str = "en-US"
+        self.auto_segment: bool = False  # 자동 분절 모드 (침묵 감지)
 
         # 통계
         self.processed_chunks = 0
@@ -96,12 +97,13 @@ class STTOnlySession:
 
         logger.info(f"STTOnlySession created: session_id={session_id}")
 
-    async def initialize(self, language: str):
+    async def initialize(self, language: str, auto_segment: bool = False):
         """
         세션 초기화 및 Azure Speech 단일 언어 설정
 
         Args:
             language: 인식 언어 (BCP-47 코드, 예: "en-US", "ko-KR")
+            auto_segment: 자동 분절 모드 (True: 침묵 감지로 자동 문장 분리)
         """
         # 언어 유효성 검사
         if not language or not isinstance(language, str):
@@ -112,13 +114,15 @@ class STTOnlySession:
             return False
 
         self.language = language
+        self.auto_segment = auto_segment
 
         try:
-            logger.info(f"Setting up STT stream: language={language}")
+            logger.info(f"Setting up STT stream: language={language}, auto_segment={auto_segment}")
 
             # STT Agent를 통해 단일 언어 스트림 설정
             self.recognizer, self.push_stream = await self.agent.process_stream(
-                language=language
+                language=language,
+                auto_segment=auto_segment
             )
 
             # 이벤트 핸들러 등록
@@ -260,7 +264,8 @@ async def voice_stt_stream_websocket(websocket: WebSocket):
 
     프로토콜:
     Client → Server:
-    1. {"language": "en-US"}  # 단일 언어 (BCP-47, string)
+    1. {"language": "en-US", "auto_segment": false}  # 단일 언어 (BCP-47, string)
+       - auto_segment: true면 침묵 감지로 자동 문장 분리 (기본: false)
     2. [Binary: PCM 16kHz 16bit Mono]
     3. {"type": "end"}
 
@@ -303,6 +308,7 @@ async def voice_stt_stream_websocket(websocket: WebSocket):
                 # language로 세션 초기화
                 if "language" in data:
                     language = data["language"]
+                    auto_segment = data.get("auto_segment", False)  # 자동 분절 모드 (기본: False)
 
                     # 배열이 아닌 문자열인지 확인
                     if isinstance(language, list):
@@ -310,12 +316,12 @@ async def voice_stt_stream_websocket(websocket: WebSocket):
                         language = language[0] if language else "en-US"
                         logger.warning(f"Array received, using first element: {language}")
 
-                    logger.info(f"Initializing STT session: language={language}")
+                    logger.info(f"Initializing STT session: language={language}, auto_segment={auto_segment}")
 
                     # 세션 생성 및 초기화
                     loop = asyncio.get_event_loop()
                     session = STTOnlySession(session_id, websocket, loop)
-                    success = await session.initialize(language)
+                    success = await session.initialize(language, auto_segment=auto_segment)
 
                     if success:
                         session_instances[session_id] = session

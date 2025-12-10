@@ -553,7 +553,7 @@ Azure 발음 평가 결과:
 다음의 정확한 JSON 형식으로 피드백을 제공하세요 (모든 텍스트 한글로):
 {{
   "grammar_corrections": [
-    "시제 문제: 'I was go'는 틀렸어요. 'I went' 또는 'I was going'이라고 해야 해요."
+    "<실제 문법 오류가 있으면 여기에 작성. 오류가 없으면 빈 배열 []>"
   ],
   "terminology_usage": {{
     "used": {json.dumps(detected_terms or [], ensure_ascii=False)},
@@ -561,12 +561,10 @@ Azure 발음 평가 결과:
     "feedback": "필수 용어 사용에 대한 피드백을 여기에 작성하세요"
   }},
   "suggestions": [
-    "더 공손한 표현으로는 'Could you please...' 또는 'Would you mind...'를 사용해보세요."
+    "<실제 개선 제안이 있으면 여기에 작성>"
   ],
   "pronunciation_feedback": [
-    "억양 (Prosody): 문장 끝에서 억양이 올라가야 하는데 평평하게 발음했어요. 질문할 때는 끝을 올려서 말해보세요.",
-    "강세 (Stress): 'important'는 두 번째 음절 '-por-'에 강세를 주어야 해요. 'im-POR-tant'처럼 발음해보세요.",
-    "'needed' 단어의 /d/ 소리가 정확하지 않아요. 혀끝을 윗니 뒤에 대고 'd' 소리를 내보세요."
+    "<발음 평가 데이터 기반 실제 피드백>"
   ],
   "score": 7,
   "score_breakdown": {{
@@ -576,6 +574,11 @@ Azure 발음 평가 결과:
     "pronunciation": 7
   }}
 }}
+
+중요한 규칙:
+- grammar_corrections: 사용자 메시지에 **실제로 존재하는** 문법 오류만 지적하세요. 오류가 없으면 빈 배열 []을 반환하세요.
+- 예시나 템플릿 문구를 그대로 복사하지 마세요. 오직 사용자 메시지 분석 결과만 작성하세요.
+- 문법적으로 완벽한 문장에 대해 거짓 오류를 만들어내지 마세요.
 
 중요:
 - terminology_usage의 used와 missed 배열은 위에서 제공한 값을 그대로 사용하세요

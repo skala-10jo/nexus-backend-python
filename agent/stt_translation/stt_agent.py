@@ -144,7 +144,8 @@ class STTAgent(BaseAgent):
 
     async def process_stream(
         self,
-        language: str = "ko-KR"
+        language: str = "ko-KR",
+        auto_segment: bool = False
     ) -> tuple:
         """
         실시간 스트리밍 STT을 위한 Recognizer 및 PushStream 반환
@@ -153,6 +154,7 @@ class STTAgent(BaseAgent):
 
         Args:
             language: BCP-47 언어 코드
+            auto_segment: True면 침묵 감지로 자동 문장 분절 (회화 연습용)
 
         Returns:
             tuple: (recognizer, push_stream) - 호출자가 직접 관리
@@ -166,7 +168,7 @@ class STTAgent(BaseAgent):
             >>> recognizer.stop_continuous_recognition()
         """
         try:
-            logger.info(f"Setting up streaming STT: language={language}")
+            logger.info(f"Setting up streaming STT: language={language}, auto_segment={auto_segment}")
 
             # Azure Speech 토큰 가져오기
             token, region = await self.speech_agent.get_token()
@@ -178,6 +180,20 @@ class STTAgent(BaseAgent):
                 auth_token=token
             )
             speech_config.speech_recognition_language = language
+
+            # 자동 분절 모드: 침묵 감지로 문장 종료 판단
+            if auto_segment:
+                # 발화 종료 판단 시간 (600ms 침묵 시 문장 완료)
+                speech_config.set_property(
+                    speechsdk.PropertyId.Speech_SegmentationSilenceTimeoutMs,
+                    "600"
+                )
+                # 끝 침묵 타임아웃
+                speech_config.set_property(
+                    speechsdk.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
+                    "600"
+                )
+                logger.info("Auto-segment mode enabled (600ms silence timeout)")
 
             # PushAudioInputStream 생성 (포맷 지정 없음 - Azure가 자동 감지)
             push_stream = speechsdk.audio.PushAudioInputStream()
