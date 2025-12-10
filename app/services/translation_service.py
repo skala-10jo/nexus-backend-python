@@ -2,6 +2,10 @@
 번역 Service
 
 여러 Micro Agent를 조율하여 프로젝트 컨텍스트 기반 번역을 제공합니다.
+
+성능 최적화:
+- OptimizedTermDetectorAgent: Aho-Corasick 알고리즘 기반 O(M+Z) 용어 탐지
+- GlossaryCache: 프로젝트별 용어집 TTL 캐싱
 """
 
 import logging
@@ -12,9 +16,12 @@ from sqlalchemy.orm import Session
 # Agent imports
 from agent.translate.simple_translation_agent import SimpleTranslationAgent
 from agent.translate.context_enhanced_translation_agent import ContextEnhancedTranslationAgent
-from agent.term_detection.term_detector_agent import TermDetectorAgent
+from agent.term_detection.optimized_term_detector_agent import OptimizedTermDetectorAgent
 from agent.term_detection.glossary_matcher_agent import GlossaryMatcherAgent
 from agent.summarization.document_summarizer_agent import DocumentSummarizerAgent
+
+# Core imports
+from app.core.glossary_cache import glossary_cache
 
 # Model imports
 from app.models.translation import Translation, TranslationTerm
@@ -33,36 +40,56 @@ class TranslationService:
     - 프로젝트 컨텍스트 및 용어집 데이터 조회
     - 번역 결과를 DB에 저장
     - 탐지된 용어 매핑 관리
+
+    성능 최적화:
+    - OptimizedTermDetectorAgent: Aho-Corasick 기반 O(M+Z) 용어 탐지
+    - GlossaryCache: 프로젝트별 용어집 캐싱 (TTL 5분)
     """
 
     def __init__(self):
         """Micro Agent 인스턴스화"""
         self.simple_translator = SimpleTranslationAgent()
         self.context_translator = ContextEnhancedTranslationAgent()
-        self.term_detector = TermDetectorAgent()
+        # 최적화된 용어 탐지 Agent 사용 (Aho-Corasick 알고리즘)
+        self.term_detector = OptimizedTermDetectorAgent()
         self.glossary_matcher = GlossaryMatcherAgent()
         self.document_summarizer = DocumentSummarizerAgent()
+        # 용어집 캐시 참조
+        self._glossary_cache = glossary_cache
 
     def _fetch_project_glossary(
         self,
         project_id: UUID,
-        db: Session
+        db: Session,
+        use_cache: bool = True
     ) -> List[Dict[str, Any]]:
         """
-        프로젝트의 용어집 조회 (project_files를 통한 조인)
+        프로젝트의 용어집 조회 (캐싱 적용)
 
         Args:
             project_id: 프로젝트 ID
             db: DB 세션
+            use_cache: 캐시 사용 여부 (기본값: True)
 
         Returns:
             용어집 리스트 (딕셔너리 형태)
 
         Note:
-            project_id = NULL인 용어도 조회하기 위해
-            glossary_term_documents → project_files 경로로 조인합니다.
-            이는 파일을 프로젝트에 링크하기 전에 추출된 용어도 포함시킵니다.
+            - 캐시 TTL: 5분 (glossary_cache 기본값)
+            - project_id = NULL인 용어도 조회하기 위해
+              glossary_term_documents → project_files 경로로 조인합니다.
+
+        Performance:
+            - 캐시 히트 시: O(1)
+            - 캐시 미스 시: DB 쿼리 수행
         """
+        # 캐시 확인
+        if use_cache:
+            cached = self._glossary_cache.get(project_id)
+            if cached is not None:
+                logger.debug(f"📦 용어집 캐시 히트: project={project_id}, terms={len(cached)}개")
+                return cached
+
         from sqlalchemy import text
 
         # Native SQL 쿼리: Java의 findTermsByProjectFiles()와 동일한 로직
@@ -92,6 +119,11 @@ class TranslationService:
                 "domain": row.domain,
                 "confidence_score": float(row.confidence_score) if row.confidence_score else None
             })
+
+        # 캐시 저장
+        if use_cache and glossary_terms:
+            self._glossary_cache.set(project_id, glossary_terms)
+            logger.debug(f"💾 용어집 캐시 저장: project={project_id}, terms={len(glossary_terms)}개")
 
         return glossary_terms
 

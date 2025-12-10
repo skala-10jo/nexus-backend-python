@@ -8,7 +8,7 @@ Java Backend V22 스키마와 호환되도록 설계되었습니다 (files/video
 import logging
 import math
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from uuid import UUID
 from pathlib import Path
 from sqlalchemy.orm import Session
@@ -18,6 +18,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from agent.video.stt_agent import VideoSTTAgent
 from agent.video.subtitle_generator_agent import SubtitleGeneratorAgent
 from agent.translate.context_enhanced_translation_agent import ContextEnhancedTranslationAgent
+from agent.term_detection.term_detector_agent import TermDetectorAgent
 
 # Model imports
 from app.models.file import File  # For context documents
@@ -45,6 +46,7 @@ class VideoTranslationService:
         self.stt_agent = VideoSTTAgent()
         self.subtitle_generator = SubtitleGeneratorAgent()
         self.context_translator = ContextEnhancedTranslationAgent()
+        self.term_detector = TermDetectorAgent()
 
     def _get_video_file_by_file_id(self, file_id: UUID, db: Session) -> VideoFile:
         """
@@ -89,6 +91,97 @@ class VideoTranslationService:
             raise ValueError(f"파일을 찾을 수 없습니다: {file_id}")
 
         return file
+
+    def _fetch_project_glossary(
+        self,
+        project_id: UUID,
+        db: Session
+    ) -> List[Dict[str, Any]]:
+        """
+        프로젝트의 용어집 조회 (translation_service.py와 동일한 로직)
+
+        Args:
+            project_id: 프로젝트 ID
+            db: DB 세션
+
+        Returns:
+            용어집 리스트 (딕셔너리 형태)
+
+        Note:
+            project_files 조인을 통해 프로젝트에 연결된 모든 문서의 용어를 조회합니다.
+        """
+        from sqlalchemy import text
+
+        # Native SQL 쿼리: Java의 findTermsByProjectFiles()와 동일한 로직
+        query = text("""
+            SELECT DISTINCT t.*
+            FROM glossary_terms t
+            INNER JOIN glossary_term_documents gtd ON t.id = gtd.term_id
+            INNER JOIN project_files pf ON gtd.file_id = pf.file_id
+            WHERE pf.project_id = :project_id
+        """)
+
+        result = db.execute(query, {"project_id": str(project_id)})
+        rows = result.fetchall()
+
+        # Row를 딕셔너리로 변환
+        glossary_terms = []
+        for row in rows:
+            glossary_terms.append({
+                "id": str(row.id),
+                "korean_term": row.korean_term,
+                "english_term": row.english_term,
+                "vietnamese_term": row.vietnamese_term,
+                "definition": row.definition,
+                "context": row.context,
+                "example_sentence": row.example_sentence,
+                "note": row.note,
+                "domain": row.domain,
+                "confidence_score": float(row.confidence_score) if row.confidence_score else None
+            })
+
+        logger.info(f"📚 프로젝트 용어집 조회: {len(glossary_terms)}개 용어")
+        return glossary_terms
+
+    def _fetch_project_documents_text(
+        self,
+        project_id: UUID,
+        db: Session,
+        max_docs: int = 5
+    ) -> str:
+        """
+        프로젝트의 문서 텍스트 조회 (컨텍스트 생성용)
+
+        Args:
+            project_id: 프로젝트 ID
+            db: DB 세션
+            max_docs: 최대 문서 수 (기본값: 5개)
+
+        Returns:
+            통합된 문서 텍스트
+        """
+        # 프로젝트와 연결된 문서 조회
+        documents = db.query(File).join(
+            File.projects
+        ).filter(
+            File.projects.any(id=project_id)
+        ).limit(max_docs).all()
+
+        document_texts = []
+        for doc in documents:
+            if doc.contents:
+                full_text = "\n".join([
+                    content.content_text
+                    for content in doc.contents
+                    if content.content_text
+                ])
+                if full_text:
+                    document_texts.append(full_text[:2000])  # 각 문서 2000자 제한
+
+        combined_text = "\n\n".join(document_texts)
+        logger.info(f"📄 프로젝트 문서 조회: {len(documents)}개, 총 {len(combined_text)}자")
+
+        return combined_text
 
     def _fetch_context_documents_text(
         self,
@@ -229,18 +322,18 @@ class VideoTranslationService:
     async def process_translation(
         self,
         video_file_id: UUID,
-        document_ids: List[UUID],
+        project_id: Optional[UUID],  # Text.vue 방식: projectId로 용어집 자동 조회
         source_language: str,
         target_language: str,
         user_id: UUID,
         db: Session
     ) -> Dict[str, Any]:
         """
-        영상 자막 번역 및 DB 저장
+        영상 자막 번역 및 DB 저장 (Text.vue 방식과 동일하게 projectId로 용어집 조회)
 
         Args:
             video_file_id: 영상 파일 ID (File ID)
-            document_ids: 컨텍스트 문서 ID 리스트
+            project_id: 프로젝트 ID (용어집 컨텍스트 자동 조회) - None이면 기본 번역
             source_language: 원본 언어
             target_language: 목표 언어
             user_id: 사용자 ID
@@ -249,7 +342,7 @@ class VideoTranslationService:
         Returns:
             번역 결과 딕셔너리
         """
-        logger.info(f"🌐 자막 번역 시작: {source_language} → {target_language}")
+        logger.info(f"🌐 자막 번역 시작: {source_language} → {target_language}, project={project_id}")
 
         # Step 1: VideoFile 조회
         video_file = self._get_video_file_by_file_id(video_file_id, db)
@@ -267,20 +360,64 @@ class VideoTranslationService:
 
         logger.info(f"📝 원본 자막 조회: {len(original_subtitles)}개 세그먼트")
 
-        # Step 3: 컨텍스트 문서 조회
-        context_text = self._fetch_context_documents_text(document_ids, db)
-        context_used = len(context_text) > 0
+        # Step 3: 프로젝트 기반 용어집 및 컨텍스트 조회 (Text.vue 방식)
+        glossary_terms = []
+        context_text = ""
+        context_used = False
+
+        if project_id:
+            # 프로젝트 용어집 조회
+            glossary_terms = self._fetch_project_glossary(project_id, db)
+            logger.info(f"📚 용어집 조회: {len(glossary_terms)}개 용어")
+
+            # 프로젝트 문서 컨텍스트 조회
+            context_text = self._fetch_project_documents_text(project_id, db)
+            context_used = len(context_text) > 0 or len(glossary_terms) > 0
 
         # Step 4: 각 세그먼트 번역 (ContextEnhancedTranslationAgent 사용)
+        # 용어집을 번역용 포맷으로 변환 (한 번만 수행)
+        glossary_for_translation = [
+            {
+                "korean_term": t["korean_term"],
+                "english_term": t.get("english_term"),
+                "vietnamese_term": t.get("vietnamese_term")
+            }
+            for t in glossary_terms
+        ]
+
+        total_detected_count = 0
         for subtitle in original_subtitles:
-            # 번역 (컨텍스트 포함)
+            # 용어 탐지 (TermDetectorAgent 사용)
+            detected_terms = []
+            if glossary_terms:
+                detected_terms = await self.term_detector.process(
+                    text=subtitle.original_text,
+                    glossary_terms=glossary_for_translation,
+                    source_lang=source_language
+                )
+                total_detected_count += len(detected_terms)
+
+                # 탐지된 용어를 DB에 저장 (JSONB 형식)
+                if detected_terms:
+                    subtitle.detected_terms = [
+                        {
+                            "matched_text": t.matched_text,
+                            "korean_term": t.korean_term,
+                            "english_term": t.english_term,
+                            "vietnamese_term": t.vietnamese_term
+                        }
+                        for t in detected_terms
+                    ]
+                    flag_modified(subtitle, "detected_terms")
+
+            # 번역 (컨텍스트 + 용어집 + 탐지된 용어 포함)
             translated_text = await self.context_translator.process(
                 text=subtitle.original_text,
                 source_lang=source_language,
                 target_lang=target_language,
                 context=context_text if context_used else "컨텍스트 없음",
-                glossary_terms=[],  # 용어집은 추후 확장 가능
-                detected_terms=[]
+                glossary_terms=glossary_for_translation,
+                detected_terms=detected_terms
             )
 
             # DB 업데이트 (translations JSON에 target_language 추가)
@@ -295,7 +432,10 @@ class VideoTranslationService:
 
         db.commit()
 
-        logger.info(f"✅ 번역 완료: {len(original_subtitles)}개 세그먼트")
+        logger.info(
+            f"✅ 번역 완료: {len(original_subtitles)}개 세그먼트 "
+            f"(용어집: {len(glossary_terms)}개, 탐지된 용어: {total_detected_count}개)"
+        )
 
         # 응답 구성
         return {
@@ -315,7 +455,7 @@ class VideoTranslationService:
             ],
             "total_segments": len(original_subtitles),
             "context_used": context_used,
-            "context_document_count": len(document_ids),
+            "context_document_count": len(glossary_terms),  # 용어 수로 변경
             "created_at": original_subtitles[0].created_at if original_subtitles else None
         }
 
