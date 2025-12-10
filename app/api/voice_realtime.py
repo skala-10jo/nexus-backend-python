@@ -252,10 +252,12 @@ class VoiceTranslationSession:
             detected_lang_iso = bcp47_to_iso639(detected_lang_bcp47)
             target_langs_iso = [bcp47_to_iso639(lang) for lang in target_langs_bcp47]
 
-            # Azure Translator 멀티 타겟 번역 (프로젝트가 있으면 용어집 후처리 적용)
+            # Azure Translator 멀티 타겟 번역 (프로젝트가 있으면 용어집 후처리 및 용어 탐지 적용)
+            detected_terms = []
+
             if self.project_id and self.db_session:
-                # 용어집 후처리 포함 번역
-                translations = await self.service.translate_to_multiple_languages_with_glossary(
+                # 용어집 후처리 포함 번역 + 용어 탐지
+                translations, detected_terms = await self.service.translate_to_multiple_languages_with_glossary(
                     text=text,
                     source_lang=detected_lang_iso,
                     target_langs=target_langs_iso,
@@ -276,11 +278,12 @@ class VoiceTranslationSession:
                 for t in translations
             ]
 
-            # recognized 메시지 전송
+            # recognized 메시지 전송 (용어 탐지 결과 포함)
             await send_standard_message(
                 self.websocket, "recognized",
                 text=text, detected_language=detected_lang_bcp47,
-                translations=translations_bcp47, confidence=0.9
+                translations=translations_bcp47, confidence=0.9,
+                detected_terms=detected_terms  # 탐지된 전문용어 추가
             )
 
         except Exception as e:

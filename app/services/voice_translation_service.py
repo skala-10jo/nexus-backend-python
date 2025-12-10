@@ -15,12 +15,14 @@ AI Agent 아키텍처 가이드 준수:
 import logging
 from typing import List, Dict, Any, Tuple, Optional
 from uuid import UUID
+from dataclasses import asdict
 import azure.cognitiveservices.speech as speechsdk
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from agent.stt_translation.stt_agent import STTAgent
 from agent.stt_translation.translation_agent import TranslationAgent
+from agent.term_detection.optimized_term_detector_agent import OptimizedTermDetectorAgent, DetectedTerm
 from app.core.glossary_cache import glossary_cache
 
 logger = logging.getLogger(__name__)
@@ -44,6 +46,7 @@ class VoiceTranslationService:
         """Agent 인스턴스화 (싱글톤)"""
         self.stt_agent = STTAgent.get_instance()
         self.translation_agent = TranslationAgent.get_instance()
+        self.term_detector = OptimizedTermDetectorAgent()  # 용어 탐지 Agent 추가
         self._glossary_cache = glossary_cache
         logger.info("VoiceTranslationService initialized")
 
@@ -280,6 +283,99 @@ class VoiceTranslationService:
 
         return replaced_text
 
+    async def detect_terms_in_text(
+        self,
+        text: str,
+        source_lang: str,
+        glossary_terms: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        텍스트에서 전문용어 탐지
+
+        OptimizedTermDetectorAgent를 사용하여 원문에서 용어를 탐지합니다.
+
+        Args:
+            text: 분석할 텍스트
+            source_lang: 원본 언어 (ISO 639-1 코드: ko, en, vi 등)
+            glossary_terms: 용어집 리스트
+
+        Returns:
+            탐지된 용어 리스트 (딕셔너리 형태)
+            [
+                {
+                    "matchedText": "클라우드",
+                    "positionStart": 0,
+                    "positionEnd": 4,
+                    "koreanTerm": "클라우드",
+                    "englishTerm": "Cloud",
+                    "vietnameseTerm": "Đám mây",
+                    "definition": "...",
+                    "domain": "IT"
+                }
+            ]
+        """
+        if not glossary_terms or not text:
+            return []
+
+        try:
+            # OptimizedTermDetectorAgent로 용어 탐지
+            detected_terms = await self.term_detector.process(
+                text=text,
+                glossary_terms=glossary_terms,
+                source_lang=source_lang
+            )
+
+            # DetectedTerm → 딕셔너리 변환 (프론트엔드 형식에 맞게)
+            result = []
+            for term in detected_terms:
+                # 용어집에서 추가 정보 조회 (definition, domain 등)
+                term_info = self._find_term_details(term.korean_term, glossary_terms)
+
+                result.append({
+                    "matchedText": term.matched_text,
+                    "positionStart": term.position_start,
+                    "positionEnd": term.position_end,
+                    "koreanTerm": term.korean_term,
+                    "englishTerm": term.english_term,
+                    "vietnameseTerm": term.vietnamese_term,
+                    "japaneseTerm": term_info.get("japanese_term"),
+                    "chineseTerm": term_info.get("chinese_term"),
+                    "definition": term_info.get("definition"),
+                    "domain": term_info.get("domain"),
+                    "glossaryTermId": str(term_info.get("id")) if term_info.get("id") else None
+                })
+
+            logger.info(f"🔍 용어 탐지 완료: {len(result)}개 용어 발견")
+            return result
+
+        except Exception as e:
+            logger.error(f"용어 탐지 실패: {str(e)}", exc_info=True)
+            return []
+
+    def _find_term_details(
+        self,
+        korean_term: str,
+        glossary_terms: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        용어집에서 해당 용어의 상세 정보 조회
+
+        Args:
+            korean_term: 한글 용어
+            glossary_terms: 용어집 리스트
+
+        Returns:
+            용어 상세 정보 (없으면 빈 딕셔너리)
+        """
+        if not korean_term:
+            return {}
+
+        for term in glossary_terms:
+            if term.get("korean_term") == korean_term:
+                return term
+
+        return {}
+
     async def translate_to_multiple_languages_with_glossary(
         self,
         text: str,
@@ -287,11 +383,12 @@ class VoiceTranslationService:
         target_langs: List[str],
         project_id: Optional[UUID],
         db: Optional[Session]
-    ) -> List[Dict[str, str]]:
+    ) -> Tuple[List[Dict[str, str]], List[Dict[str, Any]]]:
         """
-        멀티 타겟 번역 + 용어집 후처리
+        멀티 타겟 번역 + 용어집 후처리 + 용어 탐지
 
-        프로젝트가 선택된 경우 용어집을 조회하여 번역 결과에 후처리를 적용합니다.
+        프로젝트가 선택된 경우 용어집을 조회하여 번역 결과에 후처리를 적용하고,
+        원문에서 탐지된 전문용어 목록도 함께 반환합니다.
 
         Args:
             text: 원본 텍스트
@@ -301,14 +398,15 @@ class VoiceTranslationService:
             db: DB 세션 (project_id가 있는 경우 필수)
 
         Returns:
-            List[Dict[str, str]]: [
-                {"lang": "en", "text": "Hello"},
-                {"lang": "ja", "text": "こんにちは"}
-            ]
+            Tuple[translations, detected_terms]:
+            - translations: [{"lang": "en", "text": "Hello"}, ...]
+            - detected_terms: [{"matchedText": "클라우드", ...}, ...]
 
         Raises:
             Exception: 번역 실패 시
         """
+        detected_terms = []
+
         try:
             logger.info(
                 f"Multi-target translation with glossary: {source_lang} → {target_langs}, "
@@ -322,14 +420,21 @@ class VoiceTranslationService:
                 target_langs=target_langs
             )
 
-            # 2. 프로젝트가 선택된 경우 용어집 후처리 적용
+            # 2. 프로젝트가 선택된 경우 용어집 후처리 및 용어 탐지 적용
             if project_id and db:
                 glossary_terms = self.fetch_project_glossary(project_id, db)
 
                 if glossary_terms:
-                    logger.info(f"📚 용어집 조회: {len(glossary_terms)}개 → 후처리 적용")
+                    logger.info(f"📚 용어집 조회: {len(glossary_terms)}개 → 후처리 및 용어 탐지 적용")
 
-                    # 각 번역 결과에 용어집 후처리 적용
+                    # 2-1. 원문에서 용어 탐지
+                    detected_terms = await self.detect_terms_in_text(
+                        text=text,
+                        source_lang=source_lang,
+                        glossary_terms=glossary_terms
+                    )
+
+                    # 2-2. 각 번역 결과에 용어집 후처리 적용
                     for translation in translations:
                         target_lang = translation.get("lang")
                         original_text = translation.get("text")
@@ -345,8 +450,8 @@ class VoiceTranslationService:
                 else:
                     logger.info("📚 프로젝트에 연결된 용어집이 없습니다")
 
-            logger.info(f"Translation complete: {len(translations)} languages")
-            return translations
+            logger.info(f"Translation complete: {len(translations)} languages, {len(detected_terms)} terms detected")
+            return translations, detected_terms
 
         except Exception as e:
             logger.error(f"Translation with glossary failed: {str(e)}", exc_info=True)
