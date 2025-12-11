@@ -56,7 +56,7 @@ async def send_message(websocket: WebSocket, message_type: str, **kwargs):
         message_type: 메시지 타입
         **kwargs: 메시지 데이터
     """
-    ALLOWED_TYPES = {"recognizing", "recognized", "error", "end"}
+    ALLOWED_TYPES = {"recognizing", "recognized", "error", "end", "pong"}
 
     if message_type not in ALLOWED_TYPES:
         logger.warning(f"Unknown message type: {message_type}")
@@ -335,11 +335,14 @@ async def voice_stt_stream_websocket(websocket: WebSocket):
                     await send_message(websocket, "end")
                     break
 
+                # Heartbeat ping 처리 - pong 응답
+                elif data.get("type") == "ping":
+                    logger.debug(f"💓 [STT-Stream] Heartbeat ping received: session_id={session_id}")
+                    await send_message(websocket, "pong")
+
                 else:
-                    await send_message(
-                        websocket, "error",
-                        error=f"Unknown message: {data}"
-                    )
+                    # 알 수 없는 메시지는 경고만 남기고 연결 유지
+                    logger.warning(f"Unknown message type (ignored): {data}")
 
             # Binary 메시지 처리 (오디오 청크)
             elif "bytes" in message:

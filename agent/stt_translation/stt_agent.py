@@ -294,11 +294,12 @@ class STTAgent(BaseAgent):
                 "300"
             )
 
-            # 초기 침묵 타임아웃 (기본 5000ms → 2000ms로 단축)
-            # 처음 말하기 전 대기 시간
+            # 초기 침묵 타임아웃 (기본 5000ms → 1500ms로 단축)
+            # 처음 말하기 전 대기 시간 - 사용자가 말하기 시작할 여유 시간 확보
+            # 너무 짧으면 (500ms) 마이크 누르자마자 말 안하면 세션 종료됨
             speech_config.set_property(
                 speechsdk.PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs,
-                "2000"
+                "1500"
             )
 
             # 오디오 포맷 설정: 16kHz, 16bit, Mono PCM (프론트엔드 AudioWorklet과 일치)

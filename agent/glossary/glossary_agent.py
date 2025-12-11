@@ -1,6 +1,6 @@
 """
-Glossary extraction agent using GPT-4o.
-Extracts technical terms from text with definitions, context, and confidence scores.
+GPT-4o-mini 기반 용어집 추출 에이전트.
+텍스트에서 전문 용어를 추출하고, 정의, 맥락, 신뢰도 점수를 제공합니다.
 """
 import json
 import math
@@ -14,16 +14,16 @@ logger = logging.getLogger(__name__)
 
 class GlossaryAgent(BaseAgent):
     """
-    AI agent for extracting technical glossary terms from documents.
+    문서에서 전문 용어를 추출하는 AI 에이전트.
 
-    Uses GPT-4o to analyze text and extract IT/project management related terms
-    with Korean/English translations, definitions, context, and confidence scores.
+    GPT-4o-mini를 사용하여 텍스트를 분석하고, 다양한 분야의 전문 용어를
+    한국어/영어/베트남어/일본어/중국어 번역, 정의, 맥락, 신뢰도 점수와 함께 추출합니다.
 
-    Example:
+    사용 예시:
         >>> agent = GlossaryAgent()
         >>> text = "클라우드 컴퓨팅은 인터넷을 통해 IT 리소스를 제공하는 서비스입니다..."
         >>> terms = await agent.process(text, max_terms=50)
-        >>> print(f"Extracted {len(terms)} terms")
+        >>> print(f"{len(terms)}개 용어 추출됨")
         >>> print(terms[0])
         {
             "korean": "클라우드 컴퓨팅",
@@ -37,20 +37,31 @@ class GlossaryAgent(BaseAgent):
     """
 
     def __init__(self):
-        """Initialize GlossaryAgent with system prompt."""
+        """시스템 프롬프트로 GlossaryAgent를 초기화합니다."""
         super().__init__()
         self.system_prompt = self._create_system_prompt()
 
     def _create_system_prompt(self) -> str:
         """
-        Create system prompt for GPT-4o.
+        GPT-4o-mini용 시스템 프롬프트를 생성합니다.
 
-        Returns:
-            System prompt string
+        반환값:
+            시스템 프롬프트 문자열
         """
         return """
-당신은 전문 용어 추출 및 다국어 번역 전문가입니다.
-주어진 텍스트에서 IT 및 프로젝트 관리 관련 전문 용어를 추출하고, 한국어/영어/베트남어/일본어/중국어로 번역하며 분석합니다.
+당신은 다양한 분야의 전문 용어 추출 및 다국어 번역 전문가입니다.
+주어진 텍스트에서 해당 분야의 전문 용어를 추출하고, 한국어/영어/베트남어/일본어/중국어로 번역하며 분석합니다.
+
+**지원 분야**:
+- IT/소프트웨어: 프로그래밍, 네트워크, 클라우드, 보안, 데이터베이스 등
+- 프로젝트 관리: 애자일, 스크럼, 일정 관리, 리스크 관리 등
+- 비즈니스/경영: 전략, 마케팅, 인사, 재무, 운영 등
+- 의료/헬스케어: 의학 용어, 약학, 의료 기기, 임상 등
+- 법률/법무: 계약, 소송, 규정, 지적재산권 등
+- 금융/회계: 투자, 은행, 보험, 세무, 감사 등
+- 제조/엔지니어링: 생산, 품질관리, 설계, 자동화 등
+- 마케팅/광고: 브랜딩, 디지털 마케팅, PR, 미디어 등
+- 기타 전문 분야: 문서의 맥락에 따라 자동 감지
 
 **출력 형식 (JSON)**:
 {
@@ -66,26 +77,27 @@ class GlossaryAgent(BaseAgent):
       "context": "문서 내에서 사용된 구체적인 맥락 (원문 인용)",
       "example_sentence": "용어 사용 예문 (문서에서 발췌하거나 생성)",
       "note": "추가 설명 및 참고사항 (있는 경우만, 없으면 null)",
-      "domain": "분야 (IT, Project Management, Business, Development 등)",
+      "domain": "분야 (IT, Healthcare, Legal, Finance, Manufacturing, Marketing, Business, Engineering 등)",
       "confidence": 0.95
     }
   ]
 }
 
 **추출 기준**:
-1. IT, 프로젝트 관리, 비즈니스 관련 전문 용어만 추출
-2. 일반적인 단어는 제외 (예: "컴퓨터" 제외, "클라우드 컴퓨팅" 포함)
-3. 약어는 문서에서 명확히 정의된 경우만 포함
-4. 정의는 명확하고 간결하게 (1-2문장)
-5. 맥락은 실제 문서에서 사용된 문장을 그대로 인용
-6. 예문은 문서에서 발췌하거나, 자연스러운 예문 생성
-7. 추가 설명은 용어 이해에 도움이 되는 참고사항 제공
-8. 다국어 번역은 정확하고 자연스럽게:
+1. 문서의 분야를 자동으로 감지하고, 해당 분야의 전문 용어를 추출
+2. 일반적인 단어는 제외하고, 전문적이거나 기술적인 용어만 추출
+3. 복합 용어 우선 (예: "컴퓨터" 제외, "클라우드 컴퓨팅" 포함)
+4. 약어는 문서에서 명확히 정의된 경우만 포함
+5. 정의는 해당 분야의 전문적 맥락에서 명확하고 간결하게 (1-2문장)
+6. 맥락은 실제 문서에서 사용된 문장을 그대로 인용
+7. 예문은 문서에서 발췌하거나, 자연스러운 예문 생성
+8. 추가 설명은 용어 이해에 도움이 되는 참고사항 제공
+9. 다국어 번역은 해당 분야의 표준 번역 사용:
    - 베트남어: Tiếng Việt (베트남어)
-   - 일본어: 日本語 (일본어, IT 용어는 가타카나 우선, 필요시 한자 병기)
-   - 중국어: 简体中文 (간체 중국어, IT 용어는 업계 표준 번역 사용)
-9. 신뢰도는 해당 용어의 전문성 정도 (0.0-1.0)
-10. 도메인은 가장 적합한 분야 하나만 선택
+   - 일본어: 日本語 (전문 분야별 표준 용어 사용)
+   - 중국어: 简体中文 (간체 중국어, 업계 표준 번역 사용)
+10. 신뢰도는 해당 용어의 전문성 정도 (0.0-1.0)
+11. 도메인은 가장 적합한 분야 하나만 선택
 
 **주의사항**:
 - 중복된 용어는 하나만 포함
@@ -93,16 +105,17 @@ class GlossaryAgent(BaseAgent):
 - 외래어는 모든 언어로 번역
 - 각 언어 번역이 없는 경우:
   * 베트남어: 영어를 베트남어로 번역
-  * 일본어: 영어를 일본어로 번역 (IT 용어는 가타카나 우선, 예: クラウド)
-  * 중국어: 영어를 간체 중국어로 번역 (IT 용어는 음역 또는 의역, 예: 云计算)
+  * 일본어: 영어를 일본어로 번역 (기술 용어는 가타카나 우선)
+  * 중국어: 영어를 간체 중국어로 번역 (업계 표준 번역 사용)
 - 일본어 번역 시:
-  * IT 용어: 가타카나 사용 (예: データベース, クラウド)
-  * 일반 용어: 한자 또는 히라가나 사용
-  * 필요시 한자와 가타카나 병기 (예: 人工知能(AI))
+  * 기술/외래어: 가타카나 사용 (예: データベース, クラウド)
+  * 전통적 용어: 한자 또는 히라가나 사용
+  * 필요시 병기 (예: 人工知能(AI))
 - 중국어 번역 시:
   * 간체자(简体字) 사용 필수
-  * IT 용어는 업계 표준 번역 사용 (예: 云计算, 人工智能)
+  * 해당 분야의 중국 업계 표준 번역 사용
   * 음역보다는 의역 우선
+- 의료/법률 등 전문 분야는 해당 분야의 공식 용어 사용
 - 반드시 JSON 형식으로만 응답
 """
 
@@ -113,76 +126,76 @@ class GlossaryAgent(BaseAgent):
         chunk_size: int = 5000
     ) -> List[Dict[str, Any]]:
         """
-        Extract glossary terms from text.
+        텍스트에서 용어집 용어를 추출합니다.
 
-        Process:
-        1. Split text into chunks
-        2. Extract terms from each chunk using GPT-4o
-        3. Deduplicate terms across chunks
-        4. Sort by confidence score
-        5. Return top N terms
+        처리 과정:
+        1. 텍스트를 청크로 분할
+        2. 각 청크에서 GPT-4o-mini를 사용하여 용어 추출
+        3. 청크 간 용어 중복 제거
+        4. 신뢰도 점수로 정렬
+        5. 상위 N개 용어 반환
 
-        Args:
-            text: Full text to extract terms from
-            max_terms: Maximum number of terms to return (default: 50)
-            chunk_size: Size of text chunks in characters (default: 5000)
+        매개변수:
+            text: 용어를 추출할 전체 텍스트
+            max_terms: 반환할 최대 용어 수 (기본값: 50)
+            chunk_size: 텍스트 청크 크기 (문자 수, 기본값: 5000)
 
-        Returns:
-            List of extracted terms, each with:
-                - korean: Korean term
-                - english: English term (optional)
-                - abbreviation: Abbreviation (optional)
-                - definition: Term definition
-                - context: Usage context from document
-                - domain: Domain category (IT, Project Management, etc.)
-                - confidence: Confidence score (0.0-1.0)
+        반환값:
+            추출된 용어 리스트. 각 용어는 다음을 포함:
+                - korean: 한국어 용어
+                - english: 영어 용어 (선택사항)
+                - abbreviation: 약어 (선택사항)
+                - definition: 용어 정의
+                - context: 문서 내 사용 맥락
+                - domain: 분야 (IT, Healthcare, Legal 등)
+                - confidence: 신뢰도 점수 (0.0-1.0)
 
-        Raises:
-            Exception: If extraction fails
+        예외:
+            Exception: 추출 실패 시
 
-        Example:
+        사용 예시:
             >>> agent = GlossaryAgent()
             >>> text = load_document("document.pdf")
             >>> terms = await agent.process(text, max_terms=30)
             >>> for term in terms[:5]:
             ...     print(f"{term['korean']}: {term['definition']}")
         """
-        logger.info(f"🚀 Starting term extraction (text length: {len(text)} chars, max terms: {max_terms})")
+        logger.info(f"🚀 용어 추출 시작 (텍스트 길이: {len(text)}자, 최대 용어 수: {max_terms})")
 
-        # 1. Split text into chunks
+        # 1. 텍스트를 청크로 분할
         chunks = split_text_into_chunks(text, chunk_size)
 
-        # 2. Calculate terms per chunk
-        terms_per_chunk = math.ceil(max_terms / len(chunks)) + 5  # +5 buffer for deduplication
+        # 2. 청크당 용어 수 계산
+        terms_per_chunk = math.ceil(max_terms / len(chunks)) + 5  # 중복 제거를 위한 +5 버퍼
 
-        # 3. Extract terms from each chunk
+        # 3. 각 청크에서 용어 추출
         all_terms = []
         for i, chunk in enumerate(chunks, 1):
-            logger.info(f"📝 Processing chunk {i}/{len(chunks)}")
+            logger.info(f"📝 청크 처리 중 {i}/{len(chunks)}")
             try:
                 terms = await self._extract_chunk(chunk, terms_per_chunk)
                 all_terms.extend(terms)
             except Exception as e:
-                logger.warning(f"Failed to extract from chunk {i}: {str(e)}")
+                logger.warning(f"청크 {i} 추출 실패: {str(e)}")
                 continue
 
         if not all_terms:
-            logger.warning("No terms extracted from any chunk")
+            logger.warning("어떤 청크에서도 용어가 추출되지 않았습니다")
             return []
 
-        logger.info(f"📊 Total terms extracted: {len(all_terms)}")
+        logger.info(f"📊 총 추출된 용어 수: {len(all_terms)}")
 
-        # 4. Deduplicate terms
+        # 4. 용어 중복 제거
         unique_terms = deduplicate_terms(all_terms)
 
-        # 5. Sort by confidence (descending)
+        # 5. 신뢰도 기준 내림차순 정렬
         unique_terms.sort(key=lambda x: float(x.get('confidence', 0)), reverse=True)
 
-        # 6. Return top N terms
+        # 6. 상위 N개 용어 반환
         result_terms = unique_terms[:max_terms]
 
         avg_confidence = sum(float(t.get('confidence', 0)) for t in result_terms) / len(result_terms)
-        logger.info(f"✅ Term extraction complete: {len(result_terms)} terms (avg confidence: {avg_confidence:.2f})")
+        logger.info(f"✅ 용어 추출 완료: {len(result_terms)}개 용어 (평균 신뢰도: {avg_confidence:.2f})")
 
         return result_terms
 
@@ -192,52 +205,53 @@ class GlossaryAgent(BaseAgent):
         terms_per_chunk: int = 20
     ) -> List[Dict[str, Any]]:
         """
-        Extract terms from a single text chunk using GPT-4o.
+        GPT-4o-mini를 사용하여 단일 텍스트 청크에서 용어를 추출합니다.
 
-        This is a private method called by process() for each chunk.
+        process()에서 각 청크에 대해 호출하는 private 메서드입니다.
 
-        Args:
-            text_chunk: Text chunk to process
-            terms_per_chunk: Maximum number of terms to extract
+        매개변수:
+            text_chunk: 처리할 텍스트 청크
+            terms_per_chunk: 추출할 최대 용어 수
 
-        Returns:
-            List of extracted terms
+        반환값:
+            추출된 용어 리스트
 
-        Raises:
-            Exception: If API call fails
+        예외:
+            Exception: API 호출 실패 시
         """
         try:
             user_prompt = f"""
 다음 텍스트에서 전문 용어를 추출하세요.
+문서의 분야를 자동으로 감지하고, 해당 분야의 전문 용어를 추출하세요.
 최대 {terms_per_chunk}개의 용어를 추출하며, 신뢰도가 높은 순서로 정렬하세요.
 
 텍스트:
 {text_chunk}
 """
 
-            logger.info(f"🤖 Calling GPT-4o API (chunk size: {len(text_chunk)} chars)")
+            logger.info(f"GPT-4o-mini API 호출 중 (청크 크기: {len(text_chunk)}자)")
 
             response = await self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                temperature=0.3,  # Lower temperature for more consistent results
+                temperature=0.3,  # 일관된 결과를 위한 낮은 temperature
                 response_format={"type": "json_object"}
             )
 
-            # Parse response
+            # 응답 파싱
             content = response.choices[0].message.content
             result = json.loads(content)
             terms = result.get('terms', [])
 
-            logger.info(f"✅ GPT-4o returned {len(terms)} terms")
+            logger.info(f"✅ GPT-4o-mini가 {len(terms)}개 용어 반환")
             return terms
 
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse GPT-4o response as JSON: {str(e)}")
+            logger.error(f"GPT-4o-mini 응답을 JSON으로 파싱 실패: {str(e)}")
             return []
         except Exception as e:
-            logger.error(f"GPT-4o API call failed: {str(e)}")
-            raise Exception(f"GPT-4o API error: {str(e)}")
+            logger.error(f"GPT-4o-mini API 호출 실패: {str(e)}")
+            raise Exception(f"GPT-4o-mini API 에러: {str(e)}")
