@@ -1,8 +1,8 @@
 """
-Small Talk Agent.
+스몰토크 에이전트.
 
-Generates casual conversation responses for daily English practice.
-No persona selection - starts conversation automatically on dashboard entry.
+일상 영어 연습을 위한 캐주얼 대화 응답을 생성합니다.
+페르소나 선택 없음 - 대시보드 진입 시 자동으로 대화를 시작합니다.
 """
 import json
 import logging
@@ -178,10 +178,10 @@ HINT_SYSTEM_PROMPT = """
 
 class SmallTalkAgent(BaseAgent):
     """
-    AI agent for casual small talk conversations.
+    캐주얼 스몰토크 대화를 위한 AI 에이전트.
 
-    Generates natural, contextual responses for daily English conversation practice.
-    Starts automatically when user enters the dashboard.
+    일상 영어 대화 연습을 위한 자연스럽고 맥락에 맞는 응답을 생성합니다.
+    사용자가 대시보드에 진입하면 자동으로 시작됩니다.
 
     Example:
         >>> agent = SmallTalkAgent()
@@ -199,23 +199,23 @@ class SmallTalkAgent(BaseAgent):
         conversation_history: List[Dict[str, str]]
     ) -> str:
         """
-        Generate a response to the user's message.
+        사용자 메시지에 대한 응답을 생성합니다.
 
         Args:
-            user_message: The user's message
-            conversation_history: Previous messages in the conversation
+            user_message: 사용자의 메시지
+            conversation_history: 대화 내 이전 메시지들
 
         Returns:
-            AI response
+            AI 응답
         """
         return await self.generate_response(user_message, conversation_history)
 
     async def generate_greeting(self) -> str:
         """
-        Generate an initial greeting for starting a conversation.
+        대화 시작을 위한 초기 인사말을 생성합니다.
 
         Returns:
-            Initial greeting message
+            초기 인사말 메시지
         """
         current_time = datetime.now()
         time_of_day = self._get_time_of_day(current_time.hour)
@@ -268,14 +268,14 @@ class SmallTalkAgent(BaseAgent):
         conversation_history: List[Dict[str, str]]
     ) -> str:
         """
-        Generate a response to the user's message.
+        사용자 메시지에 대한 응답을 생성합니다.
 
         Args:
-            user_message: The user's latest message
-            conversation_history: Previous messages
+            user_message: 사용자의 최신 메시지
+            conversation_history: 이전 메시지들
 
         Returns:
-            AI response message
+            AI 응답 메시지
         """
         current_time = datetime.now()
         time_of_day = self._get_time_of_day(current_time.hour)
@@ -295,15 +295,15 @@ class SmallTalkAgent(BaseAgent):
 4. 간단하고 일상적인 영어 사용
 5. AI라고 절대 언급하지 않기"""
 
-        # Build conversation messages
+        # 대화 메시지 구성
         messages = [{"role": "system", "content": system_prompt}]
 
-        # Add conversation history (last 8 messages)
+        # 대화 히스토리 추가 (최근 8개 메시지)
         for msg in conversation_history[-8:]:
             role = "assistant" if msg.get("speaker") == "ai" else "user"
             messages.append({"role": role, "content": msg.get("message", "")})
 
-        # Add current user message
+        # 현재 사용자 메시지 추가
         messages.append({"role": "user", "content": user_message})
 
         try:
@@ -329,17 +329,17 @@ class SmallTalkAgent(BaseAgent):
         audio_data: str = None
     ) -> Dict[str, Any]:
         """
-        Generate feedback for the user's message.
+        사용자 메시지에 대한 피드백을 생성합니다.
 
         Args:
-            user_message: The message to evaluate
-            conversation_history: Conversation context
-            audio_data: Optional base64 audio for pronunciation
+            user_message: 평가할 메시지
+            conversation_history: 대화 컨텍스트
+            audio_data: 발음 평가를 위한 선택적 base64 오디오
 
         Returns:
-            Feedback dictionary with corrections, suggestions, scores
+            교정, 제안, 점수를 포함한 피드백 딕셔너리
         """
-        # Handle pronunciation if audio provided
+        # 오디오가 제공된 경우 발음 처리
         pronunciation_details = None
         if audio_data:
             try:
@@ -368,7 +368,7 @@ class SmallTalkAgent(BaseAgent):
             except Exception as e:
                 logger.error(f"Pronunciation assessment failed: {str(e)}")
 
-        # Build pronunciation info for prompt
+        # 프롬프트용 발음 정보 구성
         pronunciation_info = ""
         if pronunciation_details:
             pronunciation_info = f"""
@@ -463,15 +463,15 @@ Words with issues (accuracy < 80):
         hint_count: int = 3
     ) -> Dict[str, Any]:
         """
-        Generate response hints for the user.
+        사용자를 위한 응답 힌트를 생성합니다.
 
         Args:
-            conversation_history: Conversation context
-            last_ai_message: The AI message to respond to
-            hint_count: Number of hints to generate
+            conversation_history: 대화 컨텍스트
+            last_ai_message: 응답할 AI 메시지
+            hint_count: 생성할 힌트 개수
 
         Returns:
-            Dictionary with hints and explanations
+            힌트와 설명을 포함한 딕셔너리
         """
         # 시스템 프롬프트가 비어있으면 기본값 사용
         system_prompt = HINT_SYSTEM_PROMPT.strip()
@@ -524,7 +524,7 @@ Words with issues (accuracy < 80):
             }
 
     def _get_time_of_day(self, hour: int) -> str:
-        """Get time of day description."""
+        """시간대 설명을 반환합니다."""
         if 5 <= hour < 12:
             return "morning"
         elif 12 <= hour < 17:
@@ -535,7 +535,7 @@ Words with issues (accuracy < 80):
             return "night"
 
     def _get_fallback_feedback(self) -> Dict[str, Any]:
-        """Fallback feedback when AI generation fails."""
+        """AI 생성 실패 시 대체 피드백을 반환합니다."""
         return {
             "grammar_corrections": [],
             "suggestions": ["대화를 잘 이어가고 계세요! 계속 연습해보세요."],

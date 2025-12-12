@@ -1,11 +1,11 @@
 """
-Hint generation agent for conversation practice.
+회화 연습을 위한 힌트 생성 에이전트.
 
-Generates contextually appropriate response suggestions based on:
-- Scenario context (roles, topic, difficulty)
-- Conversation history
-- Required terminology
-- User's role in the conversation
+다음을 기반으로 맥락에 적합한 응답 제안을 생성합니다:
+- 시나리오 컨텍스트 (역할, 주제, 난이도)
+- 대화 히스토리
+- 필수 전문용어
+- 대화에서의 사용자 역할
 """
 import logging
 from typing import List, Dict, Any, Optional
@@ -17,11 +17,11 @@ logger = logging.getLogger(__name__)
 
 class HintAgent(BaseAgent):
     """
-    AI agent for generating conversation hints/suggestions.
+    대화 힌트/제안을 생성하는 AI 에이전트.
 
-    Uses GPT-4o to create contextually appropriate response suggestions
-    that help users continue the conversation naturally while using
-    required terminology and maintaining appropriate difficulty level.
+    GPT-4o를 사용하여 맥락에 적합한 응답 제안을 생성합니다.
+    사용자가 필수 전문용어를 사용하고 적절한 난이도를 유지하면서
+    대화를 자연스럽게 이어갈 수 있도록 돕습니다.
 
     Example:
         >>> agent = HintAgent()
@@ -44,7 +44,7 @@ class HintAgent(BaseAgent):
         >>> print(hints)
     """
 
-    # Language mapping for prompts
+    # 프롬프트용 언어 매핑
     LANG_MAP = {
         "en": "English",
         "ko": "Korean (한국어)",
@@ -53,7 +53,7 @@ class HintAgent(BaseAgent):
         "vi": "Vietnamese (Tiếng Việt)"
     }
 
-    # Difficulty-based complexity guidelines
+    # 난이도별 복잡도 가이드라인
     DIFFICULTY_GUIDELINES = {
         "beginner": {
             "sentence_length": "5-10단어",
@@ -86,33 +86,33 @@ class HintAgent(BaseAgent):
         hint_count: int = 3
     ) -> Dict[str, Any]:
         """
-        Generate contextually appropriate response hints.
+        맥락에 적합한 응답 힌트를 생성합니다.
 
         Args:
-            scenario_context: Scenario information containing:
-                - title: Scenario title
-                - description: Brief description
-                - scenario_text: Detailed scenario situation
-                - roles: {"user": "role", "ai": "role"}
-                - required_terminology: List of terms to use
+            scenario_context: 다음을 포함하는 시나리오 정보:
+                - title: 시나리오 제목
+                - description: 간단한 설명
+                - scenario_text: 상세한 시나리오 상황
+                - roles: {"user": "역할", "ai": "역할"}
+                - required_terminology: 사용할 용어 리스트
                 - difficulty: beginner/intermediate/advanced
-                - language: Target language code (en, ko, etc.)
-                - category: Scenario category (optional)
-            conversation_history: Previous messages in the conversation
-            last_ai_message: The most recent AI message to respond to
-            hint_count: Number of hints to generate (default: 3)
+                - language: 목표 언어 코드 (en, ko 등)
+                - category: 시나리오 카테고리 (선택사항)
+            conversation_history: 대화 내 이전 메시지들
+            last_ai_message: 응답할 가장 최근 AI 메시지
+            hint_count: 생성할 힌트 개수 (기본값: 3)
 
         Returns:
-            Dictionary containing:
-                - hints: List of suggested responses
-                - hint_explanations: Brief explanation for each hint (in Korean)
-                - terminology_suggestions: Terms that could be used
-                - difficulty_appropriate: Whether hints match difficulty level
+            다음을 포함하는 딕셔너리:
+                - hints: 제안된 응답 리스트
+                - hint_explanations: 각 힌트에 대한 간단한 설명 (한국어)
+                - terminology_suggestions: 사용 가능한 용어들
+                - difficulty_appropriate: 힌트가 난이도에 적합한지 여부
 
         Raises:
-            ValueError: If scenario_context is missing required fields
+            ValueError: scenario_context에 필수 필드가 누락된 경우
         """
-        # Validate required fields
+        # 필수 필드 검증
         required_fields = ["roles", "difficulty", "language"]
         for field in required_fields:
             if field not in scenario_context:
@@ -125,7 +125,7 @@ class HintAgent(BaseAgent):
         difficulty = scenario_context.get("difficulty", "intermediate")
         guidelines = self.DIFFICULTY_GUIDELINES.get(difficulty, self.DIFFICULTY_GUIDELINES["intermediate"])
 
-        # Build the prompt
+        # 프롬프트 구성
         system_prompt = self._build_system_prompt(
             scenario_context,
             target_lang,
@@ -155,7 +155,7 @@ class HintAgent(BaseAgent):
             import json
             result = json.loads(response.choices[0].message.content)
 
-            # Validate and structure the response
+            # 응답 검증 및 구조화
             hints = result.get("hints", [])
             if not hints:
                 logger.warning("GPT-4o returned no hints, using fallback")
@@ -175,7 +175,7 @@ class HintAgent(BaseAgent):
 
         except Exception as e:
             logger.error(f"Error generating hints: {str(e)}")
-            # Return fallback hints on error
+            # 오류 시 대체 힌트 반환
             return {
                 "hints": self._generate_fallback_hints(scenario_context, last_ai_message),
                 "hint_explanations": ["기본 응답 제안입니다."],
@@ -189,13 +189,13 @@ class HintAgent(BaseAgent):
         target_lang: str,
         guidelines: Dict[str, str]
     ) -> str:
-        """Build the system prompt for hint generation."""
+        """힌트 생성을 위한 시스템 프롬프트를 구성합니다."""
 
         user_role = scenario_context.get("roles", {}).get("user", "User")
         ai_role = scenario_context.get("roles", {}).get("ai", "AI Partner")
         category = scenario_context.get("category", "Business")
 
-        # Determine if this is a business or everyday scenario
+        # 비즈니스 시나리오인지 일상 시나리오인지 판별
         is_business = category not in ["Restaurant", "Hotel", "Shopping", "Hospital",
                                         "Bank", "Post Office", "Cafe", "Transportation",
                                         "Fitness", "Beauty", "Real Estate", "Car Rental",

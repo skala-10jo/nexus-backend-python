@@ -1,11 +1,11 @@
 """
-Speaking Feedback Agent using GPT-4o.
+GPT-4o를 사용한 스피킹 피드백 에이전트.
 
-Provides detailed feedback on spoken utterances including:
-- Grammar corrections
-- Improvement suggestions
-- Score breakdown (grammar, vocabulary, fluency, clarity)
-- Improved sentence generation
+음성 발화에 대한 상세한 피드백을 제공합니다:
+- 문법 교정
+- 개선 제안
+- 점수 세부 사항 (문법, 어휘, 유창성, 명확성)
+- 개선된 문장 생성
 """
 import logging
 import json
@@ -18,14 +18,14 @@ logger = logging.getLogger(__name__)
 
 class SpeakingFeedbackAgent(BaseAgent):
     """
-    GPT-4o based feedback generator for spoken utterances.
+    GPT-4o 기반 음성 발화 피드백 생성기.
 
-    Analyzes text from speech transcription and provides
-    comprehensive feedback for language learning.
+    음성 전사 텍스트를 분석하고
+    언어 학습을 위한 종합적인 피드백을 제공합니다.
     """
 
     def __init__(self):
-        """Initialize with OpenAI client from BaseAgent."""
+        """BaseAgent의 OpenAI 클라이언트로 초기화합니다."""
         super().__init__()
 
     async def process(
@@ -35,12 +35,12 @@ class SpeakingFeedbackAgent(BaseAgent):
         language: str = "en"
     ) -> Dict[str, Any]:
         """
-        Generate feedback for an utterance.
+        발화에 대한 피드백을 생성합니다.
 
         Args:
-            utterance_text: The transcribed speech text
-            context: Optional context (e.g., 'business meeting', 'presentation')
-            language: Language code (e.g., 'en', 'ko')
+            utterance_text: 전사된 음성 텍스트
+            context: 선택적 컨텍스트 (예: 'business meeting', 'presentation')
+            language: 언어 코드 (예: 'en', 'ko')
 
         Returns:
             {
@@ -77,7 +77,7 @@ class SpeakingFeedbackAgent(BaseAgent):
         context: Optional[str],
         language: str
     ) -> Dict[str, Any]:
-        """Generate feedback using GPT-4o."""
+        """GPT-4o를 사용하여 피드백을 생성합니다."""
 
         context_description = f" in a {context} context" if context else ""
         language_name = self._get_language_name(language)
@@ -138,7 +138,7 @@ JSON 객체만 반환하고, 추가 텍스트는 포함하지 마세요."""
         try:
             result = json.loads(content)
 
-            # Validate and normalize structure
+            # 구조 검증 및 정규화
             return {
                 "grammar_corrections": result.get("grammar_corrections", []),
                 "suggestions": result.get("suggestions", []),
@@ -152,7 +152,7 @@ JSON 객체만 반환하고, 추가 텍스트는 포함하지 마세요."""
             return self._error_feedback("Failed to parse feedback")
 
     def _get_language_name(self, code: str) -> str:
-        """Convert language code to name."""
+        """언어 코드를 이름으로 변환합니다."""
         names = {
             "en": "English",
             "ko": "Korean",
@@ -165,7 +165,7 @@ JSON 객체만 반환하고, 추가 텍스트는 포함하지 마세요."""
         return names.get(code, "English")
 
     def _clamp_score(self, score: Any) -> int:
-        """Ensure score is within 0-10."""
+        """점수가 0-10 범위 내에 있도록 보장합니다."""
         try:
             s = int(score)
             return max(0, min(10, s))
@@ -173,7 +173,7 @@ JSON 객체만 반환하고, 추가 텍스트는 포함하지 마세요."""
             return 5
 
     def _normalize_breakdown(self, breakdown: Dict) -> Dict[str, int]:
-        """Normalize score breakdown."""
+        """점수 세부 사항을 정규화합니다."""
         default = {"grammar": 5, "vocabulary": 5, "fluency": 5, "clarity": 5}
 
         result = {}
@@ -183,7 +183,7 @@ JSON 객체만 반환하고, 추가 텍스트는 포함하지 마세요."""
         return result
 
     def _empty_feedback(self) -> Dict[str, Any]:
-        """Return empty feedback for empty input."""
+        """빈 입력에 대한 빈 피드백을 반환합니다."""
         return {
             "grammar_corrections": [],
             "suggestions": [],
@@ -198,7 +198,7 @@ JSON 객체만 반환하고, 추가 텍스트는 포함하지 마세요."""
         }
 
     def _error_feedback(self, error: str) -> Dict[str, Any]:
-        """Return feedback with error information."""
+        """오류 정보를 포함한 피드백을 반환합니다."""
         return {
             "grammar_corrections": [f"피드백 생성 중 오류가 발생했습니다: {error}"],
             "suggestions": ["다시 시도해 주세요."],
@@ -219,15 +219,15 @@ JSON 객체만 반환하고, 추가 텍스트는 포함하지 마세요."""
         language: str = "en"
     ) -> list:
         """
-        Generate feedback for multiple utterances.
+        여러 발화에 대한 피드백을 생성합니다.
 
         Args:
-            utterances: List of {"id": str, "text": str}
-            context: Optional context
-            language: Language code
+            utterances: {"id": str, "text": str} 리스트
+            context: 선택적 컨텍스트
+            language: 언어 코드
 
         Returns:
-            List of {"id": str, "feedback": {...}}
+            {"id": str, "feedback": {...}} 리스트
         """
         results = []
 

@@ -1,10 +1,10 @@
 """
-Learning Agent for Speaking Tutor.
+스피킹 튜터를 위한 학습 에이전트.
 
-Generates learning content including:
-- Grammar explanation for corrections
-- Practice exercises
-- Key learning points
+다음을 포함한 학습 콘텐츠를 생성합니다:
+- 교정에 대한 문법 설명
+- 연습 문제
+- 핵심 학습 포인트
 """
 import logging
 import json
@@ -17,14 +17,14 @@ logger = logging.getLogger(__name__)
 
 class LearningAgent(BaseAgent):
     """
-    GPT-4o based learning content generator.
+    GPT-4o 기반 학습 콘텐츠 생성기.
 
-    Creates educational content from feedback to help users
-    practice and improve their speaking skills.
+    피드백으로부터 교육 콘텐츠를 생성하여 사용자가
+    말하기 능력을 연습하고 향상시킬 수 있도록 돕습니다.
     """
 
     def __init__(self):
-        """Initialize with OpenAI client from BaseAgent."""
+        """BaseAgent의 OpenAI 클라이언트로 초기화합니다."""
         super().__init__()
 
     async def process(
@@ -35,13 +35,13 @@ class LearningAgent(BaseAgent):
         language: str = "en"
     ) -> Dict[str, Any]:
         """
-        Generate learning content for an utterance.
+        발화에 대한 학습 콘텐츠를 생성합니다.
 
         Args:
-            original_text: The original spoken text
-            improved_text: The corrected/improved text
-            grammar_corrections: List of grammar corrections
-            language: Language code (e.g., 'en', 'ko')
+            original_text: 원본 음성 텍스트
+            improved_text: 교정/개선된 텍스트
+            grammar_corrections: 문법 교정 리스트
+            language: 언어 코드 (예: 'en', 'ko')
 
         Returns:
             {
@@ -74,7 +74,7 @@ class LearningAgent(BaseAgent):
         grammar_corrections: List[str],
         language: str
     ) -> Dict[str, Any]:
-        """Generate learning content using GPT-4o."""
+        """GPT-4o를 사용하여 학습 콘텐츠를 생성합니다."""
 
         language_name = self._get_language_name(language)
         corrections_text = "\n".join(f"- {c}" for c in grammar_corrections) if grammar_corrections else "No specific corrections"
@@ -140,7 +140,7 @@ JSON 객체만 반환하고, 추가 텍스트는 포함하지 마세요."""
             return self._error_learning("Failed to parse learning content")
 
     def _get_language_name(self, code: str) -> str:
-        """Convert language code to name."""
+        """언어 코드를 이름으로 변환합니다."""
         names = {
             "en": "English",
             "ko": "Korean",
@@ -153,7 +153,7 @@ JSON 객체만 반환하고, 추가 텍스트는 포함하지 마세요."""
         return names.get(code, "English")
 
     def _empty_learning(self) -> Dict[str, Any]:
-        """Return empty learning content."""
+        """빈 학습 콘텐츠를 반환합니다."""
         return {
             "key_points": [],
             "grammar_explanation": "",
@@ -162,7 +162,7 @@ JSON 객체만 반환하고, 추가 텍스트는 포함하지 마세요."""
         }
 
     def _error_learning(self, error: str) -> Dict[str, Any]:
-        """Return learning content with error information."""
+        """오류 정보를 포함한 학습 콘텐츠를 반환합니다."""
         return {
             "key_points": [f"학습 콘텐츠 생성 중 오류가 발생했습니다: {error}"],
             "grammar_explanation": "다시 시도해 주세요.",
@@ -176,14 +176,14 @@ JSON 객체만 반환하고, 추가 텍스트는 포함하지 마세요."""
         language: str = "en"
     ) -> List[Dict[str, Any]]:
         """
-        Generate learning content for multiple items.
+        여러 항목에 대한 학습 콘텐츠를 생성합니다.
 
         Args:
-            items: List of {"id": str, "original": str, "improved": str, "corrections": [...]}
-            language: Language code
+            items: {"id": str, "original": str, "improved": str, "corrections": [...]} 리스트
+            language: 언어 코드
 
         Returns:
-            List of {"id": str, "learning": {...}}
+            {"id": str, "learning": {...}} 리스트
         """
         results = []
 
