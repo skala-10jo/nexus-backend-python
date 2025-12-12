@@ -1,7 +1,7 @@
 """
 Mail Agent API endpoints for email embedding and search.
 
-
+비즈니스 로직은 MailAgentService에서 처리
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -27,9 +27,6 @@ from app.config import settings
 from qdrant_client.http import models
 from app.models.email import Email
 from app.models.project import Project
-from agent.mail.query_agent import QueryAgent
-from agent.mail.answer_agent import AnswerAgent
-from app.services.email_draft_service import EmailDraftService
 
 logger = logging.getLogger(__name__)
 
@@ -227,115 +224,33 @@ async def chat_with_mail_search(
     - translate: 메일 번역 (RAG 통합)
     - general: 일반 대화
     """
-    logger.info(f"Chat request: message='{request.message[:50]}...', user={request.user_id}")
-
     try:
-        # 1. QueryAgent로 쿼리 분석
-        query_agent = QueryAgent()
-
+        # conversation_history 변환
         conversation_history = [
             {"role": msg.role, "content": msg.content}
             for msg in request.conversation_history
         ] if request.conversation_history else []
 
-        query_result = await query_agent.process(
-            user_message=request.message,
+        # Service 호출
+        result = await service.chat(
+            message=request.message,
+            user_id=request.user_id,
+            db=db,
             conversation_history=conversation_history
         )
 
-        logger.info(f"Query extraction result: {query_result}")
+        # search_results가 있으면 EmailSearchResult로 변환
+        if "search_results" in result:
+            result["search_results"] = [
+                EmailSearchResult(**r) for r in result["search_results"]
+            ]
 
-        query_type = query_result.get("query_type", "general")
-        answer = query_result.get("response", "")
-
-        # 응답 초기화
-        response_data = {
-            "query_type": query_type,
-            "answer": answer
-        }
-
-        # 2. query_type별 처리
-        if query_type == "search":
-            # 메일 검색
-            results = await service.search_emails(
-                query=query_result.get("query"),
-                user_id=request.user_id,
-                db=db,
-                top_k=5,
-                folder=query_result.get("folder"),
-                date_from=query_result.get("date_from"),
-                date_to=query_result.get("date_to"),
-                project_name=query_result.get("project_name")
-            )
-
-            search_results = [EmailSearchResult(**r) for r in results]
-
-            # AnswerAgent로 자연어 답변 생성
-            answer_agent = AnswerAgent()
-            answer = await answer_agent.process(
-                user_query=request.message,
-                search_results=results,
-                conversation_history=conversation_history
-            )
-
-            response_data.update({
-                "query": query_result.get("query"),
-                "folder": query_result.get("folder"),
-                "date_from": query_result.get("date_from"),
-                "date_to": query_result.get("date_to"),
-                "project_name": query_result.get("project_name"),
-                "needs_search": True,
-                "answer": answer,
-                "search_results": search_results
-            })
-
-        elif query_type == "draft":
-            # 메일 초안 작성 (RAG 통합)
-            logger.info(f"Creating email draft with keywords: {query_result.get('keywords')}")
-
-            draft_service = EmailDraftService()
-            draft_result = await draft_service.create_draft(
-                original_message=query_result.get("original_message", request.message),
-                keywords=query_result.get("keywords"),
-                target_language=query_result.get("target_language", "ko"),
-                conversation_history=conversation_history
-            )
-
-            response_data.update({
-                "email_draft": draft_result.get("email_draft"),
-                "subject": draft_result.get("subject"),
-                "rag_sections": draft_result.get("rag_sections", []),
-                "answer": f"{answer}\n\n**제목:** {draft_result.get('subject')}\n\n**본문:**\n{draft_result.get('email_draft')}"
-            })
-
-        elif query_type == "translate":
-            # 메일 번역 (RAG 통합)
-            logger.info(f"Translating email with keywords: {query_result.get('keywords')}")
-
-            draft_service = EmailDraftService()
-            translate_result = await draft_service.translate_email(
-                email_text=query_result.get("original_message", ""),
-                keywords=query_result.get("keywords"),
-                target_language=query_result.get("target_language", "en"),
-                conversation_history=conversation_history
-            )
-
-            response_data.update({
-                "translated_email": translate_result.get("translated_email"),
-                "rag_sections": translate_result.get("rag_sections", []),
-                "answer": f"{answer}\n\n**번역 결과:**\n{translate_result.get('translated_email')}"
-            })
-
-        # 3. general은 기본 answer만 반환
-
-        return ChatResponse(**response_data)
+        return ChatResponse(**result)
 
     except ValueError as e:
         logger.error(f"Invalid chat request: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
     except Exception as e:
-        logger.error(f"Chat failed: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Chat failed: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
