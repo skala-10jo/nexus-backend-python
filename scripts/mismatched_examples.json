@@ -1,0 +1,569 @@
+[
+  {
+    "expression": "address an issue",
+    "text": "We need to address the issue before it escalates.",
+    "translation": "문제가 커지기 전에 해결해야 합니다.",
+    "unit": "업무 피드백 및 문제 해결",
+    "chapter": "이슈 해결 요청하기",
+    "source_chapter": "Chapter 11. Request for an Issue Resolution Request for an Issue Resolution {이슈 해결 요청하기}",
+    "source_section": "Key Vocabulary"
+  },
+  {
+    "expression": "address an issue",
+    "text": "The team will address the issue in the next meeting.",
+    "translation": "팀은 다음 회의에서 문제를 해결할 것입니다.",
+    "unit": "업무 피드백 및 문제 해결",
+    "chapter": "이슈 해결 요청하기",
+    "source_chapter": "Chapter 11. Request for an Issue Resolution Request for an Issue Resolution {이슈 해결 요청하기}",
+    "source_section": "Key Vocabulary"
+  },
+  {
+    "expression": "address an issue",
+    "text": "It's important to address any issues promptly to maintain productivity.",
+    "translation": "생산성을 유지하기 위해 문제를 신속하게 해결하는 것이 중요합니다.",
+    "unit": "업무 피드백 및 문제 해결",
+    "chapter": "이슈 해결 요청하기",
+    "source_chapter": "Chapter 11. Request for an Issue Resolution Request for an Issue Resolution {이슈 해결 요청하기}",
+    "source_section": "Key Vocabulary"
+  },
+  {
+    "expression": "sort out",
+    "text": "I’m going to sort this out.",
+    "translation": "이건 내가 해결할게.",
+    "unit": "효과적인 이메일 작성",
+    "chapter": "협상 메일 작성하기",
+    "source_chapter": "Chapter 9. Writing a Negotiation Email Writing a Negotiation Email {협상 메일 작성하기}",
+    "source_section": "Media Talk"
+  },
+  {
+    "expression": "check with your boss",
+    "text": "I will check with my boss about the new policy changes.",
+    "translation": "나는 새로운 정책 변경에 대해 상사와 상의할 것이다.",
+    "unit": "업무 요청 및 개선",
+    "chapter": "개선 요구하기",
+    "source_chapter": "Chapter 6. Requesting Improvements {개선 요구하기}",
+    "source_section": "Think & Say Professionally"
+  },
+  {
+    "expression": "consult your superior",
+    "text": "I need to consult my superior regarding the budget adjustments.",
+    "translation": "예산 조정에 대해 상급자와 상담해야 한다.",
+    "unit": "업무 요청 및 개선",
+    "chapter": "개선 요구하기",
+    "source_chapter": "Chapter 6. Requesting Improvements {개선 요구하기}",
+    "source_section": "Think & Say Professionally"
+  },
+  {
+    "expression": "keep in the loop",
+    "text": "Please keep me in the loop regarding the meeting schedule.",
+    "translation": "회의 일정에 대해 계속 알려주세요.",
+    "unit": "효과적인 이메일 작성",
+    "chapter": "협상 메일 작성하기",
+    "source_chapter": "Chapter 9. Writing a Negotiation Email Writing a Negotiation Email {협상 메일 작성하기}",
+    "source_section": "Today’s Biz Idioms"
+  },
+  {
+    "expression": "keep in the loop",
+    "text": "I will keep you in the loop about any changes to the project timeline.",
+    "translation": "프로젝트 일정에 대한 변경 사항에 대해 계속 알려드리겠습니다.",
+    "unit": "효과적인 이메일 작성",
+    "chapter": "협상 메일 작성하기",
+    "source_chapter": "Chapter 9. Writing a Negotiation Email Writing a Negotiation Email {협상 메일 작성하기}",
+    "source_section": "Today’s Biz Idioms"
+  },
+  {
+    "expression": "keep in the loop",
+    "text": "It's important to keep everyone in the loop to ensure smooth communication.",
+    "translation": "원활한 소통을 위해 모두에게 계속 알려주는 것이 중요합니다.",
+    "unit": "효과적인 이메일 작성",
+    "chapter": "협상 메일 작성하기",
+    "source_chapter": "Chapter 9. Writing a Negotiation Email Writing a Negotiation Email {협상 메일 작성하기}",
+    "source_section": "Today’s Biz Idioms"
+  },
+  {
+    "expression": "be on (the right) track",
+    "text": "Our sales figures indicate that we are on the right track.",
+    "translation": "우리의 판매 수치는 우리가 올바른 방향으로 나아가고 있음을 나타냅니다.",
+    "unit": "효과적인 이메일 작성",
+    "chapter": "협상 메일 작성하기",
+    "source_chapter": "Chapter 9. Writing a Negotiation Email Writing a Negotiation Email {협상 메일 작성하기}",
+    "source_section": "Today’s Biz Idioms"
+  },
+  {
+    "expression": "be on (the right) track",
+    "text": "After reviewing the feedback, I believe we are on the right track with our strategy.",
+    "translation": "피드백을 검토한 결과, 우리의 전략이 올바른 방향으로 진행되고 있다고 믿습니다.",
+    "unit": "효과적인 이메일 작성",
+    "chapter": "협상 메일 작성하기",
+    "source_chapter": "Chapter 9. Writing a Negotiation Email Writing a Negotiation Email {협상 메일 작성하기}",
+    "source_section": "Today’s Biz Idioms"
+  },
+  {
+    "expression": "give/get feedback on",
+    "text": "I would like to get feedback on my recent report.",
+    "translation": "최근 보고서에 대해 피드백을 받고 싶습니다.",
+    "unit": "미팅 참여",
+    "chapter": "주간미팅 진행하기",
+    "source_chapter": "Chapter 2. Conducting Weekly Meetings {주간미팅 진행하기}",
+    "source_section": "Today’s Biz Idioms"
+  },
+  {
+    "expression": "give/get feedback on",
+    "text": "Please give feedback on the new marketing strategy.",
+    "translation": "새로운 마케팅 전략에 대해 피드백을 주세요.",
+    "unit": "미팅 참여",
+    "chapter": "주간미팅 진행하기",
+    "source_chapter": "Chapter 2. Conducting Weekly Meetings {주간미팅 진행하기}",
+    "source_section": "Today’s Biz Idioms"
+  },
+  {
+    "expression": "give/get feedback on",
+    "text": "It's important to give feedback on team performance regularly.",
+    "translation": "팀 성과에 대해 정기적으로 피드백을 주는 것이 중요합니다.",
+    "unit": "미팅 참여",
+    "chapter": "주간미팅 진행하기",
+    "source_chapter": "Chapter 2. Conducting Weekly Meetings {주간미팅 진행하기}",
+    "source_section": "Today’s Biz Idioms"
+  },
+  {
+    "expression": "has been approved by",
+    "text": "The changes have been approved by management.",
+    "translation": "변경 사항은 경영진에 의해 승인되었습니다.",
+    "unit": "업무 요청 및 개선",
+    "chapter": "개선 요구하기",
+    "source_chapter": "Chapter 6. Requesting Improvements {개선 요구하기}",
+    "source_section": "How would you say"
+  },
+  {
+    "expression": "I appreciate that you could join us",
+    "text": "We appreciate that you could join us for the discussion.",
+    "translation": "토론에 참석해 주셔서 감사합니다.",
+    "unit": "효과적인 이메일 작성",
+    "chapter": "협상 메일 작성하기",
+    "source_chapter": "Chapter 9. Writing a Negotiation Email Writing a Negotiation Email {협상 메일 작성하기}",
+    "source_section": "How Would You Say"
+  },
+  {
+    "expression": "think outside the box",
+    "text": "Thinking outside the box can lead to unexpected solutions.",
+    "translation": "새로운 관점으로 생각하는 것은 예상치 못한 해결책으로 이어질 수 있습니다.",
+    "unit": "미팅 참여",
+    "chapter": "미팅 마무리하기",
+    "source_chapter": "Chapter 3. Ending the Meeting {미팅 마무리 하기}",
+    "source_section": "Today’s Biz Idioms"
+  },
+  {
+    "expression": "reassess our goals",
+    "text": "Reassessing our goals will help us stay focused.",
+    "translation": "목표를 재평가하는 것은 우리가 집중하는 데 도움이 될 것입니다.",
+    "unit": "효과적인 이메일 작성",
+    "chapter": "협상 메일 작성하기",
+    "source_chapter": "Chapter 9. Writing a Negotiation Email Writing a Negotiation Email {협상 메일 작성하기}",
+    "source_section": "Key Vocabulary"
+  },
+  {
+    "expression": "take (someone) through",
+    "text": "Can you take me through the budget proposal?",
+    "translation": "예산 제안을 설명해 주실 수 있나요?",
+    "unit": "업무 피드백 및 문제 해결",
+    "chapter": "업무 피드백하기",
+    "source_chapter": "Chapter 10. Giving Feedback {업무 피드백하기}",
+    "source_section": "Media Talk"
+  },
+  {
+    "expression": "take (someone) through",
+    "text": "Please take us through the new software features.",
+    "translation": "새로운 소프트웨어 기능을 설명해 주세요.",
+    "unit": "업무 피드백 및 문제 해결",
+    "chapter": "업무 피드백하기",
+    "source_chapter": "Chapter 10. Giving Feedback {업무 피드백하기}",
+    "source_section": "Media Talk"
+  },
+  {
+    "expression": "take (someone) through",
+    "text": "I would appreciate it if you could take me through the meeting agenda.",
+    "translation": "회의 안건을 설명해 주시면 감사하겠습니다.",
+    "unit": "업무 피드백 및 문제 해결",
+    "chapter": "업무 피드백하기",
+    "source_chapter": "Chapter 10. Giving Feedback {업무 피드백하기}",
+    "source_section": "Media Talk"
+  },
+  {
+    "expression": "keep A updated on B",
+    "text": "I will keep you updated on any changes to the schedule.",
+    "translation": "일정에 대한 변경 사항이 있으면 계속해서 알려드리겠습니다.",
+    "unit": "미팅 참여",
+    "chapter": "미팅에서의 기본 태도",
+    "source_chapter": "Chapter 1. Starting a Meeting {미팅에서의 기본 태도}",
+    "source_section": "Today’s Biz Idioms"
+  },
+  {
+    "expression": "keep A updated on B",
+    "text": "Please keep the team updated on the client's feedback.",
+    "translation": "고객의 피드백에 대해 팀에게 계속해서 최신 정보를 주시기 바랍니다.",
+    "unit": "미팅 참여",
+    "chapter": "미팅에서의 기본 태도",
+    "source_chapter": "Chapter 1. Starting a Meeting {미팅에서의 기본 태도}",
+    "source_section": "Today’s Biz Idioms"
+  },
+  {
+    "expression": "keep A updated on B",
+    "text": "Make sure to keep the stakeholders updated on the project's milestones.",
+    "translation": "프로젝트의 주요 이정표에 대해 이해관계자들에게 계속해서 최신 정보를 제공해야 합니다.",
+    "unit": "미팅 참여",
+    "chapter": "미팅에서의 기본 태도",
+    "source_chapter": "Chapter 1. Starting a Meeting {미팅에서의 기본 태도}",
+    "source_section": "Today’s Biz Idioms"
+  },
+  {
+    "expression": "take the lead on this project",
+    "text": "Taking the lead on this project aligns with my career goals.",
+    "translation": "이 프로젝트를 맡는 것은 제 경력 목표와 일치합니다.",
+    "unit": "효과적인 이메일 작성",
+    "chapter": "협상 메일 작성하기",
+    "source_chapter": "Chapter 9. Writing a Negotiation Email Writing a Negotiation Email {협상 메일 작성하기}",
+    "source_section": "Biz Skill Up"
+  },
+  {
+    "expression": "Nice to meet you.",
+    "text": "I’m glad to finally meet you in person.",
+    "translation": "드디어 직접 만나서 반갑습니다.",
+    "unit": "미팅 참여",
+    "chapter": "미팅에서의 기본 태도",
+    "source_chapter": "Chapter 1. Starting a Meeting {미팅에서의 기본 태도}",
+    "source_section": "Biz Skill Up"
+  },
+  {
+    "expression": "Thank you for your card.",
+    "text": "I appreciate your card; it was nice meeting you.",
+    "translation": "명함 감사합니다; 만나서 반가웠습니다.",
+    "unit": "미팅 참여",
+    "chapter": "미팅에서의 기본 태도",
+    "source_chapter": "Chapter 1. Starting a Meeting {미팅에서의 기본 태도}",
+    "source_section": "Biz Skill Up"
+  },
+  {
+    "expression": "going the extra mile",
+    "text": "Our company culture encourages employees to go the extra mile.",
+    "translation": "우리 회사 문화는 직원들이 한층 더 노력하도록 장려합니다.",
+    "unit": "업무 요청 및 개선",
+    "chapter": "개선 요구하기",
+    "source_chapter": "Chapter 6. Requesting Improvements {개선 요구하기}",
+    "source_section": "Today’s Biz Idioms"
+  },
+  {
+    "expression": "catch (someone) up on (something)",
+    "text": "Can you kind of catch me up on what you see as your role in the company?",
+    "translation": "당신이 회사에서 하는 역할이 무엇이라고 생각하시는지 설명해 주시겠어요?",
+    "unit": "업무 피드백 및 문제 해결",
+    "chapter": "감정 공유하기",
+    "source_chapter": "Chapter 12. Sharing Emotions {감정 공유하기}",
+    "source_section": "Media Talk"
+  },
+  {
+    "expression": "catch (someone) up on (something)",
+    "text": "I need to catch up on the latest programming frameworks.",
+    "translation": "새로운 프로그래밍 프레임워크를 따라가야 해요.",
+    "unit": "업무 피드백 및 문제 해결",
+    "chapter": "감정 공유하기",
+    "source_chapter": "Chapter 12. Sharing Emotions {감정 공유하기}",
+    "source_section": "Media Talk"
+  },
+  {
+    "expression": "catch (someone) up on (something)",
+    "text": "Our team is having a knowledge-sharing session tomorrow to catch up on the recent updates.",
+    "translation": "우리 팀은 내일 지식 공유 세션을 갖고 최근 업데이트에 대해 알아가기로 했어요.",
+    "unit": "업무 피드백 및 문제 해결",
+    "chapter": "감정 공유하기",
+    "source_chapter": "Chapter 12. Sharing Emotions {감정 공유하기}",
+    "source_section": "Media Talk"
+  },
+  {
+    "expression": "incorporating specifics",
+    "text": "Make sure to incorporate specifics in your presentation.",
+    "translation": "발표에서 구체적인 내용을 포함하는 것을 잊지 마세요.",
+    "unit": "업무 피드백 및 문제 해결",
+    "chapter": "업무 피드백하기",
+    "source_chapter": "Chapter 10. Giving Feedback {업무 피드백하기}",
+    "source_section": "Biz Talk"
+  },
+  {
+    "expression": "cordially invite you",
+    "text": "The company cordially invites all employees to the holiday party.",
+    "translation": "회사는 모든 직원을 연말 파티에 마음을 담아 초대합니다.",
+    "unit": "효과적인 이메일 작성",
+    "chapter": "요청 메일 작성하기",
+    "source_chapter": "Chapter 7. Writing a Request Email  {요청 메일 작성하기}",
+    "source_section": "Biz Writing Practice"
+  },
+  {
+    "expression": "expand on/upon",
+    "text": "Can you expand on your last point?",
+    "translation": "마지막 요점에 대해 부연 설명해 주시겠어요?",
+    "unit": "효과적인 이메일 작성",
+    "chapter": "업무 설명 메일 작성하기",
+    "source_chapter": "Chapter 8. Writing a Job Description Email Writing a Job Description Email {업무 설명 메일 작성하기}",
+    "source_section": "Media Talk"
+  },
+  {
+    "expression": "expand on/upon",
+    "text": "I would like you to expand upon the budget estimates.",
+    "translation": "예산 추정에 대해 부연 설명해 주셨으면 합니다.",
+    "unit": "효과적인 이메일 작성",
+    "chapter": "업무 설명 메일 작성하기",
+    "source_chapter": "Chapter 8. Writing a Job Description Email Writing a Job Description Email {업무 설명 메일 작성하기}",
+    "source_section": "Media Talk"
+  },
+  {
+    "expression": "expand on/upon",
+    "text": "Please expand on the timeline for the project.",
+    "translation": "프로젝트의 일정에 대해 부연 설명해 주세요.",
+    "unit": "효과적인 이메일 작성",
+    "chapter": "업무 설명 메일 작성하기",
+    "source_chapter": "Chapter 8. Writing a Job Description Email Writing a Job Description Email {업무 설명 메일 작성하기}",
+    "source_section": "Media Talk"
+  },
+  {
+    "expression": "compile information",
+    "text": "Can you compile the information needed for the meeting?",
+    "translation": "회의에 필요한 정보를 수집해 주시겠어요?",
+    "unit": "효과적인 이메일 작성",
+    "chapter": "업무 설명 메일 작성하기",
+    "source_chapter": "Chapter 8. Writing a Job Description Email Writing a Job Description Email {업무 설명 메일 작성하기}",
+    "source_section": "Media Talk"
+  },
+  {
+    "expression": "maximum three",
+    "text": "We can accommodate a maximum of three participants in the workshop.",
+    "translation": "워크숍에는 최대 3명의 참가자를 수용할 수 있습니다.",
+    "unit": "업무 요청 및 개선",
+    "chapter": "업무 요청하기",
+    "source_chapter": "Chapter 4. Requesting Work {업무 요청하기}",
+    "source_section": "Biz talk summary"
+  },
+  {
+    "expression": "maximum three",
+    "text": "The team can handle a maximum of three projects at a time.",
+    "translation": "팀은 한 번에 최대 3개의 프로젝트를 처리할 수 있습니다.",
+    "unit": "업무 요청 및 개선",
+    "chapter": "업무 요청하기",
+    "source_chapter": "Chapter 4. Requesting Work {업무 요청하기}",
+    "source_section": "Biz talk summary"
+  },
+  {
+    "expression": "maximum three",
+    "text": "You can invite a maximum of three guests to the event.",
+    "translation": "행사에 최대 3명의 게스트를 초대할 수 있습니다.",
+    "unit": "업무 요청 및 개선",
+    "chapter": "업무 요청하기",
+    "source_chapter": "Chapter 4. Requesting Work {업무 요청하기}",
+    "source_section": "Biz talk summary"
+  },
+  {
+    "expression": "send via email",
+    "text": "Please send the report via email by the end of the day.",
+    "translation": "오늘 중으로 보고서를 이메일을 통해 보내주세요.",
+    "unit": "업무 요청 및 개선",
+    "chapter": "업무 요청하기",
+    "source_chapter": "Chapter 4. Requesting Work {업무 요청하기}",
+    "source_section": "Biz talk summary"
+  },
+  {
+    "expression": "send via email",
+    "text": "I will send the updated documents via email as soon as possible.",
+    "translation": "최대한 빨리 업데이트된 문서를 이메일로 보내겠습니다.",
+    "unit": "업무 요청 및 개선",
+    "chapter": "업무 요청하기",
+    "source_chapter": "Chapter 4. Requesting Work {업무 요청하기}",
+    "source_section": "Biz talk summary"
+  },
+  {
+    "expression": "send via email",
+    "text": "Can you send the meeting agenda via email?",
+    "translation": "회의 안건을 이메일로 보내주실 수 있나요?",
+    "unit": "업무 요청 및 개선",
+    "chapter": "업무 요청하기",
+    "source_chapter": "Chapter 4. Requesting Work {업무 요청하기}",
+    "source_section": "Biz talk summary"
+  },
+  {
+    "expression": "put your best foot forward",
+    "text": "During the presentation, I expect everyone to put their best foot forward.",
+    "translation": "발표 중에는 모두가 최선을 다해 주기를 기대합니다.",
+    "unit": "업무 피드백 및 문제 해결",
+    "chapter": "감정 공유하기",
+    "source_chapter": "Chapter 12. Sharing Emotions {감정 공유하기}",
+    "source_section": "Today’s Biz Idioms"
+  },
+  {
+    "expression": "put your best foot forward",
+    "text": "To win the client, we need to put our best foot forward in this proposal.",
+    "translation": "고객을 얻기 위해서는 이 제안서에서 최선을 다해야 합니다.",
+    "unit": "업무 피드백 및 문제 해결",
+    "chapter": "감정 공유하기",
+    "source_chapter": "Chapter 12. Sharing Emotions {감정 공유하기}",
+    "source_section": "Today’s Biz Idioms"
+  },
+  {
+    "expression": "set up with",
+    "text": "We will set you up with the necessary tools.",
+    "translation": "필요한 도구를 준비해 드리겠습니다.",
+    "unit": "미팅 참여",
+    "chapter": "미팅 마무리하기",
+    "source_chapter": "Chapter 3. Ending the Meeting {미팅 마무리 하기}",
+    "source_section": "Biz Writing Practice"
+  },
+  {
+    "expression": "remain unresolved",
+    "text": "If the matter remains unresolved, we will take further action.",
+    "translation": "문제가 해결되지 않으면, 우리는 추가 조치를 취할 것입니다.",
+    "unit": "미팅 참여",
+    "chapter": "주간미팅 진행하기",
+    "source_chapter": "Chapter 2. Conducting Weekly Meetings {주간미팅 진행하기}",
+    "source_section": "Think & Say Professionally"
+  },
+  {
+    "expression": "take the time to ~",
+    "text": "I appreciate you taking the time to review my proposal.",
+    "translation": "내 제안을 검토할 시간을 내주셔서 감사합니다.",
+    "unit": "업무 피드백 및 문제 해결",
+    "chapter": "이슈 해결 요청하기",
+    "source_chapter": "Chapter 11. Request for an Issue Resolution Request for an Issue Resolution {이슈 해결 요청하기}",
+    "source_section": "Biz Writing Practice"
+  },
+  {
+    "expression": "update daily",
+    "text": "The report must be updated daily to reflect the latest information.",
+    "translation": "보고서는 최신 정보를 반영하기 위해 매일 업데이트되어야 합니다.",
+    "unit": "업무 요청 및 개선",
+    "chapter": "요청 사항 재확인하기",
+    "source_chapter": "Chapter 5. Reviewing Requested Information {요청 사항 재확인하기}",
+    "source_section": "Biz talk summary"
+  },
+  {
+    "expression": "thank you for your assistance",
+    "text": "We appreciate your assistance in resolving this issue.",
+    "translation": "이 문제를 해결하는 데 도움을 주셔서 감사합니다.",
+    "unit": "업무 피드백 및 문제 해결",
+    "chapter": "이슈 해결 요청하기",
+    "source_chapter": "Chapter 11. Request for an Issue Resolution Request for an Issue Resolution {이슈 해결 요청하기}",
+    "source_section": "How would you say"
+  },
+  {
+    "expression": "Thank you for your kind cooperation.",
+    "text": "Your kind cooperation has made this process much smoother; thank you.",
+    "translation": "당신의 협조 덕분에 이 과정이 훨씬 원활해졌습니다; 감사합니다.",
+    "unit": "효과적인 이메일 작성",
+    "chapter": "요청 메일 작성하기",
+    "source_chapter": "Chapter 7. Writing a Request Email  {요청 메일 작성하기}",
+    "source_section": "Biz Skill Up"
+  },
+  {
+    "expression": "caught off guard",
+    "text": "The sudden change in plans caught us off guard.",
+    "translation": "계획의 갑작스러운 변화에 우리는 당황했습니다.",
+    "unit": "효과적인 이메일 작성",
+    "chapter": "요청 메일 작성하기",
+    "source_chapter": "Chapter 7. Writing a Request Email  {요청 메일 작성하기}",
+    "source_section": "Think & Say Professionally"
+  },
+  {
+    "expression": "caught off guard",
+    "text": "Her question caught me off guard during the meeting.",
+    "translation": "회의 중 그녀의 질문에 당황했습니다.",
+    "unit": "효과적인 이메일 작성",
+    "chapter": "요청 메일 작성하기",
+    "source_chapter": "Chapter 7. Writing a Request Email  {요청 메일 작성하기}",
+    "source_section": "Think & Say Professionally"
+  },
+  {
+    "expression": "compile information",
+    "text": "Compiling information from various sources can be time-consuming.",
+    "translation": "다양한 출처에서 정보를 수집하는 것은 시간이 많이 걸릴 수 있습니다.",
+    "unit": "효과적인 이메일 작성",
+    "chapter": "업무 설명 메일 작성하기",
+    "source_chapter": "Chapter 8. Writing a Job Description Email Writing a Job Description Email {업무 설명 메일 작성하기}",
+    "source_section": "Key Vocabulary"
+  },
+  {
+    "expression": "discrepancy",
+    "text": "The audit revealed several discrepancies in the records.",
+    "translation": "감사에서 기록의 여러 불일치가 드러났습니다.",
+    "unit": "업무 요청 및 개선",
+    "chapter": "요청 사항 재확인하기",
+    "source_chapter": "Chapter 5. Reviewing Requested Information {요청 사항 재확인하기}",
+    "source_section": "Biz skill up"
+  },
+  {
+    "expression": "revisit the project schedule",
+    "text": "Revisiting the project schedule can help us allocate resources more effectively.",
+    "translation": "프로젝트 일정을 다시 검토하면 자원을 더 효과적으로 배분하는 데 도움이 될 수 있습니다.",
+    "unit": "업무 요청 및 개선",
+    "chapter": "요청 사항 재확인하기",
+    "source_chapter": "Chapter 5. Reviewing Requested Information {요청 사항 재확인하기}",
+    "source_section": "Biz skill up"
+  },
+  {
+    "expression": "elaborate",
+    "text": "Elaborating on the project goals will help the team align better.",
+    "translation": "프로젝트 목표에 대해 자세히 설명하면 팀이 더 잘 조율하는 데 도움이 될 것입니다.",
+    "unit": "업무 요청 및 개선",
+    "chapter": "요청 사항 재확인하기",
+    "source_chapter": "Chapter 5. Reviewing Requested Information {요청 사항 재확인하기}",
+    "source_section": "Biz skill up"
+  },
+  {
+    "expression": "finds you well",
+    "text": "I hope you are doing well.",
+    "translation": "잘 지내고 계시길 바랍니다.",
+    "unit": "업무 요청 및 개선",
+    "chapter": "업무 요청하기",
+    "source_chapter": "Chapter 4. Requesting Work {업무 요청하기}",
+    "source_section": "Biz writing practice"
+  },
+  {
+    "expression": "the information is crucial",
+    "text": "This data is crucial for our analysis.",
+    "translation": "이 데이터는 우리의 분석에 중요합니다.",
+    "unit": "업무 요청 및 개선",
+    "chapter": "업무 요청하기",
+    "source_chapter": "Chapter 4. Requesting Work {업무 요청하기}",
+    "source_section": "Biz writing practice"
+  },
+  {
+    "expression": "the information is crucial",
+    "text": "Understanding this aspect is crucial for our success.",
+    "translation": "이 측면을 이해하는 것은 우리의 성공에 중요합니다.",
+    "unit": "업무 요청 및 개선",
+    "chapter": "업무 요청하기",
+    "source_chapter": "Chapter 4. Requesting Work {업무 요청하기}",
+    "source_section": "Biz writing practice"
+  },
+  {
+    "expression": "put money where your mouth is",
+    "text": "We put our money where our mouths were, and we never beat our chest.",
+    "translation": "우리는 말을 행동으로 옮겼고, 억울할 일이 없었어요.",
+    "unit": "업무 피드백 및 문제 해결",
+    "chapter": "이슈 해결 요청하기",
+    "source_chapter": "Chapter 11. Request for an Issue Resolution Request for an Issue Resolution {이슈 해결 요청하기}",
+    "source_section": "Media Talk"
+  },
+  {
+    "expression": "put money where your mouth is",
+    "text": "I would really like you to put your money where your mouth is.",
+    "translation": "말을 행동으로 옮겨주었으면 좋겠습니다.",
+    "unit": "업무 피드백 및 문제 해결",
+    "chapter": "이슈 해결 요청하기",
+    "source_chapter": "Chapter 11. Request for an Issue Resolution Request for an Issue Resolution {이슈 해결 요청하기}",
+    "source_section": "Media Talk"
+  },
+  {
+    "expression": "put money where your mouth is",
+    "text": "Putting money where your mouth is often more challenging than one might think.",
+    "translation": "말을 행동으로 옮기는 것은 생각보다 굉장히 어렵습니다.",
+    "unit": "업무 피드백 및 문제 해결",
+    "chapter": "이슈 해결 요청하기",
+    "source_chapter": "Chapter 11. Request for an Issue Resolution Request for an Issue Resolution {이슈 해결 요청하기}",
+    "source_section": "Media Talk"
+  }
+]

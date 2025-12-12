@@ -61,12 +61,18 @@ def main():
             existing_count = result.scalar()
             logger.info(f"Table 'expressions' exists with {existing_count} rows")
 
-            # 기존 데이터 삭제할지 확인 (선택사항)
+            # 기존 데이터 삭제 (연관 테이블 포함)
             if existing_count > 0:
-                logger.info("Clearing existing data...")
+                logger.info("Clearing existing data and related tables...")
+
+                # 연관 테이블 먼저 삭제 (FK 참조로 인해)
+                conn.execute(text("TRUNCATE TABLE user_expressions, user_expression_quiz_results CASCADE"))
+                logger.info("  ✓ Cleared user_expressions, user_expression_quiz_results")
+
+                # expressions 테이블 삭제
                 conn.execute(text("DELETE FROM expressions"))
                 conn.commit()
-                logger.info(f"Deleted {existing_count} existing rows\n")
+                logger.info(f"  ✓ Deleted {existing_count} expressions\n")
         except Exception as e:
             logger.error(f"Table 'expressions' does not exist or error: {str(e)}")
             logger.error("Please create the table first using Flyway migration!")
