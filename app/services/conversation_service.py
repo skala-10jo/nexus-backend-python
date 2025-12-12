@@ -6,9 +6,8 @@ import json
 import logging
 from typing import List, Dict, Any
 from uuid import UUID
-from openai import AsyncOpenAI
 
-from app.config import settings
+from app.core.openai_client import get_openai_client
 from app.database import get_db
 
 logger = logging.getLogger(__name__)
@@ -18,7 +17,7 @@ class ConversationService:
     """회화 연습 대화 생성 서비스"""
 
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        self.client = get_openai_client()  # 싱글톤 클라이언트 사용
 
     async def start_conversation(
         self,
