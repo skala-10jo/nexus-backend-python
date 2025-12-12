@@ -1,8 +1,7 @@
 """
 EmbeddingAgent: 메일 본문을 청킹하고 각 청크를 임베딩으로 변환하여 Qdrant에 저장하는 Agent.
 
-Author: NEXUS Team
-Date: 2025-01-12
+
 Updated: 2025-01-17 (Qdrant 연동)
 """
 from agent.base_agent import BaseAgent

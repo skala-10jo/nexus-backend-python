@@ -3,8 +3,7 @@ BizGuideRAGAgent: BizGuide 문서에서 관련 비즈니스 표현을 검색하�
 
 메일 번역/초안 작성 시 비즈매너 표현을 제공하기 위한 Agent입니다.
 
-Author: NEXUS Team
-Date: 2025-01-18
+
 """
 from agent.base_agent import BaseAgent
 from app.core.qdrant_client import get_qdrant_client

@@ -6,8 +6,7 @@
 2. EmailDraftService: Agent 조율 (RAG Agent + Draft Agent)
 3. 결과 반환
 
-Author: NEXUS Team
-Date: 2025-01-18
+
 """
 import asyncio
 import sys

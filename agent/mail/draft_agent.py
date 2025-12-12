@@ -3,8 +3,7 @@ EmailDraftAgent: 비즈니스 메일 초안 작성 Agent (순수 AI 로직)
 
 RAG 컨텍스트를 활용하여 비즈니스 매너가 적용된 한글/영어 메일을 작성합니다.
 
-Author: NEXUS Team
-Date: 2025-01-18
+
 """
 from agent.base_agent import BaseAgent
 from typing import Dict, Any, Optional, List

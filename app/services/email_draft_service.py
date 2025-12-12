@@ -3,8 +3,7 @@ EmailDraftService: 메일 초안 작성/번역 비즈니스 로직
 
 Agent들을 조율하여 BizGuide RAG 기반 메일 작성/번역을 제공합니다.
 
-Author: NEXUS Team
-Date: 2025-01-18
+
 """
 from agent.mail.draft_agent import EmailDraftAgent
 from agent.rag.bizguide_rag_agent import BizGuideRAGAgent

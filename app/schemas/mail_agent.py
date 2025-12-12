@@ -3,8 +3,7 @@ Pydantic schemas for Mail Agent API.
 
 Request/Response models for email embedding and search endpoints.
 
-Author: NEXUS Team
-Date: 2025-01-12
+
 """
 from pydantic import BaseModel, Field
 from typing import List, Optional

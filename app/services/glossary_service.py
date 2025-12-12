@@ -1,6 +1,6 @@
 """
-Glossary extraction service.
-Handles business logic for extracting glossary terms from documents.
+용어집 추출 서비스 모듈.
+문서에서 전문 용어를 추출하는 비즈니스 로직을 처리합니다.
 """
 import os
 import logging
@@ -18,15 +18,15 @@ logger = logging.getLogger(__name__)
 
 class GlossaryService:
     """
-    Service for glossary term extraction business logic.
+    용어집 추출 비즈니스 로직 서비스.
 
-    Orchestrates:
-    - Agent for AI processing
-    - Database operations
-    - Job status management
-    - Error handling
+    담당 역할:
+    - AI 처리를 위한 Agent 조율
+    - 데이터베이스 작업
+    - 작업 상태 관리
+    - 에러 처리
 
-    Example:
+    사용 예시:
         >>> service = GlossaryService()
         >>> await service.extract_and_save_terms(
         ...     job_id="job-123",
@@ -39,7 +39,7 @@ class GlossaryService:
     """
 
     def __init__(self):
-        """Initialize service with GlossaryAgent."""
+        """GlossaryAgent로 서비스를 초기화합니다."""
         self.agent = GlossaryAgent()
 
     async def extract_and_save_terms(
@@ -52,66 +52,66 @@ class GlossaryService:
         db: Session
     ) -> Dict[str, Any]:
         """
-        Extract glossary terms from document and save to database.
+        문서에서 용어를 추출하고 데이터베이스에 저장합니다.
 
-        This is the main business logic flow:
-        1. Update job status to PROCESSING
-        2. Extract text from document file
-        3. Call Agent to extract terms
-        4. Save terms to database
-        5. Update job status to COMPLETED
+        주요 비즈니스 로직 흐름:
+        1. 작업 상태를 PROCESSING으로 업데이트
+        2. 문서 파일에서 텍스트 추출
+        3. Agent를 호출하여 용어 추출
+        4. 용어를 데이터베이스에 저장
+        5. 작업 상태를 COMPLETED로 업데이트
 
-        Args:
-            job_id: Extraction job ID
-            file_id: File ID
-            file_path: Relative path to document file
-            user_id: User ID
-            project_id: Project ID (can be "None" or None for no project)
-            db: Database session
+        매개변수:
+            job_id: 추출 작업 ID
+            file_id: 파일 ID
+            file_path: 문서 파일의 상대 경로
+            user_id: 사용자 ID
+            project_id: 프로젝트 ID ("None" 또는 None일 수 있음)
+            db: 데이터베이스 세션
 
-        Returns:
-            Dict with:
-                - status: "success" or "failed"
-                - terms_count: Number of terms extracted (if success)
-                - error: Error message (if failed)
+        반환값:
+            다음을 포함하는 딕셔너리:
+                - status: "success" 또는 "failed"
+                - terms_count: 추출된 용어 수 (성공 시)
+                - error: 에러 메시지 (실패 시)
 
-        Raises:
-            Exception: If extraction fails (error is logged and job marked as failed)
+        예외:
+            Exception: 추출 실패 시 (에러가 로깅되고 작업이 실패로 표시됨)
 
-        Example:
+        사용 예시:
             >>> service = GlossaryService()
             >>> result = await service.extract_and_save_terms(...)
-            >>> print(f"Extracted {result['terms_count']} terms")
+            >>> print(f"추출된 용어 수: {result['terms_count']}")
         """
         try:
-            # 1. Update job status to PROCESSING
+            # 1. 작업 상태를 PROCESSING으로 업데이트
             job = self._update_job_status(db, job_id, "PROCESSING", 10)
             job.started_at = datetime.utcnow()
             db.commit()
-            logger.info(f"📝 Job {job_id}: Started processing")
+            logger.info(f"📝 작업 {job_id}: 처리 시작")
 
-            # 2. Extract text from document
+            # 2. 문서에서 텍스트 추출
             full_path = os.path.join(settings.upload_dir, file_path)
-            logger.info(f"📄 Job {job_id}: Extracting text from {full_path}")
+            logger.info(f"📄 작업 {job_id}: {full_path}에서 텍스트 추출 중")
 
             text = extract_text_from_file(full_path)
 
             if not text or len(text.strip()) < 100:
-                raise ValueError("Document text is too short or empty")
+                raise ValueError("문서 텍스트가 너무 짧거나 비어있습니다")
 
             job.progress = 30
             db.commit()
-            logger.info(f"📝 Job {job_id}: Text extracted ({len(text)} characters)")
+            logger.info(f"📝 작업 {job_id}: 텍스트 추출 완료 ({len(text)}자)")
 
-            # 3. Call Agent to extract terms (pure AI logic)
-            logger.info(f"🤖 Job {job_id}: Calling GlossaryAgent for term extraction")
+            # 3. Agent를 호출하여 용어 추출 (순수 AI 로직)
+            logger.info(f"🤖 작업 {job_id}: GlossaryAgent로 용어 추출 호출")
             terms_data = await self.agent.process(text, max_terms=50)
 
             job.progress = 70
             db.commit()
-            logger.info(f"📝 Job {job_id}: Agent returned {len(terms_data)} terms")
+            logger.info(f"📝 작업 {job_id}: Agent가 {len(terms_data)}개 용어 반환")
 
-            # 4. Save terms to database
+            # 4. 용어를 데이터베이스에 저장
             saved_count = self._save_terms(
                 db=db,
                 terms_data=terms_data,
@@ -120,13 +120,13 @@ class GlossaryService:
                 project_id=project_id
             )
 
-            # 5. Update job as completed
+            # 5. 작업을 완료로 업데이트
             job.status = "COMPLETED"
             job.progress = 100
             job.terms_extracted = saved_count
             job.completed_at = datetime.utcnow()
             db.commit()
-            logger.info(f"✅ Job {job_id}: Completed successfully")
+            logger.info(f"✅ 작업 {job_id}: 성공적으로 완료")
 
             return {
                 "status": "success",
@@ -134,8 +134,8 @@ class GlossaryService:
             }
 
         except Exception as e:
-            logger.error(f"❌ Job {job_id}: Failed with error: {str(e)}")
-            # Rollback before marking job as failed
+            logger.error(f"❌ 작업 {job_id}: 에러 발생 - {str(e)}")
+            # 실패 표시 전에 롤백
             db.rollback()
             self._mark_job_failed(db, job_id, str(e))
             return {
@@ -151,26 +151,26 @@ class GlossaryService:
         progress: int
     ) -> GlossaryExtractionJob:
         """
-        Update job status and progress (private method).
+        작업 상태와 진행률을 업데이트합니다 (private 메서드).
 
-        Args:
-            db: Database session
-            job_id: Job ID
-            status: New status (PENDING, PROCESSING, COMPLETED, FAILED)
-            progress: Progress percentage (0-100)
+        매개변수:
+            db: 데이터베이스 세션
+            job_id: 작업 ID
+            status: 새로운 상태 (PENDING, PROCESSING, COMPLETED, FAILED)
+            progress: 진행률 (0-100)
 
-        Returns:
-            Updated GlossaryExtractionJob instance
+        반환값:
+            업데이트된 GlossaryExtractionJob 인스턴스
 
-        Raises:
-            ValueError: If job not found
+        예외:
+            ValueError: 작업을 찾을 수 없는 경우
         """
         job = db.query(GlossaryExtractionJob).filter(
             GlossaryExtractionJob.id == job_id
         ).first()
 
         if not job:
-            raise ValueError(f"Job {job_id} not found")
+            raise ValueError(f"작업 {job_id}을(를) 찾을 수 없습니다")
 
         job.status = status
         job.progress = progress
@@ -187,34 +187,34 @@ class GlossaryService:
         project_id: str
     ) -> int:
         """
-        Save extracted terms to database (private method).
+        추출된 용어를 데이터베이스에 저장합니다 (private 메서드).
 
-        Args:
-            db: Database session
-            terms_data: List of term dictionaries from Agent
-            file_id: File ID
-            user_id: User ID
-            project_id: Project ID (can be "None" or None)
+        매개변수:
+            db: 데이터베이스 세션
+            terms_data: Agent에서 반환된 용어 딕셔너리 리스트
+            file_id: 파일 ID
+            user_id: 사용자 ID
+            project_id: 프로젝트 ID ("None" 또는 None일 수 있음)
 
-        Returns:
-            Number of terms successfully saved
+        반환값:
+            성공적으로 저장된 용어 수
 
-        Note:
-            Handles "None" string and None values for project_id.
-            Uses savepoints for error isolation - if one term fails,
-            only that term is rolled back, not the entire batch.
+        참고:
+            project_id의 "None" 문자열과 None 값을 처리합니다.
+            에러 격리를 위해 savepoint를 사용합니다 - 하나의 용어가 실패해도
+            해당 용어만 롤백되고 전체 배치는 롤백되지 않습니다.
         """
         saved_count = 0
         link_count = 0
 
-        # Convert string "None" to actual None
+        # 문자열 "None"을 실제 None으로 변환
         actual_project_id = None if project_id in ["None", None] else project_id
 
         for term_data in terms_data:
-            # Create savepoint for each term so we can rollback individually
+            # 개별 롤백을 위해 각 용어에 대해 savepoint 생성
             savepoint = db.begin_nested()
             try:
-                # Check if term already exists (중복 체크)
+                # 용어가 이미 존재하는지 확인 (중복 체크)
                 existing_term = db.query(GlossaryTerm).filter(
                     GlossaryTerm.user_id == user_id,
                     GlossaryTerm.korean_term == term_data['korean']
@@ -234,15 +234,15 @@ class GlossaryService:
                             file_id=file_id
                         )
                         db.add(term_doc)
-                        savepoint.commit()  # Commit the savepoint
+                        savepoint.commit()  # savepoint 커밋
                         link_count += 1
-                        logger.info(f"Term already exists, added document link: '{term_data['korean']}'")
+                        logger.info(f"기존 용어에 문서 연결 추가: '{term_data['korean']}'")
                     else:
-                        savepoint.commit()  # Nothing to save, but commit savepoint
-                        logger.debug(f"Term and document link already exist, skipping: '{term_data['korean']}'")
+                        savepoint.commit()  # 저장할 것 없지만 savepoint 커밋
+                        logger.debug(f"용어와 문서 연결이 이미 존재하여 건너뜀: '{term_data['korean']}'")
                     continue
 
-                # Create GlossaryTerm
+                # GlossaryTerm 생성
                 term = GlossaryTerm(
                     project_id=actual_project_id,
                     user_id=user_id,
@@ -261,26 +261,26 @@ class GlossaryService:
                     status='AUTO_EXTRACTED'
                 )
                 db.add(term)
-                db.flush()  # Get term ID
+                db.flush()  # term ID 획득
 
-                # Create term-file link
+                # 용어-파일 연결 생성
                 term_doc = GlossaryTermDocument(
                     term_id=term.id,
                     file_id=file_id
                 )
                 db.add(term_doc)
-                savepoint.commit()  # Commit the savepoint
+                savepoint.commit()  # savepoint 커밋
                 saved_count += 1
 
             except Exception as e:
-                # Rollback only this savepoint, not the entire transaction
+                # 전체 트랜잭션이 아닌 이 savepoint만 롤백
                 savepoint.rollback()
-                logger.warning(f"Failed to save term '{term_data.get('korean', 'unknown')}': {str(e)}")
+                logger.warning(f"용어 저장 실패 '{term_data.get('korean', 'unknown')}': {str(e)}")
                 continue
 
-        # Commit the main transaction
+        # 메인 트랜잭션 커밋
         db.commit()
-        logger.info(f"💾 Job: Saved {saved_count} new terms, {link_count} document links (from {len(terms_data)} extracted)")
+        logger.info(f"💾 작업: 신규 용어 {saved_count}개, 문서 연결 {link_count}개 저장 완료 (추출된 {len(terms_data)}개 중)")
 
         return saved_count + link_count
 
@@ -291,12 +291,12 @@ class GlossaryService:
         error_message: str
     ):
         """
-        Mark job as failed with error message (private method).
+        작업을 실패로 표시하고 에러 메시지를 저장합니다 (private 메서드).
 
-        Args:
-            db: Database session
-            job_id: Job ID
-            error_message: Error message to store
+        매개변수:
+            db: 데이터베이스 세션
+            job_id: 작업 ID
+            error_message: 저장할 에러 메시지
         """
         job = db.query(GlossaryExtractionJob).filter(
             GlossaryExtractionJob.id == job_id

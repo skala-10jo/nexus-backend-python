@@ -82,7 +82,9 @@ app.include_router(expressions.router, prefix="/api/ai", tags=["Expressions API"
 @app.on_event("startup")
 async def startup_event():
     """Execute on application startup."""
+    import asyncio
     from app.core.qdrant_client import ensure_collection_exists
+    from app.core.azure_speech_token_manager import AzureSpeechTokenManager
 
     logger.info("NEXUS Python AI Backend starting...")
     logger.info(f"Port: {settings.PYTHON_BACKEND_PORT}")
@@ -95,6 +97,18 @@ async def startup_event():
         logger.info(f"Qdrant collection ready: {settings.QDRANT_EMAIL_COLLECTION}")
     except Exception as e:
         logger.error(f"Failed to initialize Qdrant: {str(e)}")
+
+    # Pre-fetch Azure Speech token (background task)
+    # 앱 시작 시 토큰을 미리 발급하여 첫 음성 인식 시 지연 방지
+    async def prefetch_azure_token():
+        try:
+            token_manager = AzureSpeechTokenManager.get_instance()
+            await token_manager.prefetch_token()
+        except Exception as e:
+            logger.warning(f"Azure Speech token prefetch failed (non-critical): {e}")
+
+    # 백그라운드에서 토큰 사전 발급 (앱 시작을 블로킹하지 않음)
+    asyncio.create_task(prefetch_azure_token())
 
 
 @app.on_event("shutdown")

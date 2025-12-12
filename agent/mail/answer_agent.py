@@ -1,8 +1,6 @@
 """
 AnswerAgent: 검색 결과를 바탕으로 자연어 답변을 생성하는 Agent.
 
-Author: NEXUS Team
-Date: 2025-01-17
 """
 from agent.base_agent import BaseAgent
 from typing import List, Dict, Any, Optional

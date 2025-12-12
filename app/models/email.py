@@ -1,8 +1,7 @@
 """
 Email model for RAG-based email search.
 
-Author: NEXUS Team
-Date: 2025-01-12
+
 Updated: 2025-01-17 (Qdrant 마이그레이션 - EmailEmbedding 제거)
 """
 from sqlalchemy import Column, String, Integer, Text, ForeignKey, TIMESTAMP, Boolean, BigInteger
