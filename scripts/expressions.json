@@ -396,35 +396,9 @@
     "source_section": "Key Vocabulary"
   },
   {
-    "expression": "address an issue",
-    "meaning": "{문제를 해결하다}",
-    "examples": [
-      {
-        "text": "We need to address the issue before it escalates.",
-        "translation": "문제가 커지기 전에 해결해야 합니다."
-      },
-      {
-        "text": "The team will address the issue in the next meeting.",
-        "translation": "팀은 다음 회의에서 문제를 해결할 것입니다."
-      },
-      {
-        "text": "It's important to address any issues promptly to maintain productivity.",
-        "translation": "생산성을 유지하기 위해 문제를 신속하게 해결하는 것이 중요합니다."
-      }
-    ],
-    "unit": "업무 피드백 및 문제 해결",
-    "chapter": "이슈 해결 요청하기",
-    "source_chapter": "Chapter 11. Request for an Issue Resolution Request for an Issue Resolution {이슈 해결 요청하기}",
-    "source_section": "Key Vocabulary"
-  },
-  {
     "expression": "sort out",
     "meaning": "{문제를 해결하다.}",
     "examples": [
-      {
-        "text": "I’m going to sort this out.",
-        "translation": "이건 내가 해결할게."
-      },
       {
         "text": "Let's have a team meeting to sort out any issues.",
         "translation": "모든 문제를 해결하기 위해 팀 회의를 진행합시다."
@@ -470,10 +444,6 @@
         "translation": "어떠한 결정을 내리기 전에 상사와 상의하는 것이 현명하다."
       },
       {
-        "text": "I will check with my boss about the new policy changes.",
-        "translation": "나는 새로운 정책 변경에 대해 상사와 상의할 것이다."
-      },
-      {
         "text": "Make sure to check with your boss before finalizing the report.",
         "translation": "보고서를 최종 확정하기 전에 상사와 상의하는 것을 잊지 마세요."
       }
@@ -490,10 +460,6 @@
       {
         "text": "It's important to consult your superior before making significant changes.",
         "translation": "중요한 변경을 하기 전에 상급자와 상담하는 것이 중요하다."
-      },
-      {
-        "text": "I need to consult my superior regarding the budget adjustments.",
-        "translation": "예산 조정에 대해 상급자와 상담해야 한다."
       },
       {
         "text": "Always consult your superior when in doubt about a decision.",
@@ -528,39 +494,9 @@
     "source_section": "Think & Say Professionally"
   },
   {
-    "expression": "keep in the loop",
-    "meaning": "{~에게 계속 알려주다, ~를 의사 결정에 개입시키다}",
-    "examples": [
-      {
-        "text": "Please keep me in the loop regarding the meeting schedule.",
-        "translation": "회의 일정에 대해 계속 알려주세요."
-      },
-      {
-        "text": "I will keep you in the loop about any changes to the project timeline.",
-        "translation": "프로젝트 일정에 대한 변경 사항에 대해 계속 알려드리겠습니다."
-      },
-      {
-        "text": "It's important to keep everyone in the loop to ensure smooth communication.",
-        "translation": "원활한 소통을 위해 모두에게 계속 알려주는 것이 중요합니다."
-      }
-    ],
-    "unit": "효과적인 이메일 작성",
-    "chapter": "협상 메일 작성하기",
-    "source_chapter": "Chapter 9. Writing a Negotiation Email Writing a Negotiation Email {협상 메일 작성하기}",
-    "source_section": "Today’s Biz Idioms"
-  },
-  {
     "expression": "be on (the right) track",
     "meaning": "{(올바른 방향으로) 진행하고 있다}",
     "examples": [
-      {
-        "text": "Our sales figures indicate that we are on the right track.",
-        "translation": "우리의 판매 수치는 우리가 올바른 방향으로 나아가고 있음을 나타냅니다."
-      },
-      {
-        "text": "After reviewing the feedback, I believe we are on the right track with our strategy.",
-        "translation": "피드백을 검토한 결과, 우리의 전략이 올바른 방향으로 진행되고 있다고 믿습니다."
-      },
       {
         "text": "If we continue to meet our deadlines, we will be on the right track for the launch.",
         "translation": "마감일을 계속 준수한다면, 우리는 출시를 위한 올바른 방향으로 나아가고 있을 것입니다."
@@ -792,7 +728,7 @@
     "source_section": "Biz Writing Practice"
   },
   {
-    "expression": "Thanks for your input, but I would change …",
+    "expression": "Thanks for your input, but I would change…",
     "meaning": "{당신의 의견에 감사합니다만, 제가 바꾸고 싶은 부분은 ...}",
     "examples": [
       {
@@ -814,7 +750,7 @@
     "source_section": "Biz Writing Practice"
   },
   {
-    "expression": "I appreciate your view. However, I believe that …",
+    "expression": "I appreciate your view. However, I believe that…",
     "meaning": "{의견 감사합니다. 하지만 저는 ...라고 생각합니다.}",
     "examples": [
       {
@@ -960,28 +896,6 @@
       {
         "text": "Can you provide an outline of the project phases?",
         "translation": "프로젝트 단계에 대한 개요를 설명해 주실 수 있나요?"
-      }
-    ],
-    "unit": "미팅 참여",
-    "chapter": "주간미팅 진행하기",
-    "source_chapter": "Chapter 2. Conducting Weekly Meetings {주간미팅 진행하기}",
-    "source_section": "Today’s Biz Idioms"
-  },
-  {
-    "expression": "give/get feedback on",
-    "meaning": "{피드백을 주다 / 피드백을 받다}",
-    "examples": [
-      {
-        "text": "I would like to get feedback on my recent report.",
-        "translation": "최근 보고서에 대해 피드백을 받고 싶습니다."
-      },
-      {
-        "text": "Please give feedback on the new marketing strategy.",
-        "translation": "새로운 마케팅 전략에 대해 피드백을 주세요."
-      },
-      {
-        "text": "It's important to give feedback on team performance regularly.",
-        "translation": "팀 성과에 대해 정기적으로 피드백을 주는 것이 중요합니다."
       }
     ],
     "unit": "미팅 참여",
@@ -1154,10 +1068,6 @@
       {
         "text": "The budget has been approved by the finance department.",
         "translation": "예산은 재무 부서에 의해 승인되었습니다."
-      },
-      {
-        "text": "The changes have been approved by management.",
-        "translation": "변경 사항은 경영진에 의해 승인되었습니다."
       }
     ],
     "unit": "업무 요청 및 개선",
@@ -1988,10 +1898,6 @@
         "translation": "이 중요한 회의에 참석해 주셔서 감사합니다."
       },
       {
-        "text": "We appreciate that you could join us for the discussion.",
-        "translation": "토론에 참석해 주셔서 감사합니다."
-      },
-      {
         "text": "I appreciate that you could join us today despite your busy schedule.",
         "translation": "바쁜 일정에도 불구하고 오늘 참석해 주셔서 감사합니다."
       }
@@ -2118,10 +2024,6 @@
       {
         "text": "We need to think outside the box to innovate.",
         "translation": "우리는 혁신하기 위해 새로운 관점으로 생각해야 합니다."
-      },
-      {
-        "text": "Thinking outside the box can lead to unexpected solutions.",
-        "translation": "새로운 관점으로 생각하는 것은 예상치 못한 해결책으로 이어질 수 있습니다."
       },
       {
         "text": "To solve this problem, let's think outside the box.",
@@ -2310,7 +2212,7 @@
     "source_section": "Today’s Biz Idioms"
   },
   {
-    "expression": "I have some concerns about …",
+    "expression": "I have some concerns about…",
     "meaning": "{ …에 대한 우려가 있습니다.}",
     "examples": [
       {
@@ -2332,7 +2234,7 @@
     "source_section": "Biz Skill Up"
   },
   {
-    "expression": "We have an opportunity to …",
+    "expression": "We have an opportunity to…",
     "meaning": "{우리는 …하는 기회가 있습니다.}",
     "examples": [
       {
@@ -2354,7 +2256,7 @@
     "source_section": "Biz Skill Up"
   },
   {
-    "expression": "I appreciate the offer, but …",
+    "expression": "I appreciate the offer, but…",
     "meaning": "{제안 감사드립니다만, …}",
     "examples": [
       {
@@ -2606,10 +2508,6 @@
       {
         "text": "We should reassess our goals based on the latest market trends.",
         "translation": "최신 시장 동향에 따라 우리의 목표를 재평가해야 합니다."
-      },
-      {
-        "text": "Reassessing our goals will help us stay focused.",
-        "translation": "목표를 재평가하는 것은 우리가 집중하는 데 도움이 될 것입니다."
       }
     ],
     "unit": "효과적인 이메일 작성",
@@ -2704,28 +2602,6 @@
     "chapter": "미팅에서의 기본 태도",
     "source_chapter": "Chapter 1. Starting a Meeting {미팅에서의 기본 태도}",
     "source_section": "Biz Talk"
-  },
-  {
-    "expression": "take (someone) through",
-    "meaning": "{설명하다}",
-    "examples": [
-      {
-        "text": "Can you take me through the budget proposal?",
-        "translation": "예산 제안을 설명해 주실 수 있나요?"
-      },
-      {
-        "text": "Please take us through the new software features.",
-        "translation": "새로운 소프트웨어 기능을 설명해 주세요."
-      },
-      {
-        "text": "I would appreciate it if you could take me through the meeting agenda.",
-        "translation": "회의 안건을 설명해 주시면 감사하겠습니다."
-      }
-    ],
-    "unit": "업무 피드백 및 문제 해결",
-    "chapter": "업무 피드백하기",
-    "source_chapter": "Chapter 10. Giving Feedback {업무 피드백하기}",
-    "source_section": "Media Talk"
   },
   {
     "expression": "come out on top",
@@ -3102,28 +2978,6 @@
     "source_section": "Today’s Biz Idioms"
   },
   {
-    "expression": "keep A updated on B",
-    "meaning": "{B에 대해 A에게 정기적으로 최신 정보를 주다.}",
-    "examples": [
-      {
-        "text": "I will keep you updated on any changes to the schedule.",
-        "translation": "일정에 대한 변경 사항이 있으면 계속해서 알려드리겠습니다."
-      },
-      {
-        "text": "Please keep the team updated on the client's feedback.",
-        "translation": "고객의 피드백에 대해 팀에게 계속해서 최신 정보를 주시기 바랍니다."
-      },
-      {
-        "text": "Make sure to keep the stakeholders updated on the project's milestones.",
-        "translation": "프로젝트의 주요 이정표에 대해 이해관계자들에게 계속해서 최신 정보를 제공해야 합니다."
-      }
-    ],
-    "unit": "미팅 참여",
-    "chapter": "미팅에서의 기본 태도",
-    "source_chapter": "Chapter 1. Starting a Meeting {미팅에서의 기본 태도}",
-    "source_section": "Today’s Biz Idioms"
-  },
-  {
     "expression": "discuss a new project",
     "meaning": "{새 프로젝트에 대해 논의하다}",
     "examples": [
@@ -3244,10 +3098,6 @@
       {
         "text": "If no one objects, I will take the lead on this project.",
         "translation": "반대하는 사람이 없다면 제가 이 프로젝트를 맡겠습니다."
-      },
-      {
-        "text": "Taking the lead on this project aligns with my career goals.",
-        "translation": "이 프로젝트를 맡는 것은 제 경력 목표와 일치합니다."
       }
     ],
     "unit": "효과적인 이메일 작성",
@@ -3684,10 +3534,6 @@
       {
         "text": "It’s nice to meet you at this conference.",
         "translation": "이번 회의에서 만나서 반갑습니다."
-      },
-      {
-        "text": "I’m glad to finally meet you in person.",
-        "translation": "드디어 직접 만나서 반갑습니다."
       }
     ],
     "unit": "미팅 참여",
@@ -3702,10 +3548,6 @@
       {
         "text": "Thank you for your card; I’ll keep in touch.",
         "translation": "명함 감사합니다; 연락하겠습니다."
-      },
-      {
-        "text": "I appreciate your card; it was nice meeting you.",
-        "translation": "명함 감사합니다; 만나서 반가웠습니다."
       },
       {
         "text": "Thank you for your card; let’s connect on LinkedIn.",
@@ -3948,38 +3790,12 @@
       {
         "text": "Going the extra mile can set you apart from your competitors.",
         "translation": "한층 더 노력하는 것은 경쟁자들과 차별화될 수 있습니다."
-      },
-      {
-        "text": "Our company culture encourages employees to go the extra mile.",
-        "translation": "우리 회사 문화는 직원들이 한층 더 노력하도록 장려합니다."
       }
     ],
     "unit": "업무 요청 및 개선",
     "chapter": "개선 요구하기",
     "source_chapter": "Chapter 6. Requesting Improvements {개선 요구하기}",
     "source_section": "Today’s Biz Idioms"
-  },
-  {
-    "expression": "catch (someone) up on (something)",
-    "meaning": "{(누군가)에게 (무엇)을 설명하다.}",
-    "examples": [
-      {
-        "text": "Can you kind of catch me up on what you see as your role in the company?",
-        "translation": "당신이 회사에서 하는 역할이 무엇이라고 생각하시는지 설명해 주시겠어요?"
-      },
-      {
-        "text": "I need to catch up on the latest programming frameworks.",
-        "translation": "새로운 프로그래밍 프레임워크를 따라가야 해요."
-      },
-      {
-        "text": "Our team is having a knowledge-sharing session tomorrow to catch up on the recent updates.",
-        "translation": "우리 팀은 내일 지식 공유 세션을 갖고 최근 업데이트에 대해 알아가기로 했어요."
-      }
-    ],
-    "unit": "업무 피드백 및 문제 해결",
-    "chapter": "감정 공유하기",
-    "source_chapter": "Chapter 12. Sharing Emotions {감정 공유하기}",
-    "source_section": "Media Talk"
   },
   {
     "expression": "communication breakdown",
@@ -4344,10 +4160,6 @@
       {
         "text": "Incorporating specifics will enhance the clarity of our proposal.",
         "translation": "구체적인 내용을 포함하는 것은 우리의 제안서의 명확성을 높일 것입니다."
-      },
-      {
-        "text": "Make sure to incorporate specifics in your presentation.",
-        "translation": "발표에서 구체적인 내용을 포함하는 것을 잊지 마세요."
       }
     ],
     "unit": "업무 피드백 및 문제 해결",
@@ -4410,10 +4222,6 @@
       {
         "text": "I would like to cordially invite you to join our team meeting.",
         "translation": "저는 당신을 팀 회의에 마음을 담아 초대하고 싶습니다."
-      },
-      {
-        "text": "The company cordially invites all employees to the holiday party.",
-        "translation": "회사는 모든 직원을 연말 파티에 마음을 담아 초대합니다."
       }
     ],
     "unit": "효과적인 이메일 작성",
@@ -4488,28 +4296,6 @@
     "source_section": "Biz Writing Practice"
   },
   {
-    "expression": "expand on/upon",
-    "meaning": "{부연설명}",
-    "examples": [
-      {
-        "text": "Can you expand on your last point?",
-        "translation": "마지막 요점에 대해 부연 설명해 주시겠어요?"
-      },
-      {
-        "text": "I would like you to expand upon the budget estimates.",
-        "translation": "예산 추정에 대해 부연 설명해 주셨으면 합니다."
-      },
-      {
-        "text": "Please expand on the timeline for the project.",
-        "translation": "프로젝트의 일정에 대해 부연 설명해 주세요."
-      }
-    ],
-    "unit": "효과적인 이메일 작성",
-    "chapter": "업무 설명 메일 작성하기",
-    "source_chapter": "Chapter 8. Writing a Job Description Email Writing a Job Description Email {업무 설명 메일 작성하기}",
-    "source_section": "Media Talk"
-  },
-  {
     "expression": "compile information",
     "meaning": "{정보를 수집하다}",
     "examples": [
@@ -4520,10 +4306,6 @@
       {
         "text": "The team will compile information for the quarterly report.",
         "translation": "팀은 분기 보고서를 위해 정보를 수집할 것입니다."
-      },
-      {
-        "text": "Can you compile the information needed for the meeting?",
-        "translation": "회의에 필요한 정보를 수집해 주시겠어요?"
       }
     ],
     "unit": "효과적인 이메일 작성",
@@ -5236,50 +5018,6 @@
     "source_section": "Biz talk summary"
   },
   {
-    "expression": "maximum three",
-    "meaning": "{최대 3명}",
-    "examples": [
-      {
-        "text": "We can accommodate a maximum of three participants in the workshop.",
-        "translation": "워크숍에는 최대 3명의 참가자를 수용할 수 있습니다."
-      },
-      {
-        "text": "The team can handle a maximum of three projects at a time.",
-        "translation": "팀은 한 번에 최대 3개의 프로젝트를 처리할 수 있습니다."
-      },
-      {
-        "text": "You can invite a maximum of three guests to the event.",
-        "translation": "행사에 최대 3명의 게스트를 초대할 수 있습니다."
-      }
-    ],
-    "unit": "업무 요청 및 개선",
-    "chapter": "업무 요청하기",
-    "source_chapter": "Chapter 4. Requesting Work {업무 요청하기}",
-    "source_section": "Biz talk summary"
-  },
-  {
-    "expression": "send via email",
-    "meaning": "{이메일을 통해 보내다}",
-    "examples": [
-      {
-        "text": "Please send the report via email by the end of the day.",
-        "translation": "오늘 중으로 보고서를 이메일을 통해 보내주세요."
-      },
-      {
-        "text": "I will send the updated documents via email as soon as possible.",
-        "translation": "최대한 빨리 업데이트된 문서를 이메일로 보내겠습니다."
-      },
-      {
-        "text": "Can you send the meeting agenda via email?",
-        "translation": "회의 안건을 이메일로 보내주실 수 있나요?"
-      }
-    ],
-    "unit": "업무 요청 및 개선",
-    "chapter": "업무 요청하기",
-    "source_chapter": "Chapter 4. Requesting Work {업무 요청하기}",
-    "source_section": "Biz talk summary"
-  },
-  {
     "expression": "get down to business",
     "meaning": "{일에 착수하다}",
     "examples": [
@@ -5308,14 +5046,6 @@
       {
         "text": "In the interview, make sure to put your best foot forward.",
         "translation": "면접에서는 최선을 다하는 것이 중요합니다."
-      },
-      {
-        "text": "During the presentation, I expect everyone to put their best foot forward.",
-        "translation": "발표 중에는 모두가 최선을 다해 주기를 기대합니다."
-      },
-      {
-        "text": "To win the client, we need to put our best foot forward in this proposal.",
-        "translation": "고객을 얻기 위해서는 이 제안서에서 최선을 다해야 합니다."
       }
     ],
     "unit": "업무 피드백 및 문제 해결",
@@ -5526,10 +5256,6 @@
     "meaning": "{~이 준비된}",
     "examples": [
       {
-        "text": "We will set you up with the necessary tools.",
-        "translation": "필요한 도구를 준비해 드리겠습니다."
-      },
-      {
         "text": "The new employee will be set up with a laptop and software.",
         "translation": "신입 사원은 노트북과 소프트웨어가 준비될 것입니다."
       },
@@ -5620,10 +5346,6 @@
       {
         "text": "We will monitor the situation if the concerns remain unresolved.",
         "translation": "우리는 우려 사항이 해결되지 않으면 상황을 모니터링할 것입니다."
-      },
-      {
-        "text": "If the matter remains unresolved, we will take further action.",
-        "translation": "문제가 해결되지 않으면, 우리는 추가 조치를 취할 것입니다."
       }
     ],
     "unit": "미팅 참여",
@@ -5657,10 +5379,6 @@
     "expression": "take the time to ~",
     "meaning": "{~할 시간을 내다}",
     "examples": [
-      {
-        "text": "I appreciate you taking the time to review my proposal.",
-        "translation": "내 제안을 검토할 시간을 내주셔서 감사합니다."
-      },
       {
         "text": "Please take the time to consider our offer carefully.",
         "translation": "우리의 제안을 신중히 고려할 시간을 내주십시오."
@@ -5796,10 +5514,6 @@
       {
         "text": "Please update daily the status of your tasks.",
         "translation": "귀하의 작업 상태를 매일 업데이트해 주세요."
-      },
-      {
-        "text": "The report must be updated daily to reflect the latest information.",
-        "translation": "보고서는 최신 정보를 반영하기 위해 매일 업데이트되어야 합니다."
       }
     ],
     "unit": "업무 요청 및 개선",
@@ -5906,10 +5620,6 @@
       {
         "text": "Thank you for your assistance; it made a big difference.",
         "translation": "도와 주셔서 감사합니다; 큰 차이를 만들었습니다."
-      },
-      {
-        "text": "We appreciate your assistance in resolving this issue.",
-        "translation": "이 문제를 해결하는 데 도움을 주셔서 감사합니다."
       }
     ],
     "unit": "업무 피드백 및 문제 해결",
@@ -6170,10 +5880,6 @@
       {
         "text": "I want to express my gratitude; thank you for your kind cooperation.",
         "translation": "감사를 표하고 싶습니다; 협조에 감사드립니다."
-      },
-      {
-        "text": "Your kind cooperation has made this process much smoother; thank you.",
-        "translation": "당신의 협조 덕분에 이 과정이 훨씬 원활해졌습니다; 감사합니다."
       }
     ],
     "unit": "효과적인 이메일 작성",
@@ -6296,16 +6002,8 @@
     "meaning": "{당황하다}",
     "examples": [
       {
-        "text": "The sudden change in plans caught us off guard.",
-        "translation": "계획의 갑작스러운 변화에 우리는 당황했습니다."
-      },
-      {
         "text": "I was caught off guard by the unexpected news.",
         "translation": "예상치 못한 소식에 당황했습니다."
-      },
-      {
-        "text": "Her question caught me off guard during the meeting.",
-        "translation": "회의 중 그녀의 질문에 당황했습니다."
       }
     ],
     "unit": "효과적인 이메일 작성",
@@ -6368,10 +6066,6 @@
       {
         "text": "Please compile information on market trends for our report.",
         "translation": "보고서를 위해 시장 동향에 대한 정보를 수집해 주세요."
-      },
-      {
-        "text": "Compiling information from various sources can be time-consuming.",
-        "translation": "다양한 출처에서 정보를 수집하는 것은 시간이 많이 걸릴 수 있습니다."
       }
     ],
     "unit": "효과적인 이메일 작성",
@@ -6762,10 +6456,6 @@
         "translation": "재무 제표에서 불일치를 발견했습니다."
       },
       {
-        "text": "The audit revealed several discrepancies in the records.",
-        "translation": "감사에서 기록의 여러 불일치가 드러났습니다."
-      },
-      {
         "text": "Please address the discrepancy before submitting the report.",
         "translation": "보고서를 제출하기 전에 불일치를 해결해 주세요."
       }
@@ -6808,10 +6498,6 @@
       {
         "text": "Let's revisit the project schedule to ensure we meet the deadlines.",
         "translation": "기한을 맞추기 위해 프로젝트 일정을 다시 검토해 봅시다."
-      },
-      {
-        "text": "Revisiting the project schedule can help us allocate resources more effectively.",
-        "translation": "프로젝트 일정을 다시 검토하면 자원을 더 효과적으로 배분하는 데 도움이 될 수 있습니다."
       }
     ],
     "unit": "업무 요청 및 개선",
@@ -6896,10 +6582,6 @@
       {
         "text": "I would appreciate it if you could elaborate on your proposal.",
         "translation": "귀하의 제안에 대해 자세히 설명해 주시면 감사하겠습니다."
-      },
-      {
-        "text": "Elaborating on the project goals will help the team align better.",
-        "translation": "프로젝트 목표에 대해 자세히 설명하면 팀이 더 잘 조율하는 데 도움이 될 것입니다."
       }
     ],
     "unit": "업무 요청 및 개선",
@@ -7028,10 +6710,6 @@
       {
         "text": "I trust this message finds you well.",
         "translation": "이 메시지가 잘 지내고 계시길 바랍니다."
-      },
-      {
-        "text": "I hope you are doing well.",
-        "translation": "잘 지내고 계시길 바랍니다."
       }
     ],
     "unit": "업무 요청 및 개선",
@@ -7110,16 +6788,8 @@
     "meaning": "{이 정보는 중요합니다.}",
     "examples": [
       {
-        "text": "This data is crucial for our analysis.",
-        "translation": "이 데이터는 우리의 분석에 중요합니다."
-      },
-      {
         "text": "The information is crucial for making informed decisions.",
         "translation": "이 정보는 정보에 기반한 결정을 내리는 데 중요합니다."
-      },
-      {
-        "text": "Understanding this aspect is crucial for our success.",
-        "translation": "이 측면을 이해하는 것은 우리의 성공에 중요합니다."
       }
     ],
     "unit": "업무 요청 및 개선",
@@ -7522,27 +7192,5 @@
     "chapter": "요청 사항 재확인하기",
     "source_chapter": "Chapter 5. Reviewing Requested Information {요청 사항 재확인하기}",
     "source_section": "Key vocabulary"
-  },
-  {
-    "expression": "put money where your mouth is",
-    "meaning": "{말을 행동으로 옮기다}",
-    "examples": [
-      {
-        "text": "We put our money where our mouths were, and we never beat our chest.",
-        "translation": "우리는 말을 행동으로 옮겼고, 억울할 일이 없었어요."
-      },
-      {
-        "text": "I would really like you to put your money where your mouth is.",
-        "translation": "말을 행동으로 옮겨주었으면 좋겠습니다."
-      },
-      {
-        "text": "Putting money where your mouth is often more challenging than one might think.",
-        "translation": "말을 행동으로 옮기는 것은 생각보다 굉장히 어렵습니다."
-      }
-    ],
-    "unit": "업무 피드백 및 문제 해결",
-    "chapter": "이슈 해결 요청하기",
-    "source_chapter": "Chapter 11. Request for an Issue Resolution Request for an Issue Resolution {이슈 해결 요청하기}",
-    "source_section": "Media Talk"
   }
 ]
