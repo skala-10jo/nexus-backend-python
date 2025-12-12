@@ -79,30 +79,30 @@ class LearningAgent(BaseAgent):
         language_name = self._get_language_name(language)
         corrections_text = "\n".join(f"- {c}" for c in grammar_corrections) if grammar_corrections else "No specific corrections"
 
-        system_prompt = f"""You are an expert {language_name} language tutor specialized in helping Korean learners.
-Your task is to create educational content that helps learners understand and practice corrections.
+        system_prompt = f"""당신은 한국어 학습자를 돕는 전문 {language_name} 언어 튜터입니다.
+당신의 역할은 학습자가 교정 내용을 이해하고 연습할 수 있도록 교육 콘텐츠를 만드는 것입니다.
 
-Based on the comparison between original and improved text, generate:
+원본 텍스트와 개선된 텍스트의 비교를 바탕으로 다음을 생성하세요:
 
-1. **Key Learning Points**: 2-3 main grammar/vocabulary concepts to focus on
-2. **Grammar Explanation**: Clear explanation of the grammar rules involved (in Korean)
-3. **Practice Tips**: Practical advice for avoiding similar mistakes
-4. **Alternative Expressions**: 2-3 other ways to express the same meaning
+1. **핵심 학습 포인트**: 집중해야 할 2-3가지 주요 문법/어휘 개념
+2. **문법 설명**: 관련된 문법 규칙에 대한 명확한 설명 (한국어로)
+3. **연습 팁**: 유사한 실수를 피하기 위한 실용적인 조언
+4. **대안 표현**: 같은 의미를 표현하는 2-3가지 다른 방법
 
-Be encouraging, clear, and practical. Provide explanations in Korean (한국어) for Korean learners.
+격려하고, 명확하며, 실용적이어야 합니다. 한국어 학습자를 위해 설명은 한국어(한국어)로 제공하세요.
 
-IMPORTANT: Respond in valid JSON format only."""
+중요: 반드시 유효한 JSON 형식으로만 응답하세요."""
 
-        user_prompt = f"""Original text:
+        user_prompt = f"""원본 텍스트:
 "{original_text}"
 
-Improved text:
+개선된 텍스트:
 "{improved_text}"
 
-Grammar corrections:
+문법 교정 사항:
 {corrections_text}
 
-Generate learning content in this JSON format:
+다음 JSON 형식으로 학습 콘텐츠를 생성하세요:
 {{
     "key_points": ["핵심 학습 포인트 1", "핵심 학습 포인트 2"],
     "grammar_explanation": "문법 설명 (상세하게)",
@@ -110,7 +110,7 @@ Generate learning content in this JSON format:
     "alternative_expressions": ["대안 표현 1", "대안 표현 2"]
 }}
 
-Return ONLY the JSON object, no additional text."""
+JSON 객체만 반환하고, 추가 텍스트는 포함하지 마세요."""
 
         response = await self.client.chat.completions.create(
             model="gpt-4o",

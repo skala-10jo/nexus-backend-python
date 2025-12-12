@@ -82,30 +82,30 @@ class SpeakingFeedbackAgent(BaseAgent):
         context_description = f" in a {context} context" if context else ""
         language_name = self._get_language_name(language)
 
-        system_prompt = f"""You are an expert {language_name} language tutor specialized in business communication.
-Your task is to analyze spoken utterances and provide constructive feedback.
+        system_prompt = f"""당신은 비즈니스 커뮤니케이션 전문 {language_name} 언어 튜터입니다.
+당신의 역할은 음성 발화를 분석하고 건설적인 피드백을 제공하는 것입니다.
 
-Analyze the following speech transcript{context_description} and provide:
+다음 음성 스크립트{context_description}를 분석하고 다음을 제공하세요:
 
-1. **Grammar Corrections**: List specific grammar errors with explanations (in Korean for Korean users)
-2. **Suggestions**: Practical tips to improve expression, formality, or clarity
-3. **Improved Sentence**: A corrected/improved version of what was said
-4. **Scores** (0-10 scale):
-   - Grammar: Grammatical correctness
-   - Vocabulary: Word choice appropriateness
-   - Fluency: Natural flow and phrasing
-   - Clarity: How clear the message is
+1. **문법 교정**: 구체적인 문법 오류와 설명 (한국어 학습자를 위해 한국어로)
+2. **제안 사항**: 표현, 격식, 명확성을 개선하기 위한 실용적인 팁
+3. **개선된 문장**: 수정/개선된 버전
+4. **점수** (0-10 척도):
+   - Grammar: 문법적 정확성
+   - Vocabulary: 단어 선택의 적절성
+   - Fluency: 자연스러운 흐름과 표현
+   - Clarity: 메시지의 명확성
 
-Be encouraging but honest. Focus on the most impactful improvements.
-Provide feedback in Korean (한국어) to help Korean learners understand better.
+격려하되 솔직하게 피드백하세요. 가장 영향력 있는 개선 사항에 집중하세요.
+한국어 학습자가 더 잘 이해할 수 있도록 피드백은 한국어(한국어)로 제공하세요.
 
-IMPORTANT: Respond in valid JSON format only."""
+중요: 반드시 유효한 JSON 형식으로만 응답하세요."""
 
-        user_prompt = f"""Analyze this spoken utterance:
+        user_prompt = f"""다음 음성 발화를 분석하세요:
 
 "{text}"
 
-Respond with a JSON object in this exact format:
+다음 JSON 형식으로 응답하세요:
 {{
     "grammar_corrections": ["문법 교정 1", "문법 교정 2"],
     "suggestions": ["제안 1", "제안 2"],
@@ -119,8 +119,8 @@ Respond with a JSON object in this exact format:
     }}
 }}
 
-If the utterance is already perfect, provide encouraging feedback and high scores.
-Return ONLY the JSON object, no additional text."""
+발화가 이미 완벽한 경우, 격려하는 피드백과 높은 점수를 제공하세요.
+JSON 객체만 반환하고, 추가 텍스트는 포함하지 마세요."""
 
         response = await self.client.chat.completions.create(
             model="gpt-4o",

@@ -56,25 +56,25 @@ class HintAgent(BaseAgent):
     # Difficulty-based complexity guidelines
     DIFFICULTY_GUIDELINES = {
         "beginner": {
-            "sentence_length": "5-10 words",
-            "complexity": "simple sentence structures (subject + verb + object)",
-            "vocabulary": "basic everyday vocabulary",
-            "grammar": "present/past tense only, simple questions",
-            "style": "direct and clear, avoid idioms"
+            "sentence_length": "5-10단어",
+            "complexity": "단순 문장 구조 (주어 + 동사 + 목적어)",
+            "vocabulary": "기본 일상 어휘",
+            "grammar": "현재/과거 시제만, 간단한 질문",
+            "style": "직접적이고 명확하게, 관용구 피하기"
         },
         "intermediate": {
-            "sentence_length": "10-20 words",
-            "complexity": "compound sentences, conditional clauses allowed",
-            "vocabulary": "business terminology, common expressions",
-            "grammar": "various tenses, polite forms, indirect questions",
-            "style": "professional but conversational, some idioms okay"
+            "sentence_length": "10-20단어",
+            "complexity": "복합문, 조건절 허용",
+            "vocabulary": "비즈니스 용어, 일반적인 표현",
+            "grammar": "다양한 시제, 공손한 형태, 간접 질문",
+            "style": "전문적이지만 대화적으로, 일부 관용구 가능"
         },
         "advanced": {
-            "sentence_length": "15-30 words",
-            "complexity": "complex sentences with multiple clauses",
-            "vocabulary": "sophisticated business vocabulary, nuanced expressions",
-            "grammar": "all tenses, subjunctive mood, complex modals",
-            "style": "nuanced, diplomatic, idiomatic expressions encouraged"
+            "sentence_length": "15-30단어",
+            "complexity": "여러 절이 있는 복잡한 문장",
+            "vocabulary": "세련된 비즈니스 어휘, 뉘앙스 있는 표현",
+            "grammar": "모든 시제, 가정법, 복잡한 조동사",
+            "style": "뉘앙스 있고, 외교적으로, 관용적 표현 권장"
         }
     }
 
