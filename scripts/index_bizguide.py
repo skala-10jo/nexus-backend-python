@@ -4,8 +4,7 @@ BizGuide.md를 H2 태그 기준으로 청킹하여 Qdrant에 인덱싱하는 스
 Usage:
     python scripts/index_bizguide.py --file /path/to/BizGuide.md
 
-Author: NEXUS Team
-Date: 2025-01-18
+
 """
 import asyncio
 import re

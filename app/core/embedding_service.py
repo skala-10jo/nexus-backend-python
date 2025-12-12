@@ -4,8 +4,7 @@ Embedding service for saving embeddings to Qdrant.
 This module provides common utilities for saving embeddings to Qdrant,
 used by various agents (mail, document, etc.)
 
-Author: NEXUS Team
-Date: 2025-01-17
+
 """
 from app.core.qdrant_client import get_qdrant_client
 from qdrant_client.http import models

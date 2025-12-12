@@ -1,8 +1,7 @@
 """
 MailAgentService: 메일 임베딩 및 검색 오케스트레이션.
 
-Author: NEXUS Team
-Date: 2025-01-12
+
 Updated: 2025-01-17 (Qdrant 연동)
 """
 from agent.mail.embedding_agent import EmbeddingAgent

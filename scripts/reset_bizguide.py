@@ -4,8 +4,7 @@ Qdrant bizguide 컬렉션 삭제 후 재인덱싱 스크립트
 Usage:
     python scripts/reset_bizguide.py --file /path/to/BizGuide.md
 
-Author: NEXUS Team
-Date: 2025-01-19
+
 """
 import asyncio
 import argparse

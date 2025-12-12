@@ -1,8 +1,7 @@
 """
 SearchAgent: 사용자 쿼리를 임베딩으로 변환하고 Qdrant로 검색하는 Agent.
 
-Author: NEXUS Team
-Date: 2025-01-12
+
 Updated: 2025-01-17 (Qdrant 연동)
 """
 from agent.base_agent import BaseAgent

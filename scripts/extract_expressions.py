@@ -7,8 +7,7 @@ Usage:
 Output:
     expressions.json
 
-Author: NEXUS Team
-Date: 2025-01-19
+
 """
 import asyncio
 import sys

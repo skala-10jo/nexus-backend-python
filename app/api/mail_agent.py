@@ -1,8 +1,7 @@
 """
 Mail Agent API endpoints for email embedding and search.
 
-Author: NEXUS Team
-Date: 2025-01-12
+
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session

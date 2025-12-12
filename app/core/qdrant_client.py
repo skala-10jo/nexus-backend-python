@@ -1,8 +1,7 @@
 """
 Qdrant client singleton for vector database operations.
 
-Author: NEXUS Team
-Date: 2025-01-17
+
 """
 from qdrant_client import QdrantClient
 from qdrant_client.http import models

@@ -4,8 +4,7 @@ SlackDraftAgent: 비즈니스 슬랙 메시지 초안 작성 Agent (순수 AI �
 RAG 컨텍스트를 활용하여 비즈니스 매너가 적용된 슬랙 메시지를 작성합니다.
 EmailDraftAgent와 동일한 구조를 유지하되, 수신자(recipient)와 제목(subject)만 제외합니다.
 
-Author: NEXUS Team
-Date: 2025-01-18
+
 """
 from agent.base_agent import BaseAgent
 from typing import Dict, Any, Optional, List

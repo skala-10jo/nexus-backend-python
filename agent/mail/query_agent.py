@@ -1,8 +1,7 @@
 """
 QueryAgent: 사용자의 자연어 대화에서 메일 검색 쿼리를 추출하는 Agent.
 
-Author: NEXUS Team
-Date: 2025-01-17
+
 """
 from agent.base_agent import BaseAgent
 from typing import Dict, Any, Optional

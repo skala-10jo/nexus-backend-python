@@ -10,8 +10,7 @@ Input:
 Prerequisite:
     expressions 테이블이 이미 생성되어 있어야 함 (Flyway migration)
 
-Author: NEXUS Team
-Date: 2025-01-19
+
 """
 import sys
 from pathlib import Path
