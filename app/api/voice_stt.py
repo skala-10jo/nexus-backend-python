@@ -2,15 +2,27 @@
 Voice STT REST API 엔드포인트
 
 Azure Speech SDK를 사용한 음성-텍스트 변환 REST API
+아키텍처: API → Service → Agent
 """
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 import logging
-from agent.stt_translation.stt_agent import STTAgent
+from app.services.voice_stt_service import VoiceSTTService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Voice STT REST"])
+
+# Service 인스턴스 (싱글톤)
+_stt_service: VoiceSTTService | None = None
+
+
+def get_stt_service() -> VoiceSTTService:
+    """VoiceSTTService 싱글톤 인스턴스 반환"""
+    global _stt_service
+    if _stt_service is None:
+        _stt_service = VoiceSTTService()
+    return _stt_service
 
 
 @router.post(
@@ -52,9 +64,9 @@ async def speech_to_text(
 
         logger.info(f"STT request: filename={file.filename}, size={len(contents)} bytes, language={language}")
 
-        # STT Agent 호출
-        agent = STTAgent.get_instance()
-        result = await agent.process(
+        # Service 계층을 통해 STT 처리 (아키텍처 규칙 준수: API → Service → Agent)
+        service = get_stt_service()
+        result = await service.transcribe_audio(
             audio_data=contents,
             language=language
         )
