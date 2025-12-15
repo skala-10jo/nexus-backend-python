@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class DocumentSummarizerAgent(BaseAgent):
     """
-    문서 요약 Agent
+    문서 요약 Agent.
 
     책임: 문서 리스트 → 핵심 요약
 
@@ -40,7 +40,7 @@ class DocumentSummarizerAgent(BaseAgent):
 
     def _create_system_prompt(self) -> str:
         """
-        시스템 프롬프트 생성
+        시스템 프롬프트를 생성합니다.
 
         Returns:
             시스템 프롬프트 문자열
@@ -72,7 +72,7 @@ class DocumentSummarizerAgent(BaseAgent):
         max_length: int = 500
     ) -> str:
         """
-        여러 문서를 요약하여 컨텍스트 생성
+        여러 문서를 요약하여 컨텍스트를 생성합니다.
 
         Args:
             documents: 문서 텍스트 리스트
