@@ -72,9 +72,6 @@ class ScenarioGeneratorAgent(BaseAgent):
             prompt = self._create_business_prompt(context, target_lang, difficulty, count)
             system_content = self._create_business_system_prompt(target_lang)
 
-        scenario_type = "일상 회화" if is_everyday else "비즈니스"
-        logger.info(f"🤖 Calling GPT-4o for {scenario_type} scenario generation (language={language}, difficulty={difficulty}, count={count})")
-
         response = await self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
@@ -89,10 +86,8 @@ class ScenarioGeneratorAgent(BaseAgent):
         scenarios = result.get("scenarios", [])
 
         if not scenarios:
-            logger.error("❌ GPT-4o returned no scenarios")
             raise ValueError("Failed to generate scenarios from GPT-4o")
 
-        logger.info(f"✅ GPT-4o returned {len(scenarios)} {scenario_type} scenarios")
         return scenarios
 
     def _create_everyday_system_prompt(self, target_lang: str) -> str:
@@ -131,13 +126,19 @@ class ScenarioGeneratorAgent(BaseAgent):
 - 역할(roles)은 반드시 한국어로 작성 (단, PM, CEO, CTO 같은 영어 약어는 그대로 사용 가능)
 - requiredTerminology(핵심 표현)는 반드시 {target_lang}로 작성 (학습자가 연습할 목표 언어 표현)
 
+★★★ 중요: scenarioText 형식 규칙 ★★★
+- 반드시 개조식(bullet point)으로만 작성하세요
+- 각 항목은 "- " 또는 "• "로 시작해야 합니다
+- 절대 번호 목록(1. 2. 3.)을 사용하지 마세요
+- 절대 대화체 형식("A: ...", "B: ...")을 사용하지 마세요
+
 다음 JSON 형식으로 시나리오를 생성하세요:
 {{
   "scenarios": [
     {{
       "title": "한글로 된 시나리오 제목",
       "description": "한글로 된 간단한 설명 (2-3 문장)",
-      "scenarioText": "개조식으로 작성된 상세한 시나리오 설명 (한글)",
+      "scenarioText": "- 첫 번째 상황 설명\\n- 두 번째 상황 설명\\n- 세 번째 상황 설명 (반드시 개조식, 번호 금지)",
       "category": "Restaurant|Hotel|Shopping|Hospital|Bank|Post Office|Cafe|Transportation|Fitness|Beauty|Real Estate|Car Rental|Daily Life",
       "roles": {{
         "user": "한국어로 된 간단한 사용자 역할 (예: 손님, 고객)",
@@ -167,13 +168,20 @@ class ScenarioGeneratorAgent(BaseAgent):
 - 역할(roles)은 반드시 한국어로 작성 (단, PM, CEO, CTO, QA 같은 영어 약어는 그대로 사용 가능)
 - requiredTerminology(핵심 용어)는 반드시 {target_lang}로 작성 (학습자가 연습할 목표 언어 전문 용어)
 
+★★★ 중요: scenarioText 형식 규칙 ★★★
+- 반드시 개조식(bullet point)으로만 작성하세요
+- 각 항목은 "- " 또는 "• "로 시작해야 합니다
+- 절대 번호 목록(1. 2. 3.)을 사용하지 마세요
+- 절대 대화체 형식("A: ...", "B: ...")을 사용하지 마세요
+- 컨텍스트에 어떤 형식이 있더라도 무시하고 개조식으로만 작성하세요
+
 다음 JSON 형식으로 시나리오를 생성하세요:
 {{
   "scenarios": [
     {{
       "title": "한글로 된 시나리오 제목",
       "description": "한글로 된 간단한 설명 (2-3 문장)",
-      "scenarioText": "개조식으로 작성된 상세한 시나리오 설명 (한글)",
+      "scenarioText": "- 첫 번째 상황 설명\\n- 두 번째 상황 설명\\n- 세 번째 상황 설명 (반드시 개조식, 번호 금지)",
       "category": "Collaboration|Technical Support|Product Explanation|Problem Solving",
       "roles": {{
         "user": "한국어로 된 간단한 사용자 역할 (예: 개발자, PM)",
