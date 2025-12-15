@@ -1,0 +1,54 @@
+# 가상환경 (Docker 내부에서 생성)
+venv/
+.venv/
+env/
+
+# 바이트코드 캐시
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# 개발 파일
+.git
+.gitignore
+*.md
+README.md
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# 환경변수 파일 (런타임에 주입)
+.env
+.env.local
+.env.*
+
+# 로그
+*.log
+logs/
+
+# 테스트
+.pytest_cache/
+.coverage
+htmlcov/
+tests/
+
+# 로컬 업로드 파일
+uploads/
+
+# Jupyter 노트북
+*.ipynb
+.ipynb_checkpoints/
+
+# Docker 파일
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# 기타
+*.bak
+*.tmp
+.DS_Store
