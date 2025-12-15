@@ -39,6 +39,9 @@ aiohttp==3.9.3
 pydub==0.25.1
 requests==2.31.0
 
+# Form/File Upload
+python-multipart==0.0.6
+
 # String Matching Algorithm
 pyahocorasick==2.0.0
 
