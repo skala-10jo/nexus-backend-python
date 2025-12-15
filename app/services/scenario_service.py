@@ -59,6 +59,8 @@ class ScenarioService:
         """
         # 1. Fetch context from Java backend
         context = await self._fetch_context(project_ids, schedule_ids, document_ids, jwt_token)
+        logger.info(f"🔍 [DEBUG] Context length: {len(context)} chars")
+        logger.info(f"🔍 [DEBUG] Context preview:\n{context[:1500]}...")
 
         # 2. Generate scenarios with Agent pattern
         is_everyday = context == "General business communication scenarios for professional practice."
