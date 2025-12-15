@@ -2,18 +2,16 @@
 Scenario generation service with Agent pattern integration.
 Generates conversation scenarios from projects and schedules.
 """
-import os
 import logging
 from typing import List, Dict, Any, Optional
 import httpx
 
-from app.config import settings
-from app.models.scenario import Scenario
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
+from app.models.scenario import Scenario
 from agent.scenario.generator_agent import ScenarioGeneratorAgent
 from agent.scenario.modifier_agent import ScenarioModifierAgent
-from app.core.file_utils import extract_text_from_file
 
 logger = logging.getLogger(__name__)
 
@@ -57,10 +55,8 @@ class ScenarioService:
         Returns:
             List of generated scenario dictionaries
         """
-        # 1. Fetch context from Java backend
-        context = await self._fetch_context(project_ids, schedule_ids, document_ids, jwt_token)
-        logger.info(f"🔍 [DEBUG] Context length: {len(context)} chars")
-        logger.info(f"🔍 [DEBUG] Context preview:\n{context[:1500]}...")
+        # 1. Fetch context from Java backend and DB summaries
+        context = await self._fetch_context(project_ids, schedule_ids, document_ids, jwt_token, db)
 
         # 2. Generate scenarios with Agent pattern
         is_everyday = context == "General business communication scenarios for professional practice."
@@ -138,16 +134,18 @@ class ScenarioService:
         project_ids: List[str],
         schedule_ids: List[str],
         document_ids: List[str],
-        jwt_token: str
+        jwt_token: str,
+        db: Session
     ) -> str:
         """
-        Fetch context from Java backend (projects, schedules, and documents).
+        Fetch context from Java backend (projects, schedules) and DB (document summaries).
 
         Args:
             project_ids: List of project UUIDs
             schedule_ids: List of schedule UUIDs
             document_ids: List of document UUIDs
             jwt_token: JWT token for authentication
+            db: Database session for fetching document summaries
 
         Returns:
             Combined context string
@@ -209,57 +207,30 @@ class ScenarioService:
                 except Exception as e:
                     logger.warning(f"⚠️  Failed to fetch schedule {sid}: {str(e)}")
 
-            # Fetch document contents (includes both explicit and project-linked documents)
-            for doc_id in all_document_ids:
-                try:
-                    response = await client.get(
-                        f"http://localhost:3000/api/files/{doc_id}",
-                        headers=headers,
-                        timeout=10.0
+        # Fetch document summaries from DB (much faster than file extraction)
+        for doc_id in all_document_ids:
+            try:
+                result = db.execute(
+                    text("""
+                        SELECT f.original_filename, df.summary
+                        FROM document_files df
+                        JOIN files f ON df.id = f.id
+                        WHERE df.id = :doc_id AND df.summary IS NOT NULL
+                    """),
+                    {"doc_id": doc_id}
+                ).fetchone()
+
+                if result:
+                    doc_filename, summary = result
+                    context_parts.append(
+                        f"Document: {doc_filename}\n"
+                        f"Summary: {summary}"
                     )
-                    if response.status_code == 200:
-                        doc_data = response.json()
-                        document = doc_data.get('data', {})
-
-                        doc_filename = document.get('originalFilename', '')
-                        file_path = document.get('filePath', '')
-
-                        # Extract page contents (limit to first 5 pages, 500 chars per page)
-                        contents = document.get('contents', [])[:5]
-                        if contents:
-                            text_parts = []
-                            for content in contents:
-                                page_text = content.get('contentText', '')[:500]
-                                if page_text:
-                                    text_parts.append(f"Page {content.get('pageNumber', '?')}: {page_text}")
-
-                            if text_parts:
-                                context_parts.append(
-                                    f"Document: {doc_filename}\n"
-                                    + "\n".join(text_parts)
-                                )
-                        else:
-                            # Fallback: Extract text directly from file if contents is empty
-                            if file_path:
-                                try:
-                                    full_path = os.path.join(settings.upload_dir, file_path)
-                                    if os.path.exists(full_path):
-                                        extracted_text = extract_text_from_file(full_path)
-                                        # Limit to first 2000 chars for context
-                                        truncated_text = extracted_text[:2000]
-                                        context_parts.append(
-                                            f"Document: {doc_filename}\n{truncated_text}"
-                                        )
-                                    else:
-                                        logger.warning(f"⚠️  File not found: {full_path}")
-                                except Exception as extract_err:
-                                    logger.warning(f"⚠️  Failed to extract text from {doc_filename}: {str(extract_err)}")
-                            else:
-                                logger.warning(f"⚠️  Document {doc_id} has no file path")
-                    else:
-                        logger.warning(f"⚠️  Failed to fetch document {doc_id}: status {response.status_code}")
-                except Exception as e:
-                    logger.warning(f"⚠️  Failed to fetch document {doc_id}: {str(e)}")
+                    logger.info(f"📄 Using DB summary for document: {doc_filename}")
+                else:
+                    logger.warning(f"⚠️  No summary found for document {doc_id}")
+            except Exception as e:
+                logger.warning(f"⚠️  Failed to fetch document summary {doc_id}: {str(e)}")
 
         # Fallback to general context if no data fetched
         if not context_parts:

@@ -97,37 +97,135 @@ class DocumentSummarizerAgent(BaseAgent):
         logger.info(f"📝 문서 요약 시작: {len(valid_documents)}개 문서")
 
         try:
-            # 문서들을 하나로 합치기 (너무 길면 잘라내기)
+            # 문서들을 하나로 합치기
             combined_text = "\n\n---\n\n".join(valid_documents)
-
-            # 너무 긴 경우 앞부분만 사용 (GPT 토큰 제한)
-            if len(combined_text) > 10000:
-                combined_text = combined_text[:10000] + "\n...(이하 생략)"
-                logger.info("⚠️ 문서가 너무 길어 일부만 사용합니다")
-
-            system_prompt = self._create_system_prompt()
-
-            user_prompt = f"""다음 문서들을 {max_length}자 이내로 요약하세요:
-
-{combined_text}
-"""
-
-            response = await self.client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.3,
-                max_tokens=1000
-            )
-
-            summary = response.choices[0].message.content.strip()
+            
+            # 50,000자 이하: 한 번에 처리
+            # 50,000자 초과: 청크 분할 → 개별 요약 → 최종 통합
+            MAX_CHARS = 50000
+            
+            if len(combined_text) <= MAX_CHARS:
+                # 단일 요약
+                logger.info(f"📄 단일 요약 모드: {len(combined_text)}자")
+                summary = await self._summarize_text(combined_text, max_length)
+            else:
+                # 청크 분할 요약 (Map-Reduce)
+                logger.info(f"📚 청크 분할 모드: {len(combined_text)}자 → 청크 분할")
+                summary = await self._summarize_with_chunks(combined_text, max_length, MAX_CHARS)
 
             logger.info(f"✅ 요약 완료: {len(combined_text)}자 → {len(summary)}자")
-
             return summary
 
         except Exception as e:
             logger.error(f"❌ 요약 실패: {str(e)}")
             raise Exception(f"문서 요약 중 오류 발생: {str(e)}")
+
+    async def _summarize_text(self, text: str, max_length: int) -> str:
+        """
+        단일 텍스트를 요약합니다.
+
+        Args:
+            text: 요약할 텍스트
+            max_length: 최대 요약 길이
+
+        Returns:
+            요약된 텍스트
+        """
+        system_prompt = self._create_system_prompt()
+        user_prompt = f"""다음 문서들을 {max_length}자 이내로 요약하세요:
+
+{text}
+"""
+
+        response = await self.client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.3,
+            max_tokens=1000
+        )
+
+        return response.choices[0].message.content.strip()
+
+    async def _summarize_with_chunks(
+        self,
+        text: str,
+        max_length: int,
+        chunk_size: int
+    ) -> str:
+        """
+        긴 텍스트를 청크로 분할하여 요약합니다 (Map-Reduce 패턴).
+
+        1단계 (Map): 각 청크를 개별 요약
+        2단계 (Reduce): 개별 요약들을 최종 통합 요약
+
+        Args:
+            text: 전체 텍스트
+            max_length: 최종 요약 최대 길이
+            chunk_size: 청크 크기
+
+        Returns:
+            최종 통합 요약
+        """
+        # 1. 텍스트를 청크로 분할
+        chunks = self._split_into_chunks(text, chunk_size)
+        logger.info(f"📦 {len(chunks)}개 청크로 분할")
+
+        # 2. 각 청크 개별 요약 (Map 단계)
+        chunk_summaries = []
+        for i, chunk in enumerate(chunks):
+            logger.info(f"🔄 청크 {i+1}/{len(chunks)} 요약 중...")
+            chunk_summary = await self._summarize_text(chunk, max_length=500)
+            chunk_summaries.append(chunk_summary)
+
+        # 3. 개별 요약들을 통합 (Reduce 단계)
+        logger.info(f"🔗 {len(chunk_summaries)}개 요약 통합 중...")
+        combined_summaries = "\n\n---\n\n".join(chunk_summaries)
+
+        # 통합된 요약이 여전히 길면 재귀적으로 처리
+        if len(combined_summaries) > chunk_size:
+            return await self._summarize_with_chunks(combined_summaries, max_length, chunk_size)
+
+        # 최종 요약 생성
+        final_summary = await self._summarize_text(combined_summaries, max_length)
+        return final_summary
+
+    def _split_into_chunks(self, text: str, chunk_size: int) -> List[str]:
+        """
+        텍스트를 지정된 크기의 청크로 분할합니다.
+        문단 경계를 고려하여 자연스럽게 분할합니다.
+
+        Args:
+            text: 분할할 텍스트
+            chunk_size: 청크 크기
+
+        Returns:
+            청크 리스트
+        """
+        chunks = []
+        current_pos = 0
+        text_length = len(text)
+
+        while current_pos < text_length:
+            # 청크 끝 위치 계산
+            end_pos = min(current_pos + chunk_size, text_length)
+
+            # 마지막 청크가 아니면 문단 경계 찾기
+            if end_pos < text_length:
+                # 가까운 문단 경계 찾기 (역순으로)
+                boundary_pos = text.rfind("\n\n", current_pos, end_pos)
+                if boundary_pos > current_pos:
+                    end_pos = boundary_pos
+
+            chunk = text[current_pos:end_pos].strip()
+            if chunk:
+                chunks.append(chunk)
+
+            current_pos = end_pos
+            # 문단 경계에서 분할했으면 공백 건너뛰기
+            while current_pos < text_length and text[current_pos] in "\n\r\t ":
+                current_pos += 1
+
+        return chunks
