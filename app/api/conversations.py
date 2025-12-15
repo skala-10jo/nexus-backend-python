@@ -78,7 +78,8 @@ async def send_message(
             scenario_id=request.scenarioId,
             user_message=request.message,
             conversation_history=request.history,
-            user_id=user_id
+            user_id=user_id,
+            current_step_index=request.currentStepIndex
         )
 
         return {
