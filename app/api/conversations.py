@@ -280,22 +280,22 @@ async def generate_hint(
     user: dict = Depends(get_current_user)
 ):
     """
-    단계별 대화 힌트 생성
+    2단계 대화 힌트 생성
 
     시나리오 맥락과 현재 step의 terminology를 기반으로
-    단어 → 구문 → 문장 순서의 단계별 힌트를 생성합니다.
+    단어 → 문장 순서의 2단계 힌트를 생성합니다.
 
     Args:
         request: 힌트 요청 (시나리오 ID, 히스토리, 마지막 AI 메시지, 현재 단계)
         user: 현재 사용자 정보
 
     Returns:
-        targetExpression: 목표 표현 (원어민이 쓸 문장)
-        wordHints: 핵심 단어 리스트
-        phraseHint: 빈칸이 포함된 구문
-        fullSentence: 완전한 문장
-        explanation: 한국어 설명
-        stepInfo: 현재 단계 정보
+        2단계 힌트 구조:
+        - targetExpression: 목표 표현 (원어민이 쓸 문장)
+        - wordHints: 핵심 단어 리스트 (Level 0: 단어 힌트)
+        - fullSentence: 완전한 문장 (Level 1: 전체 문장)
+        - explanation: 한국어 설명
+        - stepInfo: 현재 단계 정보
     """
     try:
         user_id = user["user_id"]

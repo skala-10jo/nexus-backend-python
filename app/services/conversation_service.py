@@ -1021,11 +1021,10 @@ Azure 발음 평가 결과:
                 - terminology: 이 단계에서 사용할 표현 리스트
 
         Returns:
-            단계별 힌트:
+            2단계 힌트:
                 - targetExpression: 목표 표현
-                - wordHints: 핵심 단어 리스트
-                - phraseHint: 빈칸이 포함된 구문
-                - fullSentence: 완전한 문장
+                - wordHints: 핵심 단어 리스트 (Level 0)
+                - fullSentence: 완전한 문장 (Level 1)
                 - explanation: 한국어 설명
                 - stepInfo: 현재 단계 정보
         """

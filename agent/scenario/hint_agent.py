@@ -1,10 +1,9 @@
 """
 회화 연습을 위한 힌트 생성 에이전트.
 
-현재 step의 terminology를 기반으로 단계별 힌트를 생성합니다:
-1. 단어 힌트 (keywords)
-2. 구문 힌트 (phrase with blanks)
-3. 완전한 문장 (full sentence)
+현재 step의 terminology를 기반으로 2단계 힌트를 생성합니다:
+1. 핵심 단어 힌트 (wordHints)
+2. 전체 문장 (fullSentence)
 """
 import logging
 from typing import List, Dict, Any, Optional
@@ -16,15 +15,18 @@ logger = logging.getLogger(__name__)
 
 class HintAgent(BaseAgent):
     """
-    대화 힌트를 단계별로 생성하는 AI 에이전트.
+    대화 힌트를 2단계로 생성하는 AI 에이전트.
 
     현재 step의 terminology에서 원어민이 쓸 것 같은 표현 1개를 선택하고,
     사용자가 단계별로 학습할 수 있도록 힌트를 구조화합니다.
 
+    2단계 구조:
+        - Level 0: wordHints (핵심 단어 2-4개)
+        - Level 1: fullSentence (전체 예시 문장)
+
     Returns:
         - targetExpression: 목표 표현 (원어민 표현)
-        - wordHints: 핵심 단어들
-        - phraseHint: 빈칸이 있는 구문
+        - wordHints: 핵심 단어들 (2-4개)
         - fullSentence: 완전한 문장
         - explanation: 한국어 설명
     """
@@ -63,7 +65,7 @@ class HintAgent(BaseAgent):
         current_step: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        단계별 힌트를 생성합니다.
+        2단계 힌트를 생성합니다.
 
         Args:
             scenario_context: 시나리오 정보 (title, roles, difficulty, language 등)
@@ -76,10 +78,9 @@ class HintAgent(BaseAgent):
                 - terminology: 이 단계에서 사용할 표현 리스트
 
         Returns:
-            단계별 힌트 딕셔너리:
+            2단계 힌트 딕셔너리:
                 - targetExpression: 목표 표현 (원어민이 쓸 문장)
                 - wordHints: 핵심 단어 리스트 (2-4개)
-                - phraseHint: 빈칸이 포함된 구문
                 - fullSentence: 완전한 문장
                 - explanation: 한국어 설명
                 - stepInfo: 현재 단계 정보 (있는 경우)
@@ -145,7 +146,6 @@ class HintAgent(BaseAgent):
             return {
                 "targetExpression": result.get("targetExpression", ""),
                 "wordHints": result.get("wordHints", []),
-                "phraseHint": result.get("phraseHint", ""),
                 "fullSentence": result.get("fullSentence", result.get("targetExpression", "")),
                 "explanation": result.get("explanation", ""),
                 "stepInfo": step_info
@@ -189,10 +189,10 @@ class HintAgent(BaseAgent):
 - 문장 구조: {guidelines['complexity']}
 - 어휘 수준: {guidelines['vocabulary']}
 
-## 힌트 생성 규칙
+## 힌트 생성 규칙 (2단계 구조)
 1. 목표 표현(targetExpression)은 원어민이 실제로 사용할 자연스러운 {target_lang} 문장
 2. 단어 힌트(wordHints)는 문장의 핵심 단어 2-4개 (순서대로)
-3. 구문 힌트(phraseHint)는 핵심 단어를 빈칸(___)으로 대체한 문장
+3. 전체 문장(fullSentence)은 targetExpression과 동일하거나 유사한 완전한 문장
 4. 설명(explanation)은 한국어로 이 표현을 언제/어떻게 쓰는지 설명
 5. 난이도에 맞는 복잡도 유지 (beginner는 쉽게, advanced는 세련되게)"""
 
@@ -226,11 +226,10 @@ AI: {last_ai_message}
 위 대화 맥락에서, 사용자가 응답할 수 있는 **원어민이 쓸 것 같은 자연스러운 표현 1개**를 선택하고,
 단계별 힌트를 생성하세요.
 
-다음 JSON 형식으로 응답하세요:
+다음 JSON 형식으로 응답하세요 (2단계 힌트):
 {{
   "targetExpression": "원어민이 쓸 자연스러운 {target_lang} 문장 1개",
   "wordHints": ["핵심단어1", "핵심단어2", "핵심단어3"],
-  "phraseHint": "I'd like to ___ the project ___. (핵심 단어를 ___로 대체)",
   "fullSentence": "targetExpression과 동일한 완전한 문장",
   "explanation": "이 표현의 의미와 사용 상황을 한국어로 설명 (1-2문장)"
 }}
@@ -238,7 +237,7 @@ AI: {last_ai_message}
 중요:
 - targetExpression은 대화 맥락에 자연스럽게 이어지는 문장이어야 함
 - wordHints는 문장에서 학습자가 모를 수 있는 핵심 단어/구 2-4개
-- phraseHint는 wordHints의 단어들을 ___로 대체한 문장
+- fullSentence는 targetExpression과 동일하거나 유사한 완전한 예시 문장
 - explanation은 반드시 한국어로 작성"""
 
     def _generate_fallback_hints(
@@ -258,31 +257,27 @@ AI: {last_ai_message}
             return {
                 "targetExpression": target,
                 "wordHints": words,
-                "phraseHint": " ".join(["___" if i % 2 == 0 else w for i, w in enumerate(target.split())]),
                 "fullSentence": target,
                 "explanation": "이 표현을 사용해보세요.",
                 "stepInfo": step_info
             }
 
-        # 기본 폴백
+        # 기본 폴백 (2단계: wordHints → fullSentence)
         fallbacks = {
             "en": {
                 "beginner": {
                     "targetExpression": "Yes, I understand.",
                     "wordHints": ["yes", "understand"],
-                    "phraseHint": "___, I ___.",
                     "explanation": "상대방의 말을 이해했다고 표현하는 기본 문장입니다."
                 },
                 "intermediate": {
                     "targetExpression": "I'd like to discuss that further.",
                     "wordHints": ["like to", "discuss", "further"],
-                    "phraseHint": "I'd ___ ___ that ___.",
                     "explanation": "더 깊이 논의하고 싶을 때 사용하는 공손한 표현입니다."
                 },
                 "advanced": {
                     "targetExpression": "Could you elaborate on that point?",
                     "wordHints": ["elaborate", "point"],
-                    "phraseHint": "Could you ___ on that ___?",
                     "explanation": "상대방에게 더 자세한 설명을 요청하는 전문적인 표현입니다."
                 }
             }
@@ -294,7 +289,6 @@ AI: {last_ai_message}
         return {
             "targetExpression": diff_fallback["targetExpression"],
             "wordHints": diff_fallback["wordHints"],
-            "phraseHint": diff_fallback["phraseHint"],
             "fullSentence": diff_fallback["targetExpression"],
             "explanation": diff_fallback["explanation"],
             "stepInfo": step_info
