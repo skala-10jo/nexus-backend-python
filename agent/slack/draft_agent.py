@@ -116,7 +116,7 @@ class SlackDraftAgent(BaseAgent):
 
             # GPT 호출
             response = await self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=messages,
                 temperature=0.7,
                 max_tokens=500
@@ -216,7 +216,7 @@ class SlackDraftAgent(BaseAgent):
             messages.append({"role": "user", "content": f"다음 메시지를 {target_language}로 번역해주세요:\n\n{message_text}"})
 
             response = await self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=messages,
                 temperature=0.5,
                 max_tokens=500

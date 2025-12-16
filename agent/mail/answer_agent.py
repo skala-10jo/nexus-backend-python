@@ -111,7 +111,7 @@ class AnswerAgent(BaseAgent):
         # GPT-4o 호출
         try:
             response = await self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=messages,
                 temperature=0.3,  # 일관된 답변을 위해 낮은 temperature
                 max_tokens=300     # 간결한 답변

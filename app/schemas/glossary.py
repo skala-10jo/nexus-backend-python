@@ -9,10 +9,12 @@ from decimal import Decimal
 
 
 class ExtractionRequest(BaseModel):
-    """Request schema for term extraction."""
+    """용어 추출 요청 스키마."""
     job_id: UUID
     file_id: UUID
     file_path: str
+    file_content: Optional[str] = None  # Base64 인코딩된 파일 내용
+    file_name: Optional[str] = None  # 원본 파일명 (확장자 포함)
     user_id: UUID
     project_id: Optional[UUID] = None
 

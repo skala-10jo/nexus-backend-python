@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 import logging
 from agent.base_agent import BaseAgent
-from .term_detector_agent import DetectedTerm
+from .models import DetectedTerm
 
 logger = logging.getLogger(__name__)
 
@@ -61,12 +61,12 @@ class GlossaryMatcherAgent(BaseAgent):
 
     책임: 탐지된 용어 + 용어집 → 상세 용어 정보
 
-    TermDetectorAgent가 탐지한 용어를 용어집 데이터베이스와
+    OptimizedTermDetectorAgent가 탐지한 용어를 용어집 데이터베이스와
     매칭하여 정의, 맥락, 예문 등 상세 정보를 제공합니다.
 
     예시:
         >>> agent = GlossaryMatcherAgent()
-        >>> detected_terms = [...]  # TermDetectorAgent 결과
+        >>> detected_terms = [...]  # OptimizedTermDetectorAgent 결과
         >>> glossary_full = [...]    # DB에서 조회한 전체 용어집
         >>> matched = await agent.process(detected_terms, glossary_full)
         >>> print(matched[0].definition)
@@ -82,7 +82,7 @@ class GlossaryMatcherAgent(BaseAgent):
         탐지된 용어를 용어집과 매칭하여 상세 정보 제공
 
         Args:
-            detected_terms: TermDetectorAgent에서 탐지된 용어 리스트
+            detected_terms: OptimizedTermDetectorAgent에서 탐지된 용어 리스트
             glossary_terms: 전체 용어집 (DB에서 조회, id와 상세 정보 포함)
                 각 딕셔너리는 다음 키를 포함해야 함:
                 - id (필수): 용어 UUID

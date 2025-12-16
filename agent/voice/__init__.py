@@ -1,17 +1,15 @@
 """
-Real-time voice translation agents.
+Voice processing agents.
 
 Agents:
-- RealtimeSTTAgent: Speech-to-Text with OpenAI Whisper
-- MultiLanguageTranslationAgent: Multi-language translation with GPT-4o Streaming
-- SpeakerDiarizationAgent: Speaker identification with VAD
+- PronunciationStreamingAgent: Real-time pronunciation assessment (Azure)
+- BaseAzureAgent: Base class for Azure Speech SDK agents
 """
 
-from agent.voice.multi_translation_agent import MultiLanguageTranslationAgent
-from agent.voice.speaker_diarization_agent import SpeakerDiarizationAgent
+from agent.voice.base_azure_agent import BaseAzureAgent
+from agent.voice.pronunciation_streaming_agent import PronunciationStreamingAgent
 
 __all__ = [
-    "RealtimeSTTAgent",
-    "MultiLanguageTranslationAgent",
-    "SpeakerDiarizationAgent",
+    "BaseAzureAgent",
+    "PronunciationStreamingAgent",
 ]

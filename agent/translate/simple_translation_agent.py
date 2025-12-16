@@ -107,7 +107,7 @@ class SimpleTranslationAgent(BaseAgent):
             system_prompt = self._create_system_prompt(source_lang, target_lang)
 
             response = await self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": text}

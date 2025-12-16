@@ -13,12 +13,13 @@ from uuid import UUID
 from pathlib import Path
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy import text
 
 # Agent imports
 from agent.video.stt_agent import VideoSTTAgent
 from agent.video.subtitle_generator_agent import SubtitleGeneratorAgent
 from agent.translate.context_enhanced_translation_agent import ContextEnhancedTranslationAgent
-from agent.term_detection.term_detector_agent import TermDetectorAgent
+from agent.term_detection.optimized_term_detector_agent import OptimizedTermDetectorAgent
 
 # Model imports
 from app.models.file import File  # For context documents
@@ -46,7 +47,7 @@ class VideoTranslationService:
         self.stt_agent = VideoSTTAgent()
         self.subtitle_generator = SubtitleGeneratorAgent()
         self.context_translator = ContextEnhancedTranslationAgent()
-        self.term_detector = TermDetectorAgent()
+        self.term_detector = OptimizedTermDetectorAgent()
 
     def _get_video_file_by_file_id(self, file_id: UUID, db: Session) -> VideoFile:
         """
@@ -110,8 +111,6 @@ class VideoTranslationService:
         Note:
             project_files 조인을 통해 프로젝트에 연결된 모든 문서의 용어를 조회합니다.
         """
-        from sqlalchemy import text
-
         # Native SQL 쿼리: Java의 findTermsByProjectFiles()와 동일한 로직
         query = text("""
             SELECT DISTINCT t.*
@@ -387,7 +386,7 @@ class VideoTranslationService:
 
         total_detected_count = 0
         for subtitle in original_subtitles:
-            # 용어 탐지 (TermDetectorAgent 사용)
+            # 용어 탐지 (OptimizedTermDetectorAgent 사용)
             detected_terms = []
             if glossary_terms:
                 detected_terms = await self.term_detector.process(

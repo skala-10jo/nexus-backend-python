@@ -77,7 +77,7 @@ class ScenarioGeneratorAgent(BaseAgent):
             system_content = self._create_business_system_prompt(target_lang)
 
         response = await self.client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_content},
                 {"role": "user", "content": prompt}

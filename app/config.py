@@ -49,11 +49,22 @@ class Settings(BaseSettings):
     PYTHON_BACKEND_PORT: int = 8000
     LOG_LEVEL: str = "info"
 
+    # Java Backend URL (분산 환경에서 내부 통신용)
+    # 환경변수가 빈 값이면 기본값 사용
+    JAVA_BACKEND_URL: str = "http://localhost:3000"
+
+    @property
+    def java_backend_url(self) -> str:
+        """Get Java backend URL with fallback for empty values."""
+        if self.JAVA_BACKEND_URL and self.JAVA_BACKEND_URL.strip():
+            return self.JAVA_BACKEND_URL.strip()
+        return "http://localhost:3000"
+
     # File Storage (optional - auto-detected from project structure if not set)
     UPLOAD_BASE_DIR: Optional[str] = None
 
-    # CORS
-    ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+    # CORS (환경변수명: CORS_ALLOWED_ORIGINS 또는 ALLOWED_ORIGINS)
+    CORS_ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
     # Qdrant Vector Database
     QDRANT_HOST: str = "localhost"
@@ -81,7 +92,7 @@ class Settings(BaseSettings):
     @property
     def allowed_origins_list(self) -> List[str]:
         """Convert CORS allowed origins string to list."""
-        return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(',')]
+        return [origin.strip() for origin in self.CORS_ALLOWED_ORIGINS.split(',')]
 
     @property
     def upload_dir(self) -> str:

@@ -58,7 +58,9 @@ async def extract_glossary_terms(
         file_path=request.file_path,
         user_id=str(request.user_id),
         project_id=str(request.project_id),
-        db=db
+        db=db,
+        file_content=request.file_content,
+        file_name=request.file_name
     )
 
     return ExtractionResponse(

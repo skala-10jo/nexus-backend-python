@@ -4,7 +4,7 @@ Azure Avatar API 엔드포인트
 브라우저에서 Azure Speech Avatar SDK를 사용하기 위한 토큰 발급 API
 """
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 import logging
 import uuid
 from agent.avatar.azure_avatar_agent import AzureAvatarAgent
@@ -260,7 +260,6 @@ async def synthesize_avatar(request: Request):
         audio_data = await agent.synthesize_avatar_video(text, language)
 
         # 오디오 파일로 반환
-        from fastapi.responses import Response
         return Response(
             content=audio_data,
             media_type="audio/mpeg",

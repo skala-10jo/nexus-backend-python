@@ -2,16 +2,20 @@
 회화 연습 서비스
 GPT-4o를 이용한 시나리오 기반 대화 생성
 """
+import base64
 import json
 import logging
 from typing import List, Dict, Any
 from uuid import UUID
 
-from app.core.openai_client import get_openai_client
 from app.database import get_db
+from app.models.scenario import Scenario
+from app.models.conversation import ConversationSession, ConversationMessage
 from agent.scenario.response_agent import ResponseAgent
 from agent.scenario.feedback_agent import FeedbackAgent
+from agent.scenario.hint_agent import HintAgent
 from agent.translate import ContextEnhancedTranslationAgent
+from agent.pronunciation.pronunciation_agent import PronunciationAssessmentAgent
 
 logger = logging.getLogger(__name__)
 
@@ -20,10 +24,24 @@ class ConversationService:
     """회화 연습 대화 생성 서비스"""
 
     def __init__(self):
-        self.client = get_openai_client()  # 싱글톤 클라이언트 사용
-        self.response_agent = ResponseAgent()  # AI 응답 생성 Agent
-        self.feedback_agent = FeedbackAgent()  # 피드백 생성 Agent
-        self.translation_agent = ContextEnhancedTranslationAgent()  # 컨텍스트 기반 번역 Agent
+        self.response_agent = ResponseAgent()
+        self.feedback_agent = FeedbackAgent()
+        self.translation_agent = ContextEnhancedTranslationAgent()
+
+    def _build_scenario_dict(self, scenario) -> Dict[str, Any]:
+        """시나리오 응답 객체 생성"""
+        return {
+            "id": str(scenario.id),
+            "title": scenario.title,
+            "description": scenario.description,
+            "difficulty": scenario.difficulty,
+            "category": scenario.category,
+            "language": scenario.language,
+            "roles": scenario.roles,
+            "requiredTerms": scenario.required_terminology,
+            "scenario_text": scenario.scenario_text,
+            "steps": scenario.steps or []
+        }
 
     async def start_conversation(
         self,
@@ -43,8 +61,6 @@ class ConversationService:
         try:
             # DB에서 시나리오 조회
             db = next(get_db())
-            from app.models.scenario import Scenario
-            from app.models.conversation import ConversationSession
 
             scenario = db.query(Scenario).filter(
                 Scenario.id == UUID(scenario_id),
@@ -65,19 +81,8 @@ class ConversationService:
                 # 기존 세션이 있고 메시지가 있으면 시나리오 정보만 반환 (초기 메시지 없음)
                 logger.info(f"Existing session found with {existing_session.total_messages} messages, skipping initial message")
                 return {
-                    "scenario": {
-                        "id": str(scenario.id),
-                        "title": scenario.title,
-                        "description": scenario.description,
-                        "difficulty": scenario.difficulty,
-                        "category": scenario.category,
-                        "language": scenario.language,
-                        "roles": scenario.roles,
-                        "requiredTerms": scenario.required_terminology,
-                        "scenario_text": scenario.scenario_text,
-                        "steps": scenario.steps or []
-                    },
-                    "initialMessage": None,  # 기존 대화가 있으므로 초기 메시지 없음
+                    "scenario": self._build_scenario_dict(scenario),
+                    "initialMessage": None,
                     "sessionId": str(existing_session.id)
                 }
 
@@ -97,18 +102,7 @@ class ConversationService:
             )
 
             return {
-                "scenario": {
-                    "id": str(scenario.id),
-                    "title": scenario.title,
-                    "description": scenario.description,
-                    "difficulty": scenario.difficulty,
-                    "category": scenario.category,
-                    "language": scenario.language,
-                    "roles": scenario.roles,
-                    "requiredTerms": scenario.required_terminology,
-                    "scenario_text": scenario.scenario_text,
-                    "steps": scenario.steps or []
-                },
+                "scenario": self._build_scenario_dict(scenario),
                 "initialMessage": initial_message,
                 "sessionId": str(session.id)
             }
@@ -141,7 +135,6 @@ class ConversationService:
         try:
             # DB에서 시나리오 조회
             db = next(get_db())
-            from app.models.scenario import Scenario
 
             scenario = db.query(Scenario).filter(
                 Scenario.id == UUID(scenario_id),
@@ -324,7 +317,6 @@ class ConversationService:
         try:
             # DB에서 시나리오 조회
             db = next(get_db())
-            from app.models.scenario import Scenario
 
             scenario = db.query(Scenario).filter(
                 Scenario.id == UUID(scenario_id),
@@ -338,9 +330,6 @@ class ConversationService:
             pronunciation_details = None
             if audio_data:
                 try:
-                    import base64
-                    from agent.pronunciation.pronunciation_agent import PronunciationAssessmentAgent
-
                     logger.info("Running Azure Pronunciation Assessment...")
                     audio_bytes = base64.b64decode(audio_data)
 
@@ -432,7 +421,6 @@ class ConversationService:
         try:
             # DB에서 시나리오 조회
             db = next(get_db())
-            from app.models.scenario import Scenario
 
             scenario = db.query(Scenario).filter(
                 Scenario.id == UUID(scenario_id),
@@ -486,7 +474,6 @@ class ConversationService:
         """
         try:
             db = next(get_db())
-            from app.models.conversation import ConversationSession
 
             # 해당 시나리오의 모든 세션 삭제 (CASCADE로 메시지도 자동 삭제)
             deleted_count = db.query(ConversationSession).filter(
@@ -520,7 +507,6 @@ class ConversationService:
         """
         try:
             db = next(get_db())
-            from app.models.conversation import ConversationSession, ConversationMessage
 
             # 가장 최근 active 세션 조회
             session = db.query(ConversationSession).filter(
@@ -583,9 +569,6 @@ class ConversationService:
         Returns:
             ConversationSession 객체
         """
-        from app.models.conversation import ConversationSession
-        from app.models.scenario import Scenario
-
         # 기존 active 세션 찾기
         session = db.query(ConversationSession).filter(
             ConversationSession.scenario_id == UUID(scenario_id),
@@ -638,8 +621,6 @@ class ConversationService:
             detected_terms: 감지된 전문용어 (선택)
             feedback: 피드백 (선택)
         """
-        from app.models.conversation import ConversationMessage, ConversationSession
-
         new_message = ConversationMessage(
             session_id=session_id,
             sender=sender,
@@ -679,8 +660,6 @@ class ConversationService:
             user_message: 사용자 메시지 (매칭용)
             feedback: 피드백 JSON 문자열
         """
-        from app.models.conversation import ConversationSession, ConversationMessage
-
         # 해당 시나리오의 active 세션 찾기
         session = db.query(ConversationSession).filter(
             ConversationSession.scenario_id == UUID(scenario_id),
@@ -742,8 +721,6 @@ class ConversationService:
         try:
             # DB에서 시나리오 조회
             db = next(get_db())
-            from app.models.scenario import Scenario
-            from agent.scenario.hint_agent import HintAgent
 
             scenario = db.query(Scenario).filter(
                 Scenario.id == UUID(scenario_id),
