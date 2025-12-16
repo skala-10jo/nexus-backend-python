@@ -123,7 +123,7 @@ class SpeakingFeedbackAgent(BaseAgent):
 JSON 객체만 반환하고, 추가 텍스트는 포함하지 마세요."""
 
         response = await self.client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}

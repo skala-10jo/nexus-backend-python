@@ -229,7 +229,7 @@ target_language 추론 (translate/draft일 때):
         # GPT 호출
         try:
             response = await self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=messages,
                 temperature=0.3,
                 response_format={"type": "json_object"}

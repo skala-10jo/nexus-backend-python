@@ -118,7 +118,7 @@ class EmailDraftAgent(BaseAgent):
 
             # GPT 호출
             response = await self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=messages,
                 temperature=0.7,
                 max_tokens=500
@@ -205,7 +205,7 @@ class EmailDraftAgent(BaseAgent):
             messages.append({"role": "user", "content": f"다음 메일을 {target_language}로 번역해주세요:\n\n{email_text}"})
 
             response = await self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=messages,
                 temperature=0.5,
                 max_tokens=500
