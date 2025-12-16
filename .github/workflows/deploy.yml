@@ -85,6 +85,8 @@ jobs:
               -e UPLOAD_BASE_DIR="/app/uploads" \
               -e AZURE_SPEECH_KEY="${{ secrets.AZURE_SPEECH_KEY }}" \
               -e AZURE_SPEECH_REGION="${{ secrets.AZURE_SPEECH_REGION }}" \
+              -e AZURE_AVATAR_SPEECH_KEY="${{ secrets.AZURE_AVATAR_SPEECH_KEY }}" \
+              -e AZURE_AVATAR_SPEECH_REGION="${{ secrets.AZURE_AVATAR_SPEECH_REGION }}" \
               -e AZURE_TRANSLATOR_KEY="${{ secrets.AZURE_TRANSLATOR_KEY }}" \
               -e AZURE_TRANSLATOR_ENDPOINT="${{ secrets.AZURE_TRANSLATOR_ENDPOINT }}" \
               -e AZURE_TRANSLATOR_REGION="${{ secrets.AZURE_TRANSLATOR_REGION }}" \
