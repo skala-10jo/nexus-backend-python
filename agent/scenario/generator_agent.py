@@ -145,7 +145,8 @@ class ScenarioGeneratorAgent(BaseAgent):
 - 다양한 일상 상황을 다루세요
 - 제목과 설명은 반드시 한글로 작성
 - 역할(roles)은 반드시 한국어로 작성 (단, PM, CEO, CTO 같은 영어 약어는 그대로 사용 가능)
-- requiredTerminology(핵심 표현)는 반드시 {target_lang}로 작성 (학습자가 연습할 목표 언어 표현)
+- requiredTerminology는 반드시 {target_lang} 핵심 단어/표현으로 작성 (단어 또는 짧은 구문만, 문장 금지!)
+  예: "reservation", "table for two", "check please" (O) / "I'd like to make a reservation." (X)
 
 ★★★ 중요: scenarioText 형식 규칙 ★★★
 - 반드시 개조식(bullet point)으로만 작성하세요
@@ -191,13 +192,13 @@ class ScenarioGeneratorAgent(BaseAgent):
         "user": "한국어로 된 사용자 역할",
         "ai": "한국어로 된 상대방 역할"
       }},
-      "requiredTerminology": ["실제 {target_lang} 표현 3-5개"],
+      "requiredTerminology": ["키워드1", "키워드2", "핵심표현3 (단어/짧은 구문만, 문장 금지)"],
       "steps": [
         {{
           "name": "단계 영문 식별자",
           "title": "단계 한글 제목",
           "guide": "이 시나리오 상황에 맞는 구체적인 가이드 (새로 작성)",
-          "terminology": ["이 단계에서 사용할 실제 {target_lang} 문장 2-3개"]
+          "terminology": ["힌트용 완전한 {target_lang} 문장 2-3개 (예: I'd like to order...)"]
         }}
       ]
     }}
@@ -247,7 +248,8 @@ class ScenarioGeneratorAgent(BaseAgent):
 - 다양한 시나리오 타입 사용: Collaboration, Technical Support, Product Explanation, Problem Solving
 - 제목과 설명은 반드시 한글로 작성
 - 역할(roles)은 반드시 한국어로 작성 (단, PM, CEO, CTO, QA 같은 영어 약어는 그대로 사용 가능)
-- requiredTerminology(핵심 용어)는 반드시 {target_lang}로 작성 (학습자가 연습할 목표 언어 전문 용어)
+- requiredTerminology는 반드시 {target_lang} 전문 용어/키워드로 작성 (단어 또는 짧은 구문만, 문장 금지!)
+  예: "deadline", "RESTful API", "project timeline" (O) / "I'd like to discuss the project." (X)
 
 ★★★ 중요: scenarioText 형식 규칙 ★★★
 - 반드시 개조식(bullet point)으로만 작성하세요
@@ -294,13 +296,13 @@ class ScenarioGeneratorAgent(BaseAgent):
         "user": "한국어로 된 사용자 역할 (컨텍스트에서 추출)",
         "ai": "한국어로 된 상대방 역할 (컨텍스트에서 추출)"
       }},
-      "requiredTerminology": ["컨텍스트 관련 실제 {target_lang} 표현 3-5개"],
+      "requiredTerminology": ["키워드1", "키워드2", "전문용어3 (단어/짧은 구문만, 문장 금지)"],
       "steps": [
         {{
           "name": "단계 영문 식별자",
           "title": "단계 한글 제목",
           "guide": "이 시나리오 상황에 맞는 구체적인 가이드 (새로 작성)",
-          "terminology": ["이 단계에서 사용할 실제 {target_lang} 문장 2-3개"]
+          "terminology": ["힌트용 완전한 {target_lang} 문장 2-3개 (예: I'd like to discuss...)"]
         }}
       ]
     }}
