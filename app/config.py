@@ -50,7 +50,15 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "info"
 
     # Java Backend URL (분산 환경에서 내부 통신용)
+    # 환경변수가 빈 값이면 기본값 사용
     JAVA_BACKEND_URL: str = "http://localhost:3000"
+
+    @property
+    def java_backend_url(self) -> str:
+        """Get Java backend URL with fallback for empty values."""
+        if self.JAVA_BACKEND_URL and self.JAVA_BACKEND_URL.strip():
+            return self.JAVA_BACKEND_URL.strip()
+        return "http://localhost:3000"
 
     # File Storage (optional - auto-detected from project structure if not set)
     UPLOAD_BASE_DIR: Optional[str] = None

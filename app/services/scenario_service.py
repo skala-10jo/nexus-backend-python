@@ -176,7 +176,7 @@ class ScenarioService:
             for pid in project_ids:
                 try:
                     response = await client.get(
-                        f"{settings.JAVA_BACKEND_URL}/api/projects/{pid}",
+                        f"{settings.java_backend_url}/api/projects/{pid}",
                         headers=headers,
                         timeout=10.0
                     )
@@ -202,7 +202,7 @@ class ScenarioService:
             for sid in schedule_ids:
                 try:
                     response = await client.get(
-                        f"{settings.JAVA_BACKEND_URL}/api/schedules/{sid}",
+                        f"{settings.java_backend_url}/api/schedules/{sid}",
                         headers=headers,
                         timeout=10.0
                     )
@@ -292,7 +292,7 @@ class ScenarioService:
                 try:
                     # Fetch glossary terms for project (paginated, get first 100)
                     response = await client.get(
-                        f"{settings.JAVA_BACKEND_URL}/api/glossary",
+                        f"{settings.java_backend_url}/api/glossary",
                         params={"projectId": project_id, "size": 100},
                         headers=headers,
                         timeout=10.0
