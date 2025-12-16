@@ -179,10 +179,12 @@ async def translate_message(
     user: dict = Depends(get_current_user)
 ):
     """
-    메시지 번역 (GPT-4o 사용)
+    메시지 번역 (컨텍스트 기반 GPT-4o 사용)
+
+    시나리오의 맥락과 전문용어를 활용하여 일관성 있는 번역을 제공합니다.
 
     Args:
-        request: 번역할 메시지 및 목표 언어
+        request: 번역 요청 (시나리오 ID, 메시지, 원본/목표 언어)
         user: 현재 사용자 정보
 
     Returns:
@@ -192,8 +194,11 @@ async def translate_message(
         user_id = user["user_id"]
 
         translated_text = await conversation_service.translate_message(
+            scenario_id=request.scenarioId,
             message=request.message,
-            target_language=request.targetLanguage
+            source_language=request.sourceLanguage,
+            target_language=request.targetLanguage,
+            user_id=user_id
         )
 
         return {
@@ -201,6 +206,8 @@ async def translate_message(
             "translatedText": translated_text
         }
 
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Failed to translate message: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to translate message: {str(e)}")

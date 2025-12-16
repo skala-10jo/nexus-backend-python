@@ -11,7 +11,6 @@ from .mail_agent_service import MailAgentService
 from .email_draft_service import EmailDraftService
 from .video_translation_service import VideoTranslationService
 from .scenario_service import ScenarioService
-from .small_talk_service import SmallTalkService
 from .voice_stt_service import VoiceSTTService
 from .voice_translation_service import VoiceTranslationService
 from .slack_agent_service import SlackAgentService
@@ -26,7 +25,6 @@ __all__ = [
     "EmailDraftService",
     "VideoTranslationService",
     "ScenarioService",
-    "SmallTalkService",
     "VoiceSTTService",
     "VoiceTranslationService",
     "SlackAgentService",

@@ -43,8 +43,10 @@ class MessageFeedbackRequest(BaseModel):
 
 class TranslateMessageRequest(BaseModel):
     """메시지 번역 요청"""
+    scenarioId: str  # 시나리오 ID (컨텍스트 기반 번역용)
     message: str
     targetLanguage: str = "ko"  # Default to Korean
+    sourceLanguage: str = "en"  # Default to English (AI 응답 언어)
 
 
 class HintRequest(BaseModel):

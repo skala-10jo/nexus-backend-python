@@ -14,8 +14,7 @@ from sqlalchemy import desc
 
 from app.config import settings
 from app.models.speaking_tutor import SpeakingAnalysisSession, SpeakingUtterance
-from app.core.openai_client import get_openai_client
-from agent.speaking_tutor import DiarizationAgent, SpeakingFeedbackAgent
+from agent.speaking_tutor import DiarizationAgent, SpeakingFeedbackAgent, MeetingSummaryAgent
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +33,10 @@ class SpeakingTutorService:
         self.upload_dir = os.path.join(settings.upload_dir, "speaking_tutor")
         os.makedirs(self.upload_dir, exist_ok=True)
 
-        # Initialize agents
+        # Initialize agents (lazy initialization for diarization/feedback)
         self.diarization_agent = None
         self.feedback_agent = None
+        self.summary_agent = MeetingSummaryAgent()
 
     async def upload_audio(
         self,
@@ -80,9 +80,9 @@ class SpeakingTutorService:
         try:
             with open(file_path, "wb") as f:
                 f.write(file_content)
-            logger.info(f"📁 Audio file saved: {file_path}")
+            logger.info(f"Audio file saved: {file_path}")
         except Exception as e:
-            logger.error(f"❌ Failed to save audio file: {str(e)}")
+            logger.error(f"Failed to save audio file: {str(e)}")
             raise ValueError(f"Failed to save file: {str(e)}")
 
         # Create session record
@@ -130,7 +130,7 @@ class SpeakingTutorService:
             ).first()
 
             if not session:
-                logger.error(f"❌ Session not found: {session_id}")
+                logger.error(f"Session not found: {session_id}")
                 return
 
             # Update status to PROCESSING
@@ -191,19 +191,19 @@ class SpeakingTutorService:
             try:
                 summary = await self._generate_meeting_summary(utterances_data, language)
                 session.summary = summary
-                logger.info(f"📝 Summary generated: {summary[:50]}...")
+                logger.info(f"Summary generated: {summary[:50]}...")
             except Exception as summary_err:
-                logger.warning(f"⚠️ Summary generation failed: {summary_err}")
+                logger.warning(f"Summary generation failed: {summary_err}")
                 # Fallback: use first utterance as summary
                 if utterances_data:
                     first_text = utterances_data[0].get("text", "")
                     session.summary = first_text[:100] + "..." if len(first_text) > 100 else first_text
 
             db.commit()
-            logger.info(f"✅ Analysis completed: {session_id}, {len(utterances_data)} utterances")
+            logger.info(f"Analysis completed: {session_id}, {len(utterances_data)} utterances")
 
         except Exception as e:
-            logger.error(f"❌ Analysis failed for {session_id}: {str(e)}")
+            logger.error(f"Analysis failed for {session_id}: {str(e)}")
             try:
                 session = db.query(SpeakingAnalysisSession).filter(
                     SpeakingAnalysisSession.id == uuid.UUID(session_id)
@@ -337,7 +337,7 @@ class SpeakingTutorService:
         language: str
     ) -> str:
         """
-        Generate a brief summary of meeting content using GPT.
+        Generate a brief summary of meeting content using MeetingSummaryAgent.
 
         Args:
             utterances_data: List of utterance dictionaries with 'text' and 'speaker_id'
@@ -346,64 +346,7 @@ class SpeakingTutorService:
         Returns:
             Brief summary string (max ~100 chars for card display)
         """
-        if not utterances_data:
-            return "내용 없음"
-
-        # Combine utterances into conversation text (limit to first 30 for better context)
-        conversation_lines = []
-        for utt in utterances_data[:30]:
-            speaker = f"화자{utt.get('speaker_id', 1)}"
-            text = utt.get('text', '')
-            if text.strip():  # Skip empty utterances
-                conversation_lines.append(f"{speaker}: {text}")
-
-        if not conversation_lines:
-            return "대화 내용 없음"
-
-        conversation_text = "\n".join(conversation_lines)
-
-        # Always generate summary in Korean for consistent UI
-        # Use GPT to generate summary
-        client = get_openai_client()
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": """당신은 회의/대화 내용을 간결하게 요약하는 전문가입니다.
-규칙:
-1. 반드시 한국어로 요약하세요
-2. 1-2문장, 80자 이내로 작성하세요
-3. 핵심 주제와 논의 내용을 포함하세요
-4. "~에 대해 논의함", "~를 다룸" 형식으로 작성하세요
-
-예시:
-- "프로젝트 일정 조정과 팀 역할 분담에 대해 논의함"
-- "신제품 마케팅 전략과 예산 배분을 다룸"
-- "고객 피드백 분석 및 개선 방안을 검토함" """
-                },
-                {
-                    "role": "user",
-                    "content": f"다음 대화 내용의 핵심 주제를 한국어로 간결하게 요약해주세요:\n\n{conversation_text}"
-                }
-            ],
-            max_tokens=100,
-            temperature=0.3
-        )
-
-        summary = response.choices[0].message.content.strip()
-
-        # Remove quotes if present
-        if summary.startswith('"') and summary.endswith('"'):
-            summary = summary[1:-1]
-        if summary.startswith("'") and summary.endswith("'"):
-            summary = summary[1:-1]
-
-        # Ensure summary is not too long
-        if len(summary) > 100:
-            summary = summary[:97] + "..."
-
-        return summary
+        return await self.summary_agent.process(utterances_data, language)
 
     async def generate_feedback(
         self,
@@ -434,7 +377,7 @@ class SpeakingTutorService:
             # Convert "en-US" to "en"
             language = session.language.split("-")[0]
 
-        logger.info(f"📝 Generating feedback for utterance: {utterance_id}")
+        logger.info(f"Generating feedback for utterance: {utterance_id}")
 
         try:
             # Initialize FeedbackAgent if needed
@@ -448,10 +391,10 @@ class SpeakingTutorService:
                 language=language
             )
 
-            logger.info(f"✅ Feedback generated: score={feedback.get('score', 0)}")
+            logger.info(f"Feedback generated: score={feedback.get('score', 0)}")
 
         except Exception as e:
-            logger.error(f"❌ Feedback generation failed: {str(e)}")
+            logger.error(f"Feedback generation failed: {str(e)}")
             # Return fallback feedback on error
             feedback = {
                 "grammar_corrections": [f"피드백 생성 중 오류가 발생했습니다: {str(e)}"],
@@ -610,15 +553,15 @@ class SpeakingTutorService:
         if os.path.exists(session.file_path):
             try:
                 os.remove(session.file_path)
-                logger.info(f"🗑️ Deleted audio file: {session.file_path}")
+                logger.info(f"Deleted audio file: {session.file_path}")
             except Exception as e:
-                logger.warning(f"⚠️ Failed to delete file: {str(e)}")
+                logger.warning(f"Failed to delete file: {str(e)}")
 
         # Delete session (cascade deletes utterances)
         db.delete(session)
         db.commit()
 
-        logger.info(f"🗑️ Deleted session: {session_id}")
+        logger.info(f"Deleted session: {session_id}")
 
         return {
             "session_id": session_id,
