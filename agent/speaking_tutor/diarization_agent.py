@@ -46,7 +46,7 @@ class DiarizationAgent:
     Does not inherit from BaseAgent as it uses Azure Speech SDK, not OpenAI.
     """
 
-    SUPPORTED_FORMATS = {'.wav', '.mp3', '.m4a', '.ogg', '.flac'}
+    SUPPORTED_FORMATS = {'.wav', '.mp3', '.m4a', '.ogg', '.flac', '.webm'}
 
     def __init__(self):
         """Initialize with Azure Speech configuration."""
