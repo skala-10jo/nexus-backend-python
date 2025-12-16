@@ -25,8 +25,8 @@ class SpeakingTutorService:
     Handles file upload, analysis orchestration, and data retrieval.
     """
 
-    # Supported audio file extensions
-    ALLOWED_EXTENSIONS = {".wav", ".mp3", ".m4a", ".ogg", ".flac"}
+    # Supported audio file extensions (webm added for browser recording support)
+    ALLOWED_EXTENSIONS = {".wav", ".mp3", ".m4a", ".ogg", ".flac", ".webm"}
     MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 
     def __init__(self):
