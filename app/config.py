@@ -52,8 +52,8 @@ class Settings(BaseSettings):
     # File Storage (optional - auto-detected from project structure if not set)
     UPLOAD_BASE_DIR: Optional[str] = None
 
-    # CORS
-    ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+    # CORS (환경변수명: CORS_ALLOWED_ORIGINS 또는 ALLOWED_ORIGINS)
+    CORS_ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
     # Qdrant Vector Database
     QDRANT_HOST: str = "localhost"
@@ -81,7 +81,7 @@ class Settings(BaseSettings):
     @property
     def allowed_origins_list(self) -> List[str]:
         """Convert CORS allowed origins string to list."""
-        return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(',')]
+        return [origin.strip() for origin in self.CORS_ALLOWED_ORIGINS.split(',')]
 
     @property
     def upload_dir(self) -> str:

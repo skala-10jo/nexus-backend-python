@@ -86,7 +86,7 @@ async def startup_event():
 
     logger.info("NEXUS Python AI Backend starting...")
     logger.info(f"Port: {settings.PYTHON_BACKEND_PORT}")
-    logger.info(f"CORS origins: {settings.ALLOWED_ORIGINS}")
+    logger.info(f"CORS origins: {settings.CORS_ALLOWED_ORIGINS}")
     logger.info(f"Database: {settings.DATABASE_URL.split('@')[1] if '@' in settings.DATABASE_URL else 'configured'}")
 
     # Initialize Qdrant collection
