@@ -15,6 +15,7 @@ class SendMessageRequest(BaseModel):
     scenarioId: str
     message: str
     history: List[Dict[str, str]] = []
+    currentStepIndex: int = 0  # 현재 스텝 인덱스 (0-based)
 
 
 class EndConversationRequest(BaseModel):

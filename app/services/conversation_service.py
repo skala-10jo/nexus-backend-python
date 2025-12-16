@@ -68,7 +68,8 @@ class ConversationService:
                         "language": scenario.language,
                         "roles": scenario.roles,
                         "requiredTerms": scenario.required_terminology,
-                        "scenario_text": scenario.scenario_text
+                        "scenario_text": scenario.scenario_text,
+                        "steps": scenario.steps or []
                     },
                     "initialMessage": None,  # 기존 대화가 있으므로 초기 메시지 없음
                     "sessionId": str(existing_session.id)
@@ -99,7 +100,8 @@ class ConversationService:
                     "language": scenario.language,
                     "roles": scenario.roles,
                     "requiredTerms": scenario.required_terminology,
-                    "scenario_text": scenario.scenario_text
+                    "scenario_text": scenario.scenario_text,
+                    "steps": scenario.steps or []
                 },
                 "initialMessage": initial_message,
                 "sessionId": str(session.id)
@@ -114,7 +116,8 @@ class ConversationService:
         scenario_id: str,
         user_message: str,
         conversation_history: List[Dict[str, str]],
-        user_id: UUID
+        user_id: UUID,
+        current_step_index: int = 0
     ) -> Dict[str, Any]:
         """
         사용자 메시지 전송 및 AI 응답 생성
@@ -124,9 +127,10 @@ class ConversationService:
             user_message: 사용자 메시지
             conversation_history: 대화 히스토리 (프론트에서 전달, 백업용)
             user_id: 사용자 ID
+            current_step_index: 현재 스텝 인덱스 (0-based)
 
         Returns:
-            AI 응답 및 감지된 전문용어
+            AI 응답, 감지된 전문용어, 스텝 완료 여부
         """
         try:
             # DB에서 시나리오 조회
@@ -156,11 +160,18 @@ class ConversationService:
                 sequence_number=next_seq
             )
 
-            # AI 응답 생성
-            ai_message = await self._generate_ai_response(
+            # 스텝 정보 가져오기 (steps 컬럼이 있는 경우)
+            steps = getattr(scenario, 'steps', None) or []
+            current_step = steps[current_step_index] if steps and current_step_index < len(steps) else None
+
+            # AI 응답 생성 (스텝 판단 포함)
+            ai_response = await self._generate_ai_response(
                 scenario=scenario,
                 user_message=user_message,
-                conversation_history=conversation_history
+                conversation_history=conversation_history,
+                current_step=current_step,
+                current_step_index=current_step_index,
+                total_steps=len(steps) if steps else 0
             )
 
             # 전문용어 감지
@@ -174,14 +185,15 @@ class ConversationService:
                 db=db,
                 session_id=session.id,
                 sender="ai",
-                message_text=ai_message,
+                message_text=ai_response["message"],
                 detected_terms=detected_terms,
                 sequence_number=next_seq + 1
             )
 
             return {
-                "aiMessage": ai_message,
-                "detectedTerms": detected_terms
+                "aiMessage": ai_response["message"],
+                "detectedTerms": detected_terms,
+                "stepCompleted": ai_response.get("step_completed", False)
             }
 
         except Exception as e:
@@ -271,18 +283,24 @@ class ConversationService:
         self,
         scenario,
         user_message: str,
-        conversation_history: List[Dict[str, str]]
-    ) -> str:
+        conversation_history: List[Dict[str, str]],
+        current_step: Dict[str, Any] = None,
+        current_step_index: int = 0,
+        total_steps: int = 0
+    ) -> Dict[str, Any]:
         """
-        AI 응답 생성 (스몰토크 포함)
+        AI 응답 생성 (스몰토크 포함, 스텝 진행 판단)
 
         Args:
             scenario: 시나리오 객체
             user_message: 사용자 메시지
             conversation_history: 대화 히스토리
+            current_step: 현재 스텝 정보 (있는 경우)
+            current_step_index: 현재 스텝 인덱스
+            total_steps: 전체 스텝 수
 
         Returns:
-            AI 응답 메시지
+            AI 응답 메시지와 스텝 완료 여부를 포함한 딕셔너리
         """
         try:
             from datetime import datetime
@@ -311,6 +329,24 @@ class ConversationService:
 - 전략적이고 다층적인 대화 진행"""
             }
 
+            # 스텝 정보 구성 (있는 경우)
+            step_context = ""
+            step_judgment_instruction = ""
+            if current_step and total_steps > 0:
+                step_context = f"""
+현재 진행 단계: {current_step_index + 1}/{total_steps}
+현재 스텝: {current_step.get('name', 'Unknown')}
+스텝 가이드: {current_step.get('guide', '')}
+이 스텝에서 사용할 용어: {', '.join(current_step.get('terminology', []))}
+"""
+                step_judgment_instruction = """
+스텝 진행 판단:
+- 현재 스텝의 목적이 자연스럽게 달성되었는지 판단하세요
+- 사용자가 현재 스텝의 주제에 대해 충분히 대화했다면 step_completed를 true로 설정하세요
+- 아직 현재 스텝의 목적을 충분히 다루지 않았다면 step_completed를 false로 설정하세요
+- 다음 스텝으로 넘어가자고 명시적으로 제안하지 마세요 - 자연스러운 대화 흐름을 유지하세요
+"""
+
             # 시스템 프롬프트
             system_prompt = f"""당신은 비즈니스 회화 연습 시나리오에 참여하고 있습니다.
 
@@ -328,7 +364,7 @@ class ConversationService:
 난이도: {scenario.difficulty}
 
 자연스럽게 사용할 필수 전문용어: {', '.join(scenario.required_terminology)}
-
+{step_context}
 난이도별 대화 스타일:
 {conversation_style.get(scenario.difficulty, conversation_style['intermediate'])}
 
@@ -342,7 +378,13 @@ class ConversationService:
 - 언어 연습에 대해 격려하고 지원적으로 대하세요
 - 사용자가 문법 오류를 범하면, 응답에서 부드럽게 교정을 포함하세요
 - 오늘 맥락을 기반으로 현실적인 날짜와 시간을 사용하세요
-- 알림: "빠른 채팅 메시지"로 생각하세요, "이메일"이 아닙니다 - 대화체이고 간결하게"""
+- 알림: "빠른 채팅 메시지"로 생각하세요, "이메일"이 아닙니다 - 대화체이고 간결하게
+{step_judgment_instruction}
+응답은 반드시 다음 JSON 형식으로 제공하세요:
+{{
+    "message": "AI 응답 메시지 (간결하게, 15-20 단어 이내)",
+    "step_completed": false
+}}"""
 
             # 대화 히스토리 구성
             messages = [{"role": "system", "content": system_prompt}]
@@ -355,15 +397,30 @@ class ConversationService:
             # 현재 사용자 메시지 추가
             messages.append({"role": "user", "content": user_message})
 
-            # GPT-4o 호출
+            # GPT-4o 호출 (JSON 응답 형식)
             response = await self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=messages,
                 temperature=0.8,
-                max_tokens=60  # 7초 이내 읽기 시간을 위해 60 토큰으로 제한
+                max_tokens=150,
+                response_format={"type": "json_object"}
             )
 
-            return response.choices[0].message.content
+            # JSON 파싱
+            response_text = response.choices[0].message.content
+            try:
+                parsed_response = json.loads(response_text)
+                return {
+                    "message": parsed_response.get("message", response_text),
+                    "step_completed": parsed_response.get("step_completed", False)
+                }
+            except json.JSONDecodeError:
+                # JSON 파싱 실패 시 텍스트 그대로 반환
+                logger.warning(f"Failed to parse AI response as JSON: {response_text}")
+                return {
+                    "message": response_text,
+                    "step_completed": False
+                }
 
         except Exception as e:
             logger.error(f"Error generating AI response: {str(e)}")

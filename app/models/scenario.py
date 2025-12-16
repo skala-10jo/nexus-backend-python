@@ -38,6 +38,10 @@ class Scenario(Base):
     roles = Column(JSONB, nullable=False)
     required_terminology = Column(JSONB, nullable=False, default=[])  # ["term1", "term2", ...]
 
+    # Steps for structured conversation flow
+    # [{"name": "ice_breaking", "title": "인사", "guide": "...", "terminology": ["term1", ...]}]
+    steps = Column(JSONB, nullable=True, default=[])
+
     # Source tracking
     project_ids = Column(JSONB, nullable=False, default=[])  # ["uuid1", "uuid2", ...]
     schedule_ids = Column(JSONB, nullable=False, default=[])  # ["uuid1", "uuid2", ...]
