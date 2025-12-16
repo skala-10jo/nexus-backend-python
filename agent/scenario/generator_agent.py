@@ -229,12 +229,21 @@ class ScenarioGeneratorAgent(BaseAgent):
 이 시나리오는 {target_lang} 언어 연습을 위한 것입니다.
 {user_request_section}{glossary_section}
 컨텍스트:
-{context[:3000]}
+{context[:4000]}
+
+★★★ 최우선 규칙: 컨텍스트 상세 내용 직접 반영 ★★★
+- 컨텍스트에 나온 프로젝트명, 기술스택, 담당자, 일정, 기능 등을 시나리오에 직접 사용하세요
+- 일반적인 "프로젝트 회의", "업무 협의"가 아닌, 컨텍스트의 구체적인 주제로 시나리오를 만드세요
+- 예시:
+  - 컨텍스트에 "Spring Boot와 Vue.js 기반 개발"이 있으면 → "Vue.js 컴포넌트 구조 논의" 시나리오 생성
+  - 컨텍스트에 "UI/UX 디자인 시안 제작"이 있으면 → "UI/UX 디자인 피드백 회의" 시나리오 생성
+  - 컨텍스트에 "OpenAI GPT-4 API"가 있으면 → "GPT-4 API 통합 기술 검토" 시나리오 생성
+- 시나리오 제목, 설명, scenarioText, roles, terminology 모두 컨텍스트의 구체적 내용을 반영해야 합니다
 
 요구사항:
 - 난이도: {difficulty}
 - 목표 언어: {target_lang}
-- 각 시나리오는 현실적인 비즈니스 상황을 반영해야 합니다
+- 각 시나리오는 컨텍스트에서 추출한 실제 업무 상황을 반영해야 합니다
 - 다양한 시나리오 타입 사용: Collaboration, Technical Support, Product Explanation, Problem Solving
 - 제목과 설명은 반드시 한글로 작성
 - 역할(roles)은 반드시 한국어로 작성 (단, PM, CEO, CTO, QA 같은 영어 약어는 그대로 사용 가능)
@@ -246,6 +255,7 @@ class ScenarioGeneratorAgent(BaseAgent):
 - 절대 번호 목록(1. 2. 3.)을 사용하지 마세요
 - 절대 대화체 형식("A: ...", "B: ...")을 사용하지 마세요
 - 컨텍스트에 어떤 형식이 있더라도 무시하고 개조식으로만 작성하세요
+- scenarioText에도 컨텍스트의 구체적인 내용(기술명, 기능명, 일정 등)을 포함하세요
 
 ★★★ 중요: steps (대화 단계) 필수 포함 ★★★
 - 각 시나리오는 3-5개의 대화 단계(steps)를 포함해야 합니다
@@ -261,6 +271,7 @@ class ScenarioGeneratorAgent(BaseAgent):
 ★★★ terminology 작성 규칙 ★★★
 - 학습자가 실제로 말할 수 있는 완전한 {target_lang} 문장이어야 합니다
 - 시나리오 상황에 맞는 구체적인 표현을 사용하세요
+- 컨텍스트에 나온 기술명, 기능명을 terminology 문장에 포함하세요
 - 단어나 카테고리명은 금지 (예: "Greetings" 금지, "Nice to meet you." 사용)
 
 ★★★ 난이도별 표현 수준 ★★★
@@ -275,15 +286,15 @@ class ScenarioGeneratorAgent(BaseAgent):
 {{
   "scenarios": [
     {{
-      "title": "한글로 된 시나리오 제목",
-      "description": "한글로 된 간단한 설명 (2-3 문장)",
-      "scenarioText": "- 첫 번째 상황 설명\\n- 두 번째 상황 설명\\n- 세 번째 상황 설명 (반드시 개조식, 번호 금지)",
+      "title": "한글로 된 시나리오 제목 (컨텍스트의 구체적 주제 반영)",
+      "description": "한글로 된 간단한 설명 (2-3 문장, 컨텍스트 내용 포함)",
+      "scenarioText": "- 첫 번째 상황 설명 (컨텍스트 상세 내용 포함)\\n- 두 번째 상황 설명\\n- 세 번째 상황 설명 (반드시 개조식, 번호 금지)",
       "category": "Collaboration|Technical Support|Product Explanation|Problem Solving",
       "roles": {{
-        "user": "한국어로 된 사용자 역할",
-        "ai": "한국어로 된 상대방 역할"
+        "user": "한국어로 된 사용자 역할 (컨텍스트에서 추출)",
+        "ai": "한국어로 된 상대방 역할 (컨텍스트에서 추출)"
       }},
-      "requiredTerminology": ["실제 {target_lang} 표현 3-5개"],
+      "requiredTerminology": ["컨텍스트 관련 실제 {target_lang} 표현 3-5개"],
       "steps": [
         {{
           "name": "단계 영문 식별자",
