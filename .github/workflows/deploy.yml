@@ -58,6 +58,8 @@ jobs:
           proxy_host: ${{ secrets.BASTION_HOST }}
           proxy_username: ubuntu
           proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 60s
+          command_timeout: 30m
           script: |
             IMAGE_NAME="nexus-backend-python"
 
