@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from agent.glossary.glossary_agent import GlossaryAgent
 from app.models.glossary import GlossaryTerm, GlossaryTermDocument, GlossaryExtractionJob
-from app.core.file_utils import extract_text_from_file
+from app.core.file_utils import extract_text_from_file, extract_text_from_base64
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -49,14 +49,16 @@ class GlossaryService:
         file_path: str,
         user_id: str,
         project_id: str,
-        db: Session
+        db: Session,
+        file_content: str = None,
+        file_name: str = None
     ) -> Dict[str, Any]:
         """
         문서에서 용어를 추출하고 데이터베이스에 저장합니다.
 
         주요 비즈니스 로직 흐름:
         1. 작업 상태를 PROCESSING으로 업데이트
-        2. 문서 파일에서 텍스트 추출
+        2. 문서 파일에서 텍스트 추출 (file_content가 있으면 Base64 디코딩, 없으면 파일 경로에서 읽기)
         3. Agent를 호출하여 용어 추출
         4. 용어를 데이터베이스에 저장
         5. 작업 상태를 COMPLETED로 업데이트
@@ -68,6 +70,8 @@ class GlossaryService:
             user_id: 사용자 ID
             project_id: 프로젝트 ID ("None" 또는 None일 수 있음)
             db: 데이터베이스 세션
+            file_content: Base64 인코딩된 파일 내용 (Optional)
+            file_name: 원본 파일명 (Optional)
 
         반환값:
             다음을 포함하는 딕셔너리:
@@ -91,10 +95,15 @@ class GlossaryService:
             logger.info(f"📝 작업 {job_id}: 처리 시작")
 
             # 2. 문서에서 텍스트 추출
-            full_path = os.path.join(settings.upload_dir, file_path)
-            logger.info(f"📄 작업 {job_id}: {full_path}에서 텍스트 추출 중")
-
-            text = extract_text_from_file(full_path)
+            if file_content and file_name:
+                # Base64 인코딩된 파일 내용에서 텍스트 추출 (분산 환경용)
+                logger.info(f"📄 작업 {job_id}: Base64 파일 내용에서 텍스트 추출 중 ({file_name})")
+                text = extract_text_from_base64(file_content, file_name)
+            else:
+                # 기존 방식: 로컬 파일 경로에서 텍스트 추출
+                full_path = os.path.join(settings.upload_dir, file_path)
+                logger.info(f"📄 작업 {job_id}: {full_path}에서 텍스트 추출 중")
+                text = extract_text_from_file(full_path)
 
             if not text or len(text.strip()) < 100:
                 raise ValueError("문서 텍스트가 너무 짧거나 비어있습니다")
