@@ -24,7 +24,8 @@ from app.api import (
     small_talk,
     speaking_tutor,
     slack_agent,
-    expressions  # 랜덤 표현 API
+    expressions,  # 랜덤 표현 API
+    document_process  # 문서 처리 (텍스트 추출 + 요약)
 )
 
 import logging
@@ -75,6 +76,7 @@ app.include_router(small_talk.router, tags=["Small Talk"])  # 스몰토크 대�
 app.include_router(speaking_tutor.router, prefix="/api/ai/speaking-tutor", tags=["Speaking Tutor AI"])
 app.include_router(slack_agent.router, tags=["Slack Agent"])  # prefix already defined in slack_agent.py
 app.include_router(expressions.router, prefix="/api/ai", tags=["Expressions API"])
+app.include_router(document_process.router, prefix="/api/ai", tags=["Document Process"])
 
 
 @app.on_event("startup")
