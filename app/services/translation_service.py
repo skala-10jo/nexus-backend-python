@@ -12,6 +12,7 @@ import logging
 from typing import Optional, Dict, List, Any
 from uuid import UUID
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 # Agent imports
 from agent.translate.simple_translation_agent import SimpleTranslationAgent
@@ -89,8 +90,6 @@ class TranslationService:
             if cached is not None:
                 logger.debug(f"📦 용어집 캐시 히트: project={project_id}, terms={len(cached)}개")
                 return cached
-
-        from sqlalchemy import text
 
         # Native SQL 쿼리: Java의 findTermsByProjectFiles()와 동일한 로직
         query = text("""

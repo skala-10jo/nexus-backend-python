@@ -13,6 +13,7 @@ AI Agent 아키텍처 가이드 준수:
 """
 
 import logging
+import re
 from typing import List, Dict, Any, Tuple, Optional
 from uuid import UUID
 from dataclasses import asdict
@@ -263,8 +264,6 @@ class VoiceTranslationService:
 
             # 목표 언어 용어가 번역 결과에 있는지 확인
             # 대소문자 무시 검색 (영어의 경우)
-            import re
-
             if target_lang == "en":
                 # 영어: 단어 경계 포함 검색
                 pattern = re.compile(r'\b' + re.escape(target_term) + r'\b', re.IGNORECASE)

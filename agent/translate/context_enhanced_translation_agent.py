@@ -14,7 +14,7 @@
 import logging
 from typing import List, Dict
 from agent.base_agent import BaseAgent
-from agent.term_detection.term_detector_agent import DetectedTerm
+from agent.term_detection.models import DetectedTerm
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +146,7 @@ class ContextEnhancedTranslationAgent(BaseAgent):
             target_lang: 목표 언어 코드
             context: 프로젝트/문서 컨텍스트 (DocumentSummarizerAgent 결과)
             glossary_terms: 프로젝트 용어집
-            detected_terms: 텍스트에서 탐지된 용어 (TermDetectorAgent 결과)
+            detected_terms: 텍스트에서 탐지된 용어 (OptimizedTermDetectorAgent 결과)
 
         Returns:
             번역된 텍스트

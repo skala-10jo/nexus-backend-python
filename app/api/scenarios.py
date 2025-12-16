@@ -4,6 +4,7 @@ Scenario API endpoints for conversation practice scenarios.
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import Optional
 import logging
 
@@ -163,14 +164,12 @@ async def get_scenarios(
         # Multiple schedule IDs (OR condition)
         if schedule_ids:
             schedule_id_list = [sid.strip() for sid in schedule_ids.split(',')]
-            from sqlalchemy import or_
             filters = [Scenario.schedule_ids.contains([sid]) for sid in schedule_id_list]
             query = query.filter(or_(*filters))
 
         # Multiple project IDs (OR condition)
         if project_ids:
             project_id_list = [pid.strip() for pid in project_ids.split(',')]
-            from sqlalchemy import or_
             filters = [Scenario.project_ids.contains([pid]) for pid in project_id_list]
             query = query.filter(or_(*filters))
 

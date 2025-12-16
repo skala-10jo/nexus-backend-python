@@ -13,6 +13,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import desc
 
 from app.config import settings
+from app.database import SessionLocal
 from app.models.speaking_tutor import SpeakingAnalysisSession, SpeakingUtterance
 from agent.speaking_tutor import DiarizationAgent, SpeakingFeedbackAgent, MeetingSummaryAgent
 
@@ -121,8 +122,6 @@ class SpeakingTutorService:
         Run async analysis using DiarizationAgent.
         Updates session status and creates utterance records.
         """
-        from app.database import SessionLocal
-
         db = SessionLocal()
         try:
             session = db.query(SpeakingAnalysisSession).filter(
