@@ -24,12 +24,21 @@ class EndConversationRequest(BaseModel):
     history: List[Dict[str, str]] = []
 
 
+class StepInfo(BaseModel):
+    """대화 단계 정보"""
+    name: str  # 단계 영문 식별자 (e.g., "ice_breaking")
+    title: str  # 단계 한글 제목 (e.g., "인사")
+    guide: Optional[str] = None  # 단계 가이드
+    terminology: List[str] = []  # 이 단계에서 사용할 표현들
+
+
 class MessageFeedbackRequest(BaseModel):
     """메시지 피드백 요청"""
     scenarioId: str
     message: str
     detectedTerms: List[str] = []
     audioData: Optional[str] = None  # Base64 encoded audio for pronunciation assessment
+    currentStep: Optional[StepInfo] = None  # 현재 대화 단계
 
 
 class TranslateMessageRequest(BaseModel):
@@ -43,4 +52,4 @@ class HintRequest(BaseModel):
     scenarioId: str
     history: List[Dict[str, str]] = []
     lastAiMessage: str = ""
-    hintCount: int = 3
+    currentStep: Optional[StepInfo] = None  # 현재 대화 단계

@@ -456,7 +456,8 @@ class ConversationService:
         user_message: str,
         detected_terms: List[str],
         user_id: UUID,
-        audio_data: str = None
+        audio_data: str = None,
+        current_step: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """
         사용자 메시지에 대한 피드백 생성
@@ -467,9 +468,14 @@ class ConversationService:
             detected_terms: 감지된 전문용어
             user_id: 사용자 ID
             audio_data: Base64 인코딩된 오디오 데이터 (선택)
+            current_step: 현재 대화 단계 정보 (선택)
+                - name: 단계 영문 식별자
+                - title: 단계 한글 제목
+                - guide: 단계 가이드
+                - terminology: 이 단계에서 사용할 표현 리스트
 
         Returns:
-            피드백 (문법 교정, 용어 사용, 제안, 점수, 상세 발음 정보)
+            피드백 (문법 교정, 용어 사용, 제안, 점수, 단계별 표현 피드백)
         """
         try:
             # DB에서 시나리오 조회
@@ -519,6 +525,19 @@ class ConversationService:
                     logger.error(f"Pronunciation assessment failed: {str(e)}", exc_info=True)
                     # 발음 평가 실패해도 피드백은 계속 생성
 
+            # 현재 단계 정보 구성
+            step_info_section = ""
+            step_terminology = []
+            if current_step:
+                step_terminology = current_step.get("terminology", [])
+                step_info_section = f"""
+
+현재 대화 단계:
+- 단계명: {current_step.get('name', 'N/A')}
+- 단계 제목: {current_step.get('title', 'N/A')}
+- 가이드: {current_step.get('guide', 'N/A')}
+- 이 단계에서 사용해야 할 표현: {', '.join(step_terminology) if step_terminology else '없음'}"""
+
             # GPT-4o로 피드백 생성
             system_prompt = f"""당신은 비즈니스 회화 연습에 대한 피드백을 한글로 제공하는 전문 언어 튜터입니다.
 
@@ -530,7 +549,7 @@ class ConversationService:
 - AI 역할: {scenario.roles.get('ai', 'AI')}
 - 언어: {scenario.language}
 - 난이도: {scenario.difficulty}
-- 필수 전문용어: {', '.join(scenario.required_terminology)}
+- 필수 전문용어: {', '.join(scenario.required_terminology)}{step_info_section}
 
 중요한 피드백 규칙:
 1. 모든 피드백은 반드시 한글로 작성해야 합니다
@@ -598,12 +617,23 @@ Azure 발음 평가 결과:
             required_terms = scenario.required_terminology or []
             missed_terms = [term for term in required_terms if term.lower() not in user_message.lower()]
 
+            # Step terminology 사용 평가를 위한 섹션
+            step_terminology_section = ""
+            if step_terminology:
+                step_terminology_section = f"""
+
+현재 단계 표현 분석:
+- 이 단계에서 권장하는 표현: {', '.join(step_terminology)}
+- 사용자가 이 표현들 중 하나를 사용했거나 의미적으로 비슷한 표현을 썼다면 긍정적으로 평가해주세요
+- 완전히 동일한 표현이 아니어도, 의미와 의도가 비슷하면 사용한 것으로 인정합니다
+- 예: "I'd like to discuss" 권장 표현에 대해 "Can we talk about" 사용 → 의미적으로 유사하므로 인정"""
+
             user_prompt = f"""사용자 메시지: "{user_message}"
 
 전문용어 분석:
 - 필수 전문용어: {', '.join(required_terms) if required_terms else '없음'}
 - 사용한 용어: {', '.join(detected_terms) if detected_terms else '없음'}
-- 미사용 용어: {', '.join(missed_terms) if missed_terms else '없음'}
+- 미사용 용어: {', '.join(missed_terms) if missed_terms else '없음'}{step_terminology_section}
 {pronunciation_info}
 
 다음의 정확한 JSON 형식으로 피드백을 제공하세요 (모든 텍스트 한글로):
@@ -614,7 +644,13 @@ Azure 발음 평가 결과:
   "terminology_usage": {{
     "used": {json.dumps(detected_terms or [], ensure_ascii=False)},
     "missed": {json.dumps(missed_terms, ensure_ascii=False)},
-    "feedback": "필수 용어 사용에 대한 피드백을 여기에 작성하세요"
+    "feedback": "필수 용어 사용에 대한 피드백을 여기에 작성하세요",
+    "step_expression": {{
+      "recommended": {json.dumps(step_terminology, ensure_ascii=False)},
+      "used_similar": "<사용자가 권장 표현과 유사한 표현을 사용했는지 여부 (true/false)>",
+      "user_expression": "<사용자가 사용한 유사 표현 (있다면)>",
+      "feedback": "<권장 표현 사용에 대한 피드백. 유사 표현 썼으면 칭찬, 안 썼으면 다음에 써보라고 권유>"
+    }}
   }},
   "suggestions": [
     "<실제 개선 제안이 있으면 여기에 작성>"
@@ -639,6 +675,7 @@ Azure 발음 평가 결과:
 중요:
 - terminology_usage의 used와 missed 배열은 위에서 제공한 값을 그대로 사용하세요
 - terminology_usage.feedback에는 용어 사용에 대한 구체적인 피드백을 한글로 작성하세요
+- terminology_usage.step_expression: 현재 단계 권장 표현 사용 여부를 평가하세요 (의미적 유사성 기준)
 - 발음 평가 데이터가 제공되면, 구체적인 팁과 함께 "pronunciation_feedback" 배열을 반드시 포함해야 합니다
 - prosody_score < 80인 경우: 억양(intonation), 강세(stress), 또는 리듬(rhythm)에 대한 피드백을 제공하세요
 - 낮은 정확도를 가진 단어가 있다면: 해당 특정 단어와 개선 방법을 언급하세요
@@ -651,7 +688,7 @@ Azure 발음 평가 결과:
                     {"role": "user", "content": user_prompt}
                 ],
                 temperature=0.7,
-                max_tokens=500,
+                max_tokens=800,
                 response_format={"type": "json_object"}
             )
 
@@ -964,23 +1001,33 @@ Azure 발음 평가 결과:
         conversation_history: List[Dict[str, str]],
         last_ai_message: str,
         user_id: UUID,
-        hint_count: int = 3
+        current_step: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """
-        대화 힌트 생성
+        단계별 대화 힌트 생성
 
-        시나리오 맥락과 대화 히스토리를 기반으로 사용자가
-        자연스럽게 응답할 수 있는 힌트를 생성합니다.
+        시나리오 맥락과 현재 step의 terminology를 기반으로
+        단어 → 구문 → 문장 순서의 단계별 힌트를 생성합니다.
 
         Args:
             scenario_id: 시나리오 ID
             conversation_history: 대화 히스토리
             last_ai_message: 마지막 AI 메시지
             user_id: 사용자 ID
-            hint_count: 생성할 힌트 개수
+            current_step: 현재 대화 단계 정보 (선택)
+                - name: 단계 영문 식별자
+                - title: 단계 한글 제목
+                - guide: 단계 가이드
+                - terminology: 이 단계에서 사용할 표현 리스트
 
         Returns:
-            힌트 목록 및 설명
+            단계별 힌트:
+                - targetExpression: 목표 표현
+                - wordHints: 핵심 단어 리스트
+                - phraseHint: 빈칸이 포함된 구문
+                - fullSentence: 완전한 문장
+                - explanation: 한국어 설명
+                - stepInfo: 현재 단계 정보
         """
         try:
             # DB에서 시나리오 조회
@@ -1014,10 +1061,11 @@ Azure 발음 평가 결과:
                 scenario_context=scenario_context,
                 conversation_history=conversation_history,
                 last_ai_message=last_ai_message,
-                hint_count=hint_count
+                current_step=current_step
             )
 
-            logger.info(f"Generated {len(result.get('hints', []))} hints for scenario {scenario_id}")
+            step_name = current_step.get('name', 'N/A') if current_step else 'N/A'
+            logger.info(f"Generated stepped hint for scenario {scenario_id}, step: {step_name}")
 
             return result
 

@@ -103,11 +103,11 @@ async def get_message_feedback(
     사용자 메시지에 대한 피드백 생성
 
     Args:
-        request: 메시지 피드백 요청
+        request: 메시지 피드백 요청 (현재 단계 정보 포함 가능)
         user: 현재 사용자 정보
 
     Returns:
-        문법 교정, 용어 사용, 제안, 점수
+        문법 교정, 용어 사용, 제안, 점수, 단계별 표현 피드백
     """
     try:
         user_id = user["user_id"]
@@ -115,12 +115,23 @@ async def get_message_feedback(
         # audioData를 올바르게 전달 (None이 아닌 빈 문자열 체크)
         audio_data_to_send = request.audioData if request.audioData and len(request.audioData) > 0 else None
 
+        # currentStep을 dict로 변환 (있는 경우)
+        current_step = None
+        if request.currentStep:
+            current_step = {
+                "name": request.currentStep.name,
+                "title": request.currentStep.title,
+                "guide": request.currentStep.guide,
+                "terminology": request.currentStep.terminology
+            }
+
         feedback = await conversation_service.generate_message_feedback(
             scenario_id=request.scenarioId,
             user_message=request.message,
             detected_terms=request.detectedTerms,
             user_id=user_id,
-            audio_data=audio_data_to_send
+            audio_data=audio_data_to_send,
+            current_step=current_step
         )
 
         return {
@@ -269,29 +280,42 @@ async def generate_hint(
     user: dict = Depends(get_current_user)
 ):
     """
-    대화 힌트 생성
+    단계별 대화 힌트 생성
 
-    시나리오 맥락과 대화 히스토리를 기반으로 사용자가
-    자연스럽게 응답할 수 있는 힌트를 생성합니다.
+    시나리오 맥락과 현재 step의 terminology를 기반으로
+    단어 → 구문 → 문장 순서의 단계별 힌트를 생성합니다.
 
     Args:
-        request: 힌트 요청 (시나리오 ID, 히스토리, 마지막 AI 메시지)
+        request: 힌트 요청 (시나리오 ID, 히스토리, 마지막 AI 메시지, 현재 단계)
         user: 현재 사용자 정보
 
     Returns:
-        hints: 제안 응답 목록
-        hint_explanations: 각 힌트에 대한 한국어 설명
-        terminology_suggestions: 사용 권장 용어
+        targetExpression: 목표 표현 (원어민이 쓸 문장)
+        wordHints: 핵심 단어 리스트
+        phraseHint: 빈칸이 포함된 구문
+        fullSentence: 완전한 문장
+        explanation: 한국어 설명
+        stepInfo: 현재 단계 정보
     """
     try:
         user_id = user["user_id"]
+
+        # currentStep을 dict로 변환 (있는 경우)
+        current_step = None
+        if request.currentStep:
+            current_step = {
+                "name": request.currentStep.name,
+                "title": request.currentStep.title,
+                "guide": request.currentStep.guide,
+                "terminology": request.currentStep.terminology
+            }
 
         result = await conversation_service.generate_hint(
             scenario_id=request.scenarioId,
             conversation_history=request.history,
             last_ai_message=request.lastAiMessage,
             user_id=user_id,
-            hint_count=request.hintCount
+            current_step=current_step
         )
 
         return {
