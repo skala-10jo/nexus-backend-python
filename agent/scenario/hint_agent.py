@@ -212,16 +212,8 @@ class HintAgent(BaseAgent):
             speaker = "AI" if msg.get("speaker") == "ai" else "User"
             history_text += f"{speaker}: {msg.get('message', '')}\n"
 
+        # step terminology는 힌트 생성에서 제외 - 대화 맥락만으로 자연스러운 힌트 생성
         terminology_section = ""
-        if step_terminology:
-            terminology_section = f"""
-## 이 단계에서 권장하는 표현들 (참고용)
-{chr(10).join([f'- {term}' for term in step_terminology])}
-
-★ 중요: 대화 맥락에 자연스럽게 이어지는 응답이 최우선입니다.
-- 위 표현이 현재 대화 흐름에 맞으면 활용하세요
-- 맞지 않으면 무시하고, 대화 맥락에 적합한 표현을 생성하세요
-"""
 
         return f"""## 대화 상황
 {history_text if history_text else "(대화 시작)"}
