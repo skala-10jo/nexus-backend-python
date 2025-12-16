@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     PYTHON_BACKEND_PORT: int = 8000
     LOG_LEVEL: str = "info"
 
+    # Java Backend URL (분산 환경에서 내부 통신용)
+    JAVA_BACKEND_URL: str = "http://localhost:3000"
+
     # File Storage (optional - auto-detected from project structure if not set)
     UPLOAD_BASE_DIR: Optional[str] = None
 

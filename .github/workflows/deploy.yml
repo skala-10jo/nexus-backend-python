@@ -89,6 +89,7 @@ jobs:
               -e AZURE_TRANSLATOR_ENDPOINT="${{ secrets.AZURE_TRANSLATOR_ENDPOINT }}" \
               -e AZURE_TRANSLATOR_REGION="${{ secrets.AZURE_TRANSLATOR_REGION }}" \
               -e CORS_ALLOWED_ORIGINS="${{ secrets.CORS_ALLOWED_ORIGINS }}" \
+              -e JAVA_BACKEND_URL="${{ secrets.JAVA_BACKEND_URL }}" \
               ${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME:latest
 
             # Cleanup old images
