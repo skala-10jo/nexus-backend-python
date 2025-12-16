@@ -124,29 +124,37 @@ class ScenarioGeneratorAgent(BaseAgent):
         return f"""다음은 일상생활에서 자주 접하는 {count}개의 실용적인 회화 시나리오를 생성해주세요.
 이 시나리오는 {target_lang} 언어 연습을 위한 것입니다.
 {user_request_section}{glossary_section}
-시나리오 타입 (다양하게 선택):
-- 식당에서의 대화 (주문, 예약, 불만 처리)
-- 호텔 체크인/체크아웃
-- 쇼핑 (옷, 전자제품, 식료품)
-- 병원/약국 방문
-- 은행 업무
-- 우체국/택배
-- 카페에서 주문
-- 교통 수단 이용 (택시, 지하철, 버스)
-- 헬스장/피트니스 센터
-- 미용실/헤어샵
-- 부동산 문의
-- 렌터카 대여
+★★★ 최우선 규칙: 시나리오 타입 다양성 필수 ★★★
+아래 목록에서 **서로 다른 카테고리**를 선택하세요. 같은 카테고리 중복 금지!
+카페/식당 시나리오는 {count}개 중 최대 1개만 허용합니다.
+
+시나리오 타입 (반드시 다른 카테고리 선택):
+1. Restaurant - 식당에서의 대화 (주문, 예약, 불만 처리)
+2. Hotel - 호텔 체크인/체크아웃
+3. Shopping - 쇼핑 (옷, 전자제품, 식료품)
+4. Hospital - 병원/약국 방문
+5. Bank - 은행 업무
+6. Post Office - 우체국/택배
+7. Cafe - 카페에서 주문 (최대 1개만!)
+8. Transportation - 교통 수단 이용 (택시, 지하철, 버스, 공항)
+9. Fitness - 헬스장/피트니스 센터
+10. Beauty - 미용실/헤어샵
+11. Real Estate - 부동산 문의
+12. Car Rental - 렌터카 대여
 
 요구사항:
 - 난이도: {difficulty}
 - 목표 언어: {target_lang}
 - 각 시나리오는 일상생활에서 실제로 겪을 수 있는 상황을 반영
-- 다양한 일상 상황을 다루세요
+- ★★★ 반드시 서로 다른 카테고리에서 {count}개를 선택하세요 ★★★
 - 제목과 설명은 반드시 한글로 작성
 - 역할(roles)은 반드시 한국어로 작성 (단, PM, CEO, CTO 같은 영어 약어는 그대로 사용 가능)
-- requiredTerminology는 반드시 {target_lang} 핵심 단어/표현으로 작성 (단어 또는 짧은 구문만, 문장 금지!)
-  예: "reservation", "table for two", "check please" (O) / "I'd like to make a reservation." (X)
+
+★★★ requiredTerminology 작성 규칙 (엄격히 준수!) ★★★
+- 반드시 {target_lang}로 된 **단어** 또는 **2-3단어 짧은 구문**만 작성
+- 절대 문장(주어+동사 포함)을 쓰지 마세요!
+- 올바른 예시: "reservation", "table for two", "check please", "window seat", "receipt"
+- 잘못된 예시 (절대 금지!): "I'd like to make a reservation.", "Can I have the check?", "Could you show me..."
 
 ★★★ 중요: scenarioText 형식 규칙 ★★★
 - 반드시 개조식(bullet point)으로만 작성하세요
