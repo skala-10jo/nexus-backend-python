@@ -103,7 +103,7 @@ class DiarizationAgent:
             if progress_callback:
                 progress_callback(20, "음성 인식 시작...")
 
-            result = await self._transcribe_with_push_stream(
+            result = await self._transcribe_with_file(
                 wav_path,
                 language,
                 progress_callback
@@ -161,43 +161,34 @@ class DiarizationAgent:
         except FileNotFoundError:
             raise ValueError("ffmpeg를 찾을 수 없습니다")
 
-    async def _transcribe_with_push_stream(
+    async def _transcribe_with_file(
         self,
         wav_path: str,
         language: str,
         progress_callback: Optional[Callable[[int, str], None]] = None
     ) -> Dict[str, Any]:
         """
-        PushAudioInputStream을 사용하여 음성 인식 수행.
-
-        Docker/AWS 환경에서 AudioConfig(filename=...)이 불안정할 수 있어
-        직접 오디오 데이터를 스트림으로 전달합니다.
+        파일 기반 AudioConfig를 사용하여 음성 인식 수행.
         """
-        # WAV 파일에서 오디오 데이터 읽기
+        # WAV 파일 정보 확인
         try:
             with wave.open(wav_path, 'rb') as wf:
                 sample_rate = wf.getframerate()
                 channels = wf.getnchannels()
                 sample_width = wf.getsampwidth()
                 n_frames = wf.getnframes()
-                audio_data = wf.readframes(n_frames)
+                duration_sec = n_frames / sample_rate
 
             logger.info(
                 f"WAV 파일 정보: {sample_rate}Hz, {channels}ch, "
-                f"{sample_width*8}bit, {len(audio_data)} bytes"
+                f"{sample_width*8}bit, {duration_sec:.1f}초"
             )
         except Exception as e:
             logger.error(f"WAV 파일 읽기 실패: {e}")
             raise ValueError(f"WAV 파일 읽기 실패: {e}")
 
-        # PushAudioInputStream 설정 (16kHz, 16bit, mono)
-        audio_format = speechsdk.audio.AudioStreamFormat(
-            samples_per_second=16000,
-            bits_per_sample=16,
-            channels=1
-        )
-        push_stream = speechsdk.audio.PushAudioInputStream(stream_format=audio_format)
-        audio_config = speechsdk.audio.AudioConfig(stream=push_stream)
+        # 파일 기반 AudioConfig 사용
+        audio_config = speechsdk.audio.AudioConfig(filename=wav_path)
 
         # Speech 설정 생성
         speech_config = speechsdk.SpeechConfig(
@@ -287,53 +278,12 @@ class DiarizationAgent:
         recognizer.session_stopped.connect(handle_session_stopped)
         recognizer.session_started.connect(handle_session_started)
 
-        # 청크 크기: 3200 bytes = 100ms of audio at 16kHz, 16bit, mono
-        chunk_size = 3200
-        total_bytes = len(audio_data)
-
-        logger.info(f"📤 오디오 데이터 준비: {total_bytes} bytes")
-
-        # 먼저 첫 1초(10 chunks) 정도 푸시하여 버퍼 채우기
-        initial_chunks = min(total_bytes, chunk_size * 10)
-        for i in range(0, initial_chunks, chunk_size):
-            push_stream.write(audio_data[i:i + chunk_size])
-        logger.info(f"📤 초기 버퍼 푸시: {initial_chunks} bytes")
-
         # continuous recognition 시작
-        logger.info(f"🚀 음성 인식 시작 (PushStream): {wav_path}")
+        logger.info(f"🚀 음성 인식 시작 (파일): {wav_path}")
         recognizer.start_continuous_recognition()
-
-        # 나머지 데이터를 별도 스레드에서 푸시
-        def push_remaining_data():
-            """나머지 오디오 데이터를 스트림에 푸시."""
-            try:
-                pushed = initial_chunks
-                for i in range(initial_chunks, total_bytes, chunk_size):
-                    chunk = audio_data[i:i + chunk_size]
-                    push_stream.write(chunk)
-                    pushed += len(chunk)
-
-                logger.info(f"📤 오디오 데이터 푸시 완료: {pushed} bytes")
-
-                # 스트림 종료 (SDK에게 데이터 끝을 알림)
-                push_stream.close()
-                logger.info("📪 오디오 스트림 닫힘")
-
-            except Exception as e:
-                logger.error(f"오디오 푸시 오류: {e}")
-                try:
-                    push_stream.close()
-                except:
-                    pass
-
-        push_thread = threading.Thread(target=push_remaining_data, daemon=True)
-        push_thread.start()
 
         # 완료 대기 (threading.Event 사용)
         completed = done.wait(timeout=600)  # 최대 10분
-
-        # 푸시 스레드 종료 대기
-        push_thread.join(timeout=5)
 
         if not completed:
             logger.warning("음성 인식 타임아웃 (10분)")
