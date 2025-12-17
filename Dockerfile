@@ -44,10 +44,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libssl3 \
     libasound2 \
+    alsa-utils \
     libgstreamer1.0-0 \
     gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-good \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && ldconfig
+
+# ALSA dummy audio configuration for Azure Speech SDK in container
+# Azure Speech SDK requires audio subsystem even for streaming-only usage
+RUN mkdir -p /etc/alsa && \
+    echo 'pcm.!default { type plug slave.pcm "null" }' > /etc/asound.conf && \
+    echo 'ctl.!default { type plug slave.ctl "null" }' >> /etc/asound.conf
 
 # 한국 시간대 설정
 ENV TZ=Asia/Seoul
