@@ -35,10 +35,14 @@ FROM python:3.11-slim AS production
 WORKDIR /app
 
 # 런타임 필수 패키지 설치
+# Azure Speech SDK requires: libssl, ca-certificates, libasound2
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
     ffmpeg \
+    ca-certificates \
+    libssl-dev \
+    libasound2 \
     && rm -rf /var/lib/apt/lists/*
 
 # 한국 시간대 설정
