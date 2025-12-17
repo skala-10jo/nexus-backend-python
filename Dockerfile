@@ -7,7 +7,8 @@
 # -----------------------------------------------------
 # 1단계: 빌드 (의존성 설치)
 # -----------------------------------------------------
-FROM python:3.11-slim AS builder
+# Use Debian 11 (bullseye) for OpenSSL 1.1 compatibility with Azure Speech SDK
+FROM python:3.11-slim-bullseye AS builder
 
 WORKDIR /app
 
@@ -30,32 +31,22 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # -----------------------------------------------------
 # 2단계: 프로덕션
 # -----------------------------------------------------
-FROM python:3.11-slim AS production
+# Use Debian 11 (bullseye) for OpenSSL 1.1 compatibility with Azure Speech SDK
+FROM python:3.11-slim-bullseye AS production
 
 WORKDIR /app
 
 # 런타임 필수 패키지 설치
-# Azure Speech SDK requires: OpenSSL 3.x, libasound2, GStreamer (for audio processing)
-# Debian 12 (Bookworm) uses OpenSSL 3.x - need libssl3 not libssl-dev
+# Azure Speech SDK 1.34.0 requires OpenSSL 1.1 (Debian 11 bullseye has libssl1.1)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
     ffmpeg \
     ca-certificates \
-    libssl3 \
+    libssl1.1 \
     libasound2 \
-    alsa-utils \
-    libgstreamer1.0-0 \
-    gstreamer1.0-plugins-base \
-    gstreamer1.0-plugins-good \
     && rm -rf /var/lib/apt/lists/* \
     && ldconfig
-
-# ALSA dummy audio configuration for Azure Speech SDK in container
-# Azure Speech SDK requires audio subsystem even for streaming-only usage
-RUN mkdir -p /etc/alsa && \
-    echo 'pcm.!default { type plug slave.pcm "null" }' > /etc/asound.conf && \
-    echo 'ctl.!default { type plug slave.ctl "null" }' >> /etc/asound.conf
 
 # 한국 시간대 설정
 ENV TZ=Asia/Seoul
