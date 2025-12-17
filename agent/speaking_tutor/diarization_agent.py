@@ -1,17 +1,18 @@
 """
 Azure Speech SDK를 사용한 음성 인식 및 화자 분리 에이전트.
 
+ConversationTranscriber를 사용하여 실제 화자 분리(Speaker Diarization) 수행.
+
 오디오 파일을 분석하여 다음 정보를 제공:
-- 화자별로 분리된 발화 내용
+- 화자별로 분리된 발화 내용 (음성 특성 기반 자동 식별)
 - 타임스탬프 (시작/종료 시간)
 - 신뢰도 점수
 
 Docker/AWS 환경 호환:
 - PushAudioInputStream을 사용하여 안정적으로 작동
-- AudioConfig(filename=...)은 일부 환경에서 불안정함
 
 참고:
-https://learn.microsoft.com/en-us/azure/ai-services/speech-service/how-to-use-audio-input-streams
+https://learn.microsoft.com/en-us/azure/ai-services/speech-service/get-started-stt-diarization
 """
 import asyncio
 import logging
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Utterance:
     """단일 발화를 나타내는 데이터 클래스."""
-    speaker_id: int
+    speaker_id: str  # Changed to str for ConversationTranscriber (Guest-1, Guest-2, etc.)
     text: str
     start_time_ms: int
     end_time_ms: int
@@ -41,9 +42,9 @@ class Utterance:
 
 class DiarizationAgent:
     """
-    Azure SpeechRecognizer 기반 화자 분리 에이전트.
+    Azure ConversationTranscriber 기반 화자 분리 에이전트.
 
-    PushAudioInputStream을 사용하여 Docker/AWS 환경에서도 안정적으로 작동.
+    ConversationTranscriber를 사용하여 음성 특성 기반 실제 화자 분리 수행.
 
     주의: 화자 분리 기능은 특정 리전에서만 사용 가능:
     - eastasia, southeastasia, centralus, eastus, westeurope
@@ -79,7 +80,7 @@ class DiarizationAgent:
         Returns:
             {
                 "utterances": [...],
-                "speaker_count": 1,
+                "speaker_count": 2,
                 "duration_seconds": 180.5
             }
         """
@@ -101,9 +102,9 @@ class DiarizationAgent:
 
         try:
             if progress_callback:
-                progress_callback(20, "음성 인식 시작...")
+                progress_callback(20, "화자 분리 시작...")
 
-            result = await self._transcribe_with_file(
+            result = await self._transcribe_with_diarization(
                 wav_path,
                 language,
                 progress_callback
@@ -161,14 +162,14 @@ class DiarizationAgent:
         except FileNotFoundError:
             raise ValueError("ffmpeg를 찾을 수 없습니다")
 
-    async def _transcribe_with_file(
+    async def _transcribe_with_diarization(
         self,
         wav_path: str,
         language: str,
         progress_callback: Optional[Callable[[int, str], None]] = None
     ) -> Dict[str, Any]:
         """
-        파일 기반 AudioConfig를 사용하여 음성 인식 수행.
+        ConversationTranscriber를 사용하여 화자 분리 수행.
         """
         # WAV 파일 정보 확인
         try:
@@ -187,20 +188,22 @@ class DiarizationAgent:
             logger.error(f"WAV 파일 읽기 실패: {e}")
             raise ValueError(f"WAV 파일 읽기 실패: {e}")
 
-        # 파일 기반 AudioConfig 사용
-        audio_config = speechsdk.audio.AudioConfig(filename=wav_path)
-
         # Speech 설정 생성
         speech_config = speechsdk.SpeechConfig(
             subscription=self.speech_key,
             region=self.speech_region
         )
         speech_config.speech_recognition_language = language
-        speech_config.request_word_level_timestamps()
-        speech_config.output_format = speechsdk.OutputFormat.Detailed
+        speech_config.set_property(
+            speechsdk.PropertyId.SpeechServiceResponse_DiarizeIntermediateResults,
+            "true"
+        )
 
-        # SpeechRecognizer 생성
-        recognizer = speechsdk.SpeechRecognizer(
+        # 파일 기반 AudioConfig
+        audio_config = speechsdk.audio.AudioConfig(filename=wav_path)
+
+        # ConversationTranscriber 생성 (화자 분리 지원)
+        transcriber = speechsdk.transcription.ConversationTranscriber(
             speech_config=speech_config,
             audio_config=audio_config
         )
@@ -210,12 +213,15 @@ class DiarizationAgent:
         done = threading.Event()
         errors: List[str] = []
         lock = threading.Lock()
+        speaker_set = set()
 
-        def handle_recognized(evt):
-            """인식 완료 이벤트 처리."""
+        def handle_transcribed(evt):
+            """화자 분리된 발화 인식 이벤트 처리."""
             try:
                 if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
                     text = evt.result.text
+                    speaker_id = evt.result.speaker_id  # 실제 화자 ID (Guest-1, Guest-2, etc.)
+
                     if text and text.strip():
                         offset_ticks = evt.result.offset
                         duration_ticks = evt.result.duration
@@ -225,8 +231,9 @@ class DiarizationAgent:
                         duration_ms = duration_ticks // 10000
 
                         with lock:
+                            speaker_set.add(speaker_id)
                             utterances.append(Utterance(
-                                speaker_id=1,
+                                speaker_id=speaker_id,
                                 text=text.strip(),
                                 start_time_ms=start_ms,
                                 end_time_ms=start_ms + duration_ms,
@@ -234,12 +241,18 @@ class DiarizationAgent:
                                 sequence_number=len(utterances)
                             ))
                             count = len(utterances)
+                            num_speakers = len(speaker_set)
 
-                        logger.info(f"✅ 발화 인식 [{start_ms}ms]: {text[:50]}...")
+                        logger.info(
+                            f"✅ [{speaker_id}] 발화 인식 [{start_ms}ms]: {text[:50]}..."
+                        )
 
                         if progress_callback:
                             progress = min(90, 30 + count * 2)
-                            progress_callback(progress, f"발화 {count}개 인식됨...")
+                            progress_callback(
+                                progress,
+                                f"발화 {count}개 인식, 화자 {num_speakers}명 감지..."
+                            )
 
                 elif evt.result.reason == speechsdk.ResultReason.NoMatch:
                     logger.debug(f"매칭 없음: {evt.result.no_match_details}")
@@ -249,16 +262,15 @@ class DiarizationAgent:
 
         def handle_canceled(evt):
             """취소/오류 처리."""
-            logger.info(f"🔴 Canceled: reason={evt.reason}")
+            cancellation_details = evt.result.cancellation_details
+            logger.info(f"🔴 Canceled: reason={cancellation_details.reason}")
 
-            if evt.reason == speechsdk.CancellationReason.Error:
-                error_code = getattr(evt, 'error_code', 'Unknown')
-                error_details = getattr(evt, 'error_details', 'No details')
-                error_msg = f"코드: {error_code}, 상세: {error_details}"
+            if cancellation_details.reason == speechsdk.CancellationReason.Error:
+                error_msg = f"코드: {cancellation_details.error_code}, 상세: {cancellation_details.error_details}"
                 with lock:
                     errors.append(error_msg)
-                logger.error(f"❌ 음성 인식 오류: {error_msg}")
-            elif evt.reason == speechsdk.CancellationReason.EndOfStream:
+                logger.error(f"❌ 화자 분리 오류: {error_msg}")
+            elif cancellation_details.reason == speechsdk.CancellationReason.EndOfStream:
                 logger.info("✅ 오디오 스트림 종료 (정상)")
 
             done.set()
@@ -270,33 +282,33 @@ class DiarizationAgent:
 
         def handle_session_started(evt):
             """세션 시작 처리."""
-            logger.info(f"🟢 세션 시작됨: {evt.session_id}")
+            logger.info(f"🟢 ConversationTranscriber 세션 시작됨: {evt.session_id}")
 
         # 이벤트 핸들러 연결
-        recognizer.recognized.connect(handle_recognized)
-        recognizer.canceled.connect(handle_canceled)
-        recognizer.session_stopped.connect(handle_session_stopped)
-        recognizer.session_started.connect(handle_session_started)
+        transcriber.transcribed.connect(handle_transcribed)
+        transcriber.canceled.connect(handle_canceled)
+        transcriber.session_stopped.connect(handle_session_stopped)
+        transcriber.session_started.connect(handle_session_started)
 
-        # continuous recognition 시작
-        logger.info(f"🚀 음성 인식 시작 (파일): {wav_path}")
-        recognizer.start_continuous_recognition()
+        # 비동기 화자 분리 시작
+        logger.info(f"🚀 ConversationTranscriber 화자 분리 시작: {wav_path}")
+        transcriber.start_transcribing_async().get()
 
         # 완료 대기 (threading.Event 사용)
         completed = done.wait(timeout=600)  # 최대 10분
 
         if not completed:
-            logger.warning("음성 인식 타임아웃 (10분)")
+            logger.warning("화자 분리 타임아웃 (10분)")
             with lock:
                 errors.append("타임아웃 (10분)")
 
         # 인식 종료
-        recognizer.stop_continuous_recognition()
+        transcriber.stop_transcribing_async().get()
 
         # 에러 확인
         with lock:
             if errors and "EndOfStream" not in str(errors):
-                logger.error(f"음성 인식 오류: {errors}")
+                logger.error(f"화자 분리 오류: {errors}")
 
         # 결과 계산
         with lock:
@@ -304,15 +316,24 @@ class DiarizationAgent:
             if utterances:
                 result_duration = max(u.end_time_ms for u in utterances) / 1000.0
 
-            unique_speakers = 1 if utterances else 0
+            # 화자 ID를 숫자로 변환 (Guest-1 → 1, Guest-2 → 2)
+            speaker_mapping = {}
+            for i, spk in enumerate(sorted(speaker_set), start=1):
+                speaker_mapping[spk] = i
+
+            unique_speakers = len(speaker_set)
             utterance_count = len(utterances)
 
-            logger.info(f"📊 분석 완료: {utterance_count}개 발화, {result_duration:.1f}초")
+            logger.info(
+                f"📊 화자 분리 완료: {utterance_count}개 발화, "
+                f"{unique_speakers}명 화자, {result_duration:.1f}초"
+            )
 
             return {
                 "utterances": [
                     {
-                        "speaker_id": u.speaker_id,
+                        "speaker_id": speaker_mapping.get(u.speaker_id, 1),
+                        "speaker_label": u.speaker_id,  # 원본 화자 레이블 (Guest-1 등)
                         "text": u.text,
                         "start_time_ms": u.start_time_ms,
                         "end_time_ms": u.end_time_ms,
