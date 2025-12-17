@@ -287,30 +287,53 @@ class DiarizationAgent:
         recognizer.session_stopped.connect(handle_session_stopped)
         recognizer.session_started.connect(handle_session_started)
 
-        # 중요: 오디오 데이터를 먼저 스트림에 푸시한 후 recognition 시작
-        # (순서가 바뀌면 SDK가 빈 스트림으로 판단하고 즉시 종료됨)
-        logger.info(f"📤 오디오 데이터 푸시 시작: {len(audio_data)} bytes")
+        # 청크 크기: 3200 bytes = 100ms of audio at 16kHz, 16bit, mono
+        chunk_size = 3200
+        total_bytes = len(audio_data)
 
-        chunk_size = 3200  # 100ms of audio at 16kHz, 16bit, mono
-        total_pushed = 0
+        logger.info(f"📤 오디오 데이터 준비: {total_bytes} bytes")
 
-        for i in range(0, len(audio_data), chunk_size):
-            chunk = audio_data[i:i + chunk_size]
-            push_stream.write(chunk)
-            total_pushed += len(chunk)
+        # 먼저 첫 1초(10 chunks) 정도 푸시하여 버퍼 채우기
+        initial_chunks = min(total_bytes, chunk_size * 10)
+        for i in range(0, initial_chunks, chunk_size):
+            push_stream.write(audio_data[i:i + chunk_size])
+        logger.info(f"📤 초기 버퍼 푸시: {initial_chunks} bytes")
 
-        logger.info(f"📤 오디오 데이터 푸시 완료: {total_pushed} bytes")
-
-        # 스트림 종료 (SDK에게 데이터 끝을 알림)
-        push_stream.close()
-        logger.info("📪 오디오 스트림 닫힘")
-
-        # 이제 continuous recognition 시작 (모든 데이터가 준비된 후)
+        # continuous recognition 시작
         logger.info(f"🚀 음성 인식 시작 (PushStream): {wav_path}")
         recognizer.start_continuous_recognition()
 
+        # 나머지 데이터를 별도 스레드에서 푸시
+        def push_remaining_data():
+            """나머지 오디오 데이터를 스트림에 푸시."""
+            try:
+                pushed = initial_chunks
+                for i in range(initial_chunks, total_bytes, chunk_size):
+                    chunk = audio_data[i:i + chunk_size]
+                    push_stream.write(chunk)
+                    pushed += len(chunk)
+
+                logger.info(f"📤 오디오 데이터 푸시 완료: {pushed} bytes")
+
+                # 스트림 종료 (SDK에게 데이터 끝을 알림)
+                push_stream.close()
+                logger.info("📪 오디오 스트림 닫힘")
+
+            except Exception as e:
+                logger.error(f"오디오 푸시 오류: {e}")
+                try:
+                    push_stream.close()
+                except:
+                    pass
+
+        push_thread = threading.Thread(target=push_remaining_data, daemon=True)
+        push_thread.start()
+
         # 완료 대기 (threading.Event 사용)
         completed = done.wait(timeout=600)  # 최대 10분
+
+        # 푸시 스레드 종료 대기
+        push_thread.join(timeout=5)
 
         if not completed:
             logger.warning("음성 인식 타임아웃 (10분)")
