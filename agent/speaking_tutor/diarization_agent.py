@@ -44,17 +44,26 @@ class DiarizationAgent:
 
     Uses ConversationTranscriber for proper speaker diarization support.
     Does not inherit from BaseAgent as it uses Azure Speech SDK, not OpenAI.
+
+    Note: Conversation Transcription is only available in specific regions:
+    - eastasia, southeastasia, centralus, eastus, westeurope
+    - We use AZURE_AVATAR_SPEECH_KEY/REGION (southeastasia) for this feature
     """
 
     SUPPORTED_FORMATS = {'.wav', '.mp3', '.m4a', '.ogg', '.flac', '.webm'}
 
     def __init__(self):
-        """Initialize with Azure Speech configuration."""
-        if not settings.AZURE_SPEECH_KEY:
-            raise ValueError("AZURE_SPEECH_KEY is not configured")
+        """Initialize with Azure Speech configuration for Conversation Transcription."""
+        # Use Avatar's speech key/region for Conversation Transcription
+        # because it's in southeastasia which supports this feature
+        # (koreacentral does NOT support Conversation Transcription)
+        if not settings.AZURE_AVATAR_SPEECH_KEY:
+            raise ValueError("AZURE_AVATAR_SPEECH_KEY is not configured (required for speaker diarization)")
 
-        self.speech_key = settings.AZURE_SPEECH_KEY
-        self.speech_region = settings.AZURE_SPEECH_REGION
+        self.speech_key = settings.AZURE_AVATAR_SPEECH_KEY
+        self.speech_region = settings.AZURE_AVATAR_SPEECH_REGION
+
+        logger.info(f"DiarizationAgent initialized with region: {self.speech_region}")
 
     async def process(
         self,
