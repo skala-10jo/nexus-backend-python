@@ -194,19 +194,21 @@ class DiarizationAgent:
             region=self.speech_region
         )
         speech_config.speech_recognition_language = language
-        speech_config.set_property(
-            speechsdk.PropertyId.SpeechServiceResponse_DiarizeIntermediateResults,
-            "true"
-        )
+        # Note: ConversationTranscriber는 자동으로 화자 분리를 수행함
+        # SpeechServiceResponse_DiarizeIntermediateResults는 SpeechRecognizer용이므로 사용하지 않음
 
         # 파일 기반 AudioConfig
         audio_config = speechsdk.audio.AudioConfig(filename=wav_path)
+
+        logger.info(f"🔧 ConversationTranscriber 설정: region={self.speech_region}, language={language}")
 
         # ConversationTranscriber 생성 (화자 분리 지원)
         transcriber = speechsdk.transcription.ConversationTranscriber(
             speech_config=speech_config,
             audio_config=audio_config
         )
+
+        logger.info("✅ ConversationTranscriber 인스턴스 생성 완료")
 
         # 결과 저장 (thread-safe)
         utterances: List[Utterance] = []
@@ -262,16 +264,20 @@ class DiarizationAgent:
 
         def handle_canceled(evt):
             """취소/오류 처리."""
-            cancellation_details = evt.result.cancellation_details
-            logger.info(f"🔴 Canceled: reason={cancellation_details.reason}")
+            try:
+                # ConversationTranscriber의 canceled 이벤트 처리
+                cancellation = speechsdk.CancellationDetails(evt.result)
+                logger.info(f"🔴 Canceled: reason={cancellation.reason}")
 
-            if cancellation_details.reason == speechsdk.CancellationReason.Error:
-                error_msg = f"코드: {cancellation_details.error_code}, 상세: {cancellation_details.error_details}"
-                with lock:
-                    errors.append(error_msg)
-                logger.error(f"❌ 화자 분리 오류: {error_msg}")
-            elif cancellation_details.reason == speechsdk.CancellationReason.EndOfStream:
-                logger.info("✅ 오디오 스트림 종료 (정상)")
+                if cancellation.reason == speechsdk.CancellationReason.Error:
+                    error_msg = f"코드: {cancellation.error_code}, 상세: {cancellation.error_details}"
+                    with lock:
+                        errors.append(error_msg)
+                    logger.error(f"❌ 화자 분리 오류: {error_msg}")
+                elif cancellation.reason == speechsdk.CancellationReason.EndOfStream:
+                    logger.info("✅ 오디오 스트림 종료 (정상)")
+            except Exception as e:
+                logger.error(f"❌ canceled 이벤트 처리 중 오류: {e}")
 
             done.set()
 
@@ -292,18 +298,33 @@ class DiarizationAgent:
 
         # 비동기 화자 분리 시작
         logger.info(f"🚀 ConversationTranscriber 화자 분리 시작: {wav_path}")
-        transcriber.start_transcribing_async().get()
+        try:
+            start_future = transcriber.start_transcribing_async()
+            logger.info("⏳ start_transcribing_async() 호출 완료, 결과 대기 중...")
+            start_future.get()
+            logger.info("✅ 화자 분리 시작됨")
+        except Exception as e:
+            logger.error(f"❌ start_transcribing_async() 실패: {e}")
+            raise
 
         # 완료 대기 (threading.Event 사용)
+        logger.info("⏳ 화자 분리 완료 대기 중...")
         completed = done.wait(timeout=600)  # 최대 10분
 
         if not completed:
-            logger.warning("화자 분리 타임아웃 (10분)")
+            logger.warning("⚠️ 화자 분리 타임아웃 (10분)")
             with lock:
                 errors.append("타임아웃 (10분)")
+        else:
+            logger.info("✅ 화자 분리 이벤트 수신 완료")
 
         # 인식 종료
-        transcriber.stop_transcribing_async().get()
+        logger.info("🛑 화자 분리 중지 중...")
+        try:
+            transcriber.stop_transcribing_async().get()
+            logger.info("✅ 화자 분리 중지됨")
+        except Exception as e:
+            logger.warning(f"⚠️ stop_transcribing_async() 경고: {e}")
 
         # 에러 확인
         with lock:
