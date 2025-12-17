@@ -35,14 +35,18 @@ FROM python:3.11-slim AS production
 WORKDIR /app
 
 # 런타임 필수 패키지 설치
-# Azure Speech SDK requires: libssl, ca-certificates, libasound2
+# Azure Speech SDK requires: OpenSSL 3.x, libasound2, GStreamer (for audio processing)
+# Debian 12 (Bookworm) uses OpenSSL 3.x - need libssl3 not libssl-dev
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
     ffmpeg \
     ca-certificates \
-    libssl-dev \
+    libssl3 \
     libasound2 \
+    libgstreamer1.0-0 \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
     && rm -rf /var/lib/apt/lists/*
 
 # 한국 시간대 설정
