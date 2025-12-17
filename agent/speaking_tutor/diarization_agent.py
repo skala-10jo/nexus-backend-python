@@ -331,9 +331,9 @@ class DiarizationAgent:
         conversation_transcriber.session_stopped.connect(handle_session_stopped)
         conversation_transcriber.session_started.connect(handle_session_started)
 
-        # Start transcription
+        # Start transcription - must call .get() to actually start
         logger.info(f"Starting conversation transcription for: {wav_path}")
-        conversation_transcriber.start_transcribing_async()
+        conversation_transcriber.start_transcribing_async().get()
 
         # Wait for completion with timeout
         try:
@@ -345,7 +345,7 @@ class DiarizationAgent:
             errors.append("Transcription timed out")
 
         # Stop transcription
-        conversation_transcriber.stop_transcribing_async()
+        conversation_transcriber.stop_transcribing_async().get()
 
         if errors:
             logger.error(f"Transcription errors: {errors}")
