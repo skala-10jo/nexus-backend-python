@@ -5,15 +5,20 @@ Azure Speech SDK를 사용한 음성 인식 및 화자 분리 에이전트.
 - 화자별로 분리된 발화 내용
 - 타임스탬프 (시작/종료 시간)
 - 신뢰도 점수
-- 화자 수
+
+Docker 환경 호환:
+- PushAudioInputStream을 사용하여 직접 오디오 데이터 전달
+- AudioConfig(filename=...)은 Docker에서 불안정함
 
 참고:
-https://learn.microsoft.com/en-us/azure/ai-services/speech-service/get-started-stt-diarization
+https://learn.microsoft.com/en-us/azure/ai-services/speech-service/how-to-use-audio-input-streams
 """
 import asyncio
 import logging
 import tempfile
 import os
+import wave
+import threading
 from typing import List, Dict, Any, Optional, Callable
 from dataclasses import dataclass
 
@@ -38,8 +43,9 @@ class DiarizationAgent:
     """
     Azure SpeechRecognizer 기반 화자 분리 에이전트.
 
-    SpeechRecognizer + continuous_recognition을 사용하여
-    파일 기반 음성 인식 및 화자 분리를 수행합니다.
+    PushAudioInputStream을 사용하여 Docker 환경에서도 안정적으로 작동.
+    파일 기반 AudioConfig는 Docker에서 즉시 종료되는 문제가 있어
+    직접 오디오 데이터를 스트림으로 전달합니다.
 
     주의: 화자 분리 기능은 특정 리전에서만 사용 가능:
     - eastasia, southeastasia, centralus, eastus, westeurope
@@ -77,7 +83,7 @@ class DiarizationAgent:
         Returns:
             {
                 "utterances": [...],
-                "speaker_count": 3,
+                "speaker_count": 1,
                 "duration_seconds": 180.5
             }
         """
@@ -105,7 +111,7 @@ class DiarizationAgent:
             if progress_callback:
                 progress_callback(20, "음성 인식 시작...")
 
-            result = await self._transcribe_with_speech_recognizer(
+            result = await self._transcribe_with_push_stream(
                 wav_path,
                 language,
                 progress_callback
@@ -129,6 +135,7 @@ class DiarizationAgent:
         temp_fd, temp_path = tempfile.mkstemp(suffix='.wav')
         os.close(temp_fd)
 
+        # Azure Speech SDK 요구 사항: 16kHz, 16bit, mono PCM
         cmd = [
             'ffmpeg',
             '-i', input_path,
@@ -157,17 +164,41 @@ class DiarizationAgent:
         except FileNotFoundError:
             raise ValueError("ffmpeg를 찾을 수 없습니다")
 
-    async def _transcribe_with_speech_recognizer(
+    async def _transcribe_with_push_stream(
         self,
         wav_path: str,
         language: str,
         progress_callback: Optional[Callable[[int, str], None]] = None
     ) -> Dict[str, Any]:
         """
-        SpeechRecognizer + continuous_recognition으로 음성 인식 수행.
+        PushAudioInputStream을 사용하여 음성 인식 수행.
 
-        파일 기반 음성 인식에서 가장 안정적인 방식입니다.
+        Docker 환경에서 AudioConfig(filename=...)이 즉시 종료되는 문제를 해결하기 위해
+        직접 오디오 데이터를 스트림으로 전달합니다.
         """
+        # WAV 파일 정보 읽기
+        try:
+            with wave.open(wav_path, 'rb') as wf:
+                channels = wf.getnchannels()
+                sample_width = wf.getsampwidth()
+                sample_rate = wf.getframerate()
+                n_frames = wf.getnframes()
+                audio_data = wf.readframes(n_frames)
+
+            logger.info(f"WAV 파일 정보: {sample_rate}Hz, {channels}ch, {sample_width*8}bit, {len(audio_data)} bytes")
+        except Exception as e:
+            logger.error(f"WAV 파일 읽기 실패: {e}")
+            raise ValueError(f"WAV 파일 읽기 실패: {e}")
+
+        # PushAudioInputStream 설정 (16kHz, 16bit, mono)
+        audio_format = speechsdk.audio.AudioStreamFormat(
+            samples_per_second=16000,
+            bits_per_sample=16,
+            channels=1
+        )
+        push_stream = speechsdk.audio.PushAudioInputStream(stream_format=audio_format)
+        audio_config = speechsdk.audio.AudioConfig(stream=push_stream)
+
         # Speech 설정 생성
         speech_config = speechsdk.SpeechConfig(
             subscription=self.speech_key,
@@ -181,9 +212,6 @@ class DiarizationAgent:
         # 출력 형식 설정 (상세 정보 포함)
         speech_config.output_format = speechsdk.OutputFormat.Detailed
 
-        # 오디오 설정 (파일에서 직접 읽기)
-        audio_config = speechsdk.AudioConfig(filename=wav_path)
-
         # SpeechRecognizer 생성
         recognizer = speechsdk.SpeechRecognizer(
             speech_config=speech_config,
@@ -194,6 +222,7 @@ class DiarizationAgent:
         utterances: List[Utterance] = []
         done = asyncio.Event()
         errors: List[str] = []
+        loop = asyncio.get_event_loop()
 
         def handle_recognized(evt):
             """인식 완료 이벤트 처리."""
@@ -210,7 +239,6 @@ class DiarizationAgent:
                         duration_ms = duration_ticks // 10000
 
                         # 화자 ID는 단순하게 1로 설정 (단일 화자 가정)
-                        # 실제 화자 분리는 Azure의 제한으로 어려움
                         speaker_id = 1
 
                         utterances.append(Utterance(
@@ -222,7 +250,7 @@ class DiarizationAgent:
                             sequence_number=len(utterances)
                         ))
 
-                        logger.info(f"✅ 발화 인식: {text[:50]}...")
+                        logger.info(f"✅ 발화 인식: [{start_ms}ms] {text[:50]}...")
 
                         if progress_callback:
                             progress = min(90, 30 + len(utterances) * 2)
@@ -245,14 +273,14 @@ class DiarizationAgent:
                 errors.append(error_msg)
                 logger.error(f"❌ 음성 인식 오류: {error_msg}")
             elif evt.reason == speechsdk.CancellationReason.EndOfStream:
-                logger.info("✅ 오디오 스트림 종료")
+                logger.info("✅ 오디오 스트림 종료 (정상)")
 
-            done.set()
+            loop.call_soon_threadsafe(done.set)
 
         def handle_session_stopped(evt):
             """세션 종료 처리."""
             logger.info("🔵 세션 종료됨")
-            done.set()
+            loop.call_soon_threadsafe(done.set)
 
         def handle_session_started(evt):
             """세션 시작 처리."""
@@ -265,8 +293,40 @@ class DiarizationAgent:
         recognizer.session_started.connect(handle_session_started)
 
         # continuous recognition 시작
-        logger.info(f"🚀 음성 인식 시작: {wav_path}")
+        logger.info(f"🚀 음성 인식 시작 (PushStream): {wav_path}")
         recognizer.start_continuous_recognition()
+
+        # 별도 스레드에서 오디오 데이터 푸시
+        def push_audio_data():
+            """오디오 데이터를 청크 단위로 스트림에 푸시."""
+            try:
+                # 청크 크기: 3200 bytes = 100ms of audio at 16kHz, 16bit, mono
+                chunk_size = 3200
+                total_pushed = 0
+
+                for i in range(0, len(audio_data), chunk_size):
+                    chunk = audio_data[i:i + chunk_size]
+                    push_stream.write(chunk)
+                    total_pushed += len(chunk)
+
+                    # 약간의 딜레이로 실시간 스트리밍 시뮬레이션
+                    # 너무 빠르게 푸시하면 SDK가 처리 못할 수 있음
+                    import time
+                    time.sleep(0.05)  # 50ms 딜레이
+
+                logger.info(f"📤 오디오 데이터 푸시 완료: {total_pushed} bytes")
+
+                # 스트림 종료 (중요!)
+                push_stream.close()
+                logger.info("📪 오디오 스트림 닫힘")
+
+            except Exception as e:
+                logger.error(f"오디오 푸시 오류: {e}")
+                push_stream.close()
+
+        # 오디오 푸시를 별도 스레드에서 실행
+        push_thread = threading.Thread(target=push_audio_data, daemon=True)
+        push_thread.start()
 
         # 완료 대기
         try:
@@ -278,7 +338,10 @@ class DiarizationAgent:
         # 인식 종료
         recognizer.stop_continuous_recognition()
 
-        if errors:
+        # 푸시 스레드 종료 대기
+        push_thread.join(timeout=5)
+
+        if errors and "EndOfStream" not in str(errors):
             logger.error(f"음성 인식 오류: {errors}")
 
         # 결과 계산
