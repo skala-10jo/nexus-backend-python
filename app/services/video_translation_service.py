@@ -3,11 +3,18 @@ Video Translation Service
 
 영상 자막 STT 및 번역 비즈니스 로직을 담당합니다.
 Java Backend V22 스키마와 호환되도록 설계되었습니다 (files/video_files 시스템).
+
+Note:
+    분산 환경(ECS)에서 Java Backend와 Python Backend가 별도 컨테이너로 실행될 경우,
+    Java Backend에 저장된 파일을 Python Backend에서 접근하기 위해
+    Java Backend의 `/api/files/serve/` API를 통해 파일을 다운로드합니다.
 """
 
 import logging
 import math
 import os
+import tempfile
+import httpx
 from typing import List, Dict, Any, Optional
 from uuid import UUID
 from pathlib import Path
@@ -48,6 +55,90 @@ class VideoTranslationService:
         self.subtitle_generator = SubtitleGeneratorAgent()
         self.context_translator = ContextEnhancedTranslationAgent()
         self.term_detector = OptimizedTermDetectorAgent()
+        # 임시 파일 디렉토리 설정
+        self.temp_dir = os.path.join(tempfile.gettempdir(), "nexus_video_temp")
+        os.makedirs(self.temp_dir, exist_ok=True)
+
+    async def _fetch_video_from_java_backend(
+        self,
+        file_path: str,
+        file_id: UUID
+    ) -> str:
+        """
+        Java Backend API를 통해 영상 파일 다운로드
+
+        분산 환경(ECS)에서 Java Backend와 Python Backend가 별도 컨테이너로 실행될 때,
+        Java Backend의 /api/files/serve/ 엔드포인트를 통해 파일을 다운로드합니다.
+
+        Args:
+            file_path: DB에 저장된 상대 파일 경로 (예: "2025/12/17/uuid.mp4")
+            file_id: 파일 ID (로그용)
+
+        Returns:
+            다운로드된 임시 파일 경로
+
+        Raises:
+            FileNotFoundError: Java Backend에서 파일을 찾을 수 없을 때
+            ConnectionError: Java Backend 연결 실패 시
+        """
+        java_url = settings.java_backend_url
+        download_url = f"{java_url}/api/files/serve/{file_path}"
+
+        logger.info(f"📥 Java Backend에서 파일 다운로드 시작: {download_url}")
+
+        try:
+            async with httpx.AsyncClient(timeout=300.0) as client:  # 5분 타임아웃
+                response = await client.get(download_url)
+
+                if response.status_code == 404:
+                    raise FileNotFoundError(
+                        f"Java Backend에서 파일을 찾을 수 없습니다: {file_path}"
+                    )
+
+                if response.status_code != 200:
+                    raise ConnectionError(
+                        f"Java Backend 응답 오류: {response.status_code}"
+                    )
+
+                # 파일 확장자 추출
+                ext = os.path.splitext(file_path)[1] or ".mp4"
+
+                # 임시 파일로 저장
+                temp_file_path = os.path.join(
+                    self.temp_dir,
+                    f"{file_id}{ext}"
+                )
+
+                with open(temp_file_path, "wb") as f:
+                    f.write(response.content)
+
+                file_size_mb = len(response.content) / (1024 * 1024)
+                logger.info(
+                    f"✅ 파일 다운로드 완료: {temp_file_path} ({file_size_mb:.2f}MB)"
+                )
+
+                return temp_file_path
+
+        except httpx.TimeoutException:
+            raise ConnectionError("Java Backend 연결 타임아웃 (5분 초과)")
+        except httpx.ConnectError as e:
+            raise ConnectionError(f"Java Backend 연결 실패: {str(e)}")
+
+    def _cleanup_temp_file(self, file_path: str) -> None:
+        """
+        임시 파일 삭제
+
+        Args:
+            file_path: 삭제할 임시 파일 경로
+        """
+        try:
+            if file_path and os.path.exists(file_path):
+                # 임시 디렉토리 내 파일만 삭제 (안전 장치)
+                if self.temp_dir in file_path:
+                    os.remove(file_path)
+                    logger.debug(f"🗑️ 임시 파일 삭제: {file_path}")
+        except Exception as e:
+            logger.warning(f"⚠️ 임시 파일 삭제 실패: {file_path}, 오류: {e}")
 
     def _get_video_file_by_file_id(self, file_id: UUID, db: Session) -> VideoFile:
         """
@@ -228,6 +319,9 @@ class VideoTranslationService:
         """
         영상 STT 처리 및 DB 저장
 
+        분산 환경(ECS)에서 로컬 파일이 없을 경우 Java Backend API를 통해
+        파일을 다운로드하여 처리합니다.
+
         Args:
             video_file_id: 영상 파일 ID (File ID, not VideoFile ID)
             source_language: 음성 언어 코드
@@ -246,77 +340,100 @@ class VideoTranslationService:
         # 절대 경로로 변환 (환경에 따라 자동 감지)
         upload_base_dir = settings.upload_dir
         full_video_path = os.path.join(upload_base_dir, file.file_path)
+        temp_file_path = None  # 임시 파일 경로 (정리용)
 
+        # Step 1.5: 로컬 파일 확인 → 없으면 Java Backend에서 다운로드
         if not os.path.exists(full_video_path):
-            raise FileNotFoundError(f"영상 파일을 찾을 수 없습니다: {full_video_path}")
-
-        # Step 2: STT 처리 (Agent 호출)
-        segments = await self.stt_agent.process(
-            video_file_path=full_video_path,
-            source_language=source_language
-        )
-
-        logger.info(f"🎤 STT 완료: {len(segments)}개 세그먼트")
-
-        # Step 3: 기존 자막 삭제 (재처리 허용)
-        deleted_count = db.query(VideoSubtitle).filter(
-            VideoSubtitle.video_file_id == video_file.id
-        ).delete()
-
-        if deleted_count > 0:
-            logger.info(f"🗑️ 기존 자막 삭제: {deleted_count}개")
-
-        # Step 4: DB 저장 (각 세그먼트를 VideoSubtitle row로 저장)
-        for segment_data in segments:
-            # Whisper avg_logprob은 음수값이므로 exp()로 0-1 확률로 변환
-            raw_confidence = segment_data.get("confidence")
-            if raw_confidence is not None and raw_confidence < 0:
-                # avg_logprob → probability: exp(logprob)
-                confidence = math.exp(raw_confidence)
-                # 0-1 범위로 클리핑
-                confidence = max(0.0, min(1.0, confidence))
-            else:
-                confidence = raw_confidence
-
-            subtitle = VideoSubtitle(
-                video_file_id=video_file.id,
-                sequence_number=segment_data["sequence_number"],
-                start_time_ms=segment_data["start_time_ms"],
-                end_time_ms=segment_data["end_time_ms"],
-                original_text=segment_data["text"],
-                original_language=source_language,  # 원본 언어 저장
-                translations={},  # 빈 번역 딕셔너리로 초기화
-                translated_text=None,  # 레거시 필드 (하위 호환성)
-                confidence_score=confidence
+            logger.info(
+                f"⚠️ 로컬 파일 없음: {full_video_path}, "
+                f"Java Backend에서 다운로드 시도..."
             )
-            db.add(subtitle)
+            try:
+                temp_file_path = await self._fetch_video_from_java_backend(
+                    file_path=file.file_path,
+                    file_id=video_file_id
+                )
+                full_video_path = temp_file_path
+            except (FileNotFoundError, ConnectionError) as e:
+                logger.error(f"❌ Java Backend 파일 다운로드 실패: {e}")
+                raise FileNotFoundError(
+                    f"영상 파일을 찾을 수 없습니다. "
+                    f"로컬: {full_video_path}, Java Backend: {file.file_path}"
+                )
 
-        db.commit()
+        try:
+            # Step 2: STT 처리 (Agent 호출)
+            segments = await self.stt_agent.process(
+                video_file_path=full_video_path,
+                source_language=source_language
+            )
 
-        # Step 5: 저장된 자막 조회
-        saved_subtitles = db.query(VideoSubtitle).filter(
-            VideoSubtitle.video_file_id == video_file.id
-        ).order_by(VideoSubtitle.sequence_number).all()
+            logger.info(f"🎤 STT 완료: {len(segments)}개 세그먼트")
 
-        logger.info(f"✅ STT 결과 저장 완료: {len(saved_subtitles)}개 자막")
+            # Step 3: 기존 자막 삭제 (재처리 허용)
+            deleted_count = db.query(VideoSubtitle).filter(
+                VideoSubtitle.video_file_id == video_file.id
+            ).delete()
 
-        # 응답 구성
-        return {
-            "video_file_id": video_file_id,
-            "language": source_language,
-            "segments": [
-                {
-                    "sequence_number": sub.sequence_number,
-                    "start_time_ms": sub.start_time_ms,
-                    "end_time_ms": sub.end_time_ms,
-                    "text": sub.original_text,
-                    "confidence": float(sub.confidence_score) if sub.confidence_score else None
-                }
-                for sub in saved_subtitles
-            ],
-            "total_segments": len(saved_subtitles),
-            "created_at": saved_subtitles[0].created_at if saved_subtitles else None
-        }
+            if deleted_count > 0:
+                logger.info(f"🗑️ 기존 자막 삭제: {deleted_count}개")
+
+            # Step 4: DB 저장 (각 세그먼트를 VideoSubtitle row로 저장)
+            for segment_data in segments:
+                # Whisper avg_logprob은 음수값이므로 exp()로 0-1 확률로 변환
+                raw_confidence = segment_data.get("confidence")
+                if raw_confidence is not None and raw_confidence < 0:
+                    # avg_logprob → probability: exp(logprob)
+                    confidence = math.exp(raw_confidence)
+                    # 0-1 범위로 클리핑
+                    confidence = max(0.0, min(1.0, confidence))
+                else:
+                    confidence = raw_confidence
+
+                subtitle = VideoSubtitle(
+                    video_file_id=video_file.id,
+                    sequence_number=segment_data["sequence_number"],
+                    start_time_ms=segment_data["start_time_ms"],
+                    end_time_ms=segment_data["end_time_ms"],
+                    original_text=segment_data["text"],
+                    original_language=source_language,  # 원본 언어 저장
+                    translations={},  # 빈 번역 딕셔너리로 초기화
+                    translated_text=None,  # 레거시 필드 (하위 호환성)
+                    confidence_score=confidence
+                )
+                db.add(subtitle)
+
+            db.commit()
+
+            # Step 5: 저장된 자막 조회
+            saved_subtitles = db.query(VideoSubtitle).filter(
+                VideoSubtitle.video_file_id == video_file.id
+            ).order_by(VideoSubtitle.sequence_number).all()
+
+            logger.info(f"✅ STT 결과 저장 완료: {len(saved_subtitles)}개 자막")
+
+            # 응답 구성
+            return {
+                "video_file_id": video_file_id,
+                "language": source_language,
+                "segments": [
+                    {
+                        "sequence_number": sub.sequence_number,
+                        "start_time_ms": sub.start_time_ms,
+                        "end_time_ms": sub.end_time_ms,
+                        "text": sub.original_text,
+                        "confidence": float(sub.confidence_score) if sub.confidence_score else None
+                    }
+                    for sub in saved_subtitles
+                ],
+                "total_segments": len(saved_subtitles),
+                "created_at": saved_subtitles[0].created_at if saved_subtitles else None
+            }
+
+        finally:
+            # Step 6: 임시 파일 정리 (Java Backend에서 다운로드한 경우)
+            if temp_file_path:
+                self._cleanup_temp_file(temp_file_path)
 
     async def process_translation(
         self,
