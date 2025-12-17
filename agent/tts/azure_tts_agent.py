@@ -9,7 +9,7 @@ import asyncio
 from typing import Optional, Dict, Any
 import azure.cognitiveservices.speech as speechsdk
 from agent.base_agent import BaseAgent
-from app.core.azure_speech_token_manager import AzureSpeechTokenManager as AzureSpeechAgent
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,8 @@ class AzureTTSAgent(BaseAgent):
         Note: 직접 호출하지 말고 get_instance()를 사용하세요.
         """
         super().__init__()
-        self.speech_agent = AzureSpeechAgent.get_instance()
+        self.speech_key = settings.AZURE_SPEECH_KEY
+        self.speech_region = settings.AZURE_SPEECH_REGION
         logger.info("Azure TTS Agent initialized")
 
     @classmethod
@@ -94,14 +95,10 @@ class AzureTTSAgent(BaseAgent):
         try:
             logger.info(f"Starting TTS: voice={voice_name}, rate={rate}, pitch={pitch}")
 
-            # Azure Speech 토큰 가져오기
-            token, region = await self.speech_agent.get_token()
-
-            # Speech Config 생성 (토큰 기반)
+            # Speech Config 생성 (구독 키 기반)
             speech_config = speechsdk.SpeechConfig(
-                subscription=None,
-                region=region,
-                auth_token=token
+                subscription=self.speech_key,
+                region=self.speech_region
             )
 
             # 음성 이름 설정
