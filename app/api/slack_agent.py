@@ -21,7 +21,7 @@ from app.services.slack_agent_service import SlackAgentService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/slack", tags=["Slack Agent"])
+router = APIRouter(prefix="/api/ai/slack", tags=["Slack Agent"])
 
 # Service 인스턴스 (싱글톤)
 slack_service = SlackAgentService()
