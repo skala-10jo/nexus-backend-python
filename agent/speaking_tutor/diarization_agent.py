@@ -6,9 +6,9 @@ Azure Speech SDK를 사용한 음성 인식 및 화자 분리 에이전트.
 - 타임스탬프 (시작/종료 시간)
 - 신뢰도 점수
 
-Docker 환경 호환:
-- PushAudioInputStream을 사용하여 직접 오디오 데이터 전달
-- AudioConfig(filename=...)은 Docker에서 불안정함
+Docker/AWS 환경 호환:
+- PushAudioInputStream을 사용하여 안정적으로 작동
+- AudioConfig(filename=...)은 일부 환경에서 불안정함
 
 참고:
 https://learn.microsoft.com/en-us/azure/ai-services/speech-service/how-to-use-audio-input-streams
@@ -43,9 +43,7 @@ class DiarizationAgent:
     """
     Azure SpeechRecognizer 기반 화자 분리 에이전트.
 
-    PushAudioInputStream을 사용하여 Docker 환경에서도 안정적으로 작동.
-    파일 기반 AudioConfig는 Docker에서 즉시 종료되는 문제가 있어
-    직접 오디오 데이터를 스트림으로 전달합니다.
+    PushAudioInputStream을 사용하여 Docker/AWS 환경에서도 안정적으로 작동.
 
     주의: 화자 분리 기능은 특정 리전에서만 사용 가능:
     - eastasia, southeastasia, centralus, eastus, westeurope
@@ -56,8 +54,6 @@ class DiarizationAgent:
 
     def __init__(self):
         """Azure Speech 설정으로 초기화."""
-        # 화자 분리를 위해 Avatar 키/리전 사용
-        # koreacentral은 화자 분리를 지원하지 않음
         if not settings.AZURE_AVATAR_SPEECH_KEY:
             raise ValueError("AZURE_AVATAR_SPEECH_KEY가 설정되지 않았습니다 (화자 분리에 필요)")
 
@@ -97,15 +93,11 @@ class DiarizationAgent:
         if progress_callback:
             progress_callback(5, "오디오 파일 준비 중...")
 
-        # WAV가 아니면 변환 필요
-        wav_path = audio_file_path
-        temp_wav = None
+        # 항상 16kHz/16bit/mono WAV로 변환 (Docker 환경 호환성)
+        if progress_callback:
+            progress_callback(10, "오디오 포맷 변환 중...")
 
-        if ext != '.wav':
-            if progress_callback:
-                progress_callback(10, "오디오 포맷 변환 중...")
-            wav_path = await self._convert_to_wav(audio_file_path)
-            temp_wav = wav_path
+        wav_path = await self._convert_to_wav(audio_file_path)
 
         try:
             if progress_callback:
@@ -123,15 +115,20 @@ class DiarizationAgent:
             return result
 
         finally:
-            # 임시 파일 정리
-            if temp_wav and os.path.exists(temp_wav):
+            # 변환된 임시 파일 정리
+            if wav_path != audio_file_path and os.path.exists(wav_path):
                 try:
-                    os.remove(temp_wav)
+                    os.remove(wav_path)
+                    logger.debug(f"임시 파일 삭제: {wav_path}")
                 except Exception as e:
                     logger.warning(f"임시 파일 삭제 실패: {e}")
 
     async def _convert_to_wav(self, input_path: str) -> str:
-        """오디오 파일을 Azure용 WAV 형식으로 변환."""
+        """
+        오디오 파일을 Azure용 WAV 형식으로 변환.
+
+        항상 16kHz, 16bit, mono PCM으로 변환하여 일관성 보장.
+        """
         temp_fd, temp_path = tempfile.mkstemp(suffix='.wav')
         os.close(temp_fd)
 
@@ -139,10 +136,10 @@ class DiarizationAgent:
         cmd = [
             'ffmpeg',
             '-i', input_path,
-            '-ar', '16000',       # 16kHz 샘플레이트
-            '-ac', '1',           # 모노
-            '-acodec', 'pcm_s16le',  # 16bit PCM
-            '-y',
+            '-ar', '16000',          # 16kHz 샘플레이트
+            '-ac', '1',              # 모노
+            '-acodec', 'pcm_s16le',  # 16bit PCM little-endian
+            '-y',                    # 덮어쓰기
             temp_path
         ]
 
@@ -173,19 +170,22 @@ class DiarizationAgent:
         """
         PushAudioInputStream을 사용하여 음성 인식 수행.
 
-        Docker 환경에서 AudioConfig(filename=...)이 즉시 종료되는 문제를 해결하기 위해
+        Docker/AWS 환경에서 AudioConfig(filename=...)이 불안정할 수 있어
         직접 오디오 데이터를 스트림으로 전달합니다.
         """
-        # WAV 파일 정보 읽기
+        # WAV 파일에서 오디오 데이터 읽기
         try:
             with wave.open(wav_path, 'rb') as wf:
+                sample_rate = wf.getframerate()
                 channels = wf.getnchannels()
                 sample_width = wf.getsampwidth()
-                sample_rate = wf.getframerate()
                 n_frames = wf.getnframes()
                 audio_data = wf.readframes(n_frames)
 
-            logger.info(f"WAV 파일 정보: {sample_rate}Hz, {channels}ch, {sample_width*8}bit, {len(audio_data)} bytes")
+            logger.info(
+                f"WAV 파일 정보: {sample_rate}Hz, {channels}ch, "
+                f"{sample_width*8}bit, {len(audio_data)} bytes"
+            )
         except Exception as e:
             logger.error(f"WAV 파일 읽기 실패: {e}")
             raise ValueError(f"WAV 파일 읽기 실패: {e}")
@@ -205,11 +205,7 @@ class DiarizationAgent:
             region=self.speech_region
         )
         speech_config.speech_recognition_language = language
-
-        # 단어 수준 타임스탬프 요청
         speech_config.request_word_level_timestamps()
-
-        # 출력 형식 설정 (상세 정보 포함)
         speech_config.output_format = speechsdk.OutputFormat.Detailed
 
         # SpeechRecognizer 생성
@@ -218,11 +214,11 @@ class DiarizationAgent:
             audio_config=audio_config
         )
 
-        # 결과 저장
+        # 결과 저장 (thread-safe)
         utterances: List[Utterance] = []
-        done = asyncio.Event()
+        done = threading.Event()
         errors: List[str] = []
-        loop = asyncio.get_event_loop()
+        lock = threading.Lock()
 
         def handle_recognized(evt):
             """인식 완료 이벤트 처리."""
@@ -230,7 +226,6 @@ class DiarizationAgent:
                 if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
                     text = evt.result.text
                     if text and text.strip():
-                        # 타이밍 정보 추출
                         offset_ticks = evt.result.offset
                         duration_ticks = evt.result.duration
 
@@ -238,23 +233,22 @@ class DiarizationAgent:
                         start_ms = offset_ticks // 10000
                         duration_ms = duration_ticks // 10000
 
-                        # 화자 ID는 단순하게 1로 설정 (단일 화자 가정)
-                        speaker_id = 1
+                        with lock:
+                            utterances.append(Utterance(
+                                speaker_id=1,
+                                text=text.strip(),
+                                start_time_ms=start_ms,
+                                end_time_ms=start_ms + duration_ms,
+                                confidence=0.9,
+                                sequence_number=len(utterances)
+                            ))
+                            count = len(utterances)
 
-                        utterances.append(Utterance(
-                            speaker_id=speaker_id,
-                            text=text.strip(),
-                            start_time_ms=start_ms,
-                            end_time_ms=start_ms + duration_ms,
-                            confidence=0.9,
-                            sequence_number=len(utterances)
-                        ))
-
-                        logger.info(f"✅ 발화 인식: [{start_ms}ms] {text[:50]}...")
+                        logger.info(f"✅ 발화 인식 [{start_ms}ms]: {text[:50]}...")
 
                         if progress_callback:
-                            progress = min(90, 30 + len(utterances) * 2)
-                            progress_callback(progress, f"발화 {len(utterances)}개 인식됨...")
+                            progress = min(90, 30 + count * 2)
+                            progress_callback(progress, f"발화 {count}개 인식됨...")
 
                 elif evt.result.reason == speechsdk.ResultReason.NoMatch:
                     logger.debug(f"매칭 없음: {evt.result.no_match_details}")
@@ -270,17 +264,18 @@ class DiarizationAgent:
                 error_code = getattr(evt, 'error_code', 'Unknown')
                 error_details = getattr(evt, 'error_details', 'No details')
                 error_msg = f"코드: {error_code}, 상세: {error_details}"
-                errors.append(error_msg)
+                with lock:
+                    errors.append(error_msg)
                 logger.error(f"❌ 음성 인식 오류: {error_msg}")
             elif evt.reason == speechsdk.CancellationReason.EndOfStream:
                 logger.info("✅ 오디오 스트림 종료 (정상)")
 
-            loop.call_soon_threadsafe(done.set)
+            done.set()
 
         def handle_session_stopped(evt):
             """세션 종료 처리."""
             logger.info("🔵 세션 종료됨")
-            loop.call_soon_threadsafe(done.set)
+            done.set()
 
         def handle_session_started(evt):
             """세션 시작 처리."""
@@ -309,11 +304,6 @@ class DiarizationAgent:
                     push_stream.write(chunk)
                     total_pushed += len(chunk)
 
-                    # 약간의 딜레이로 실시간 스트리밍 시뮬레이션
-                    # 너무 빠르게 푸시하면 SDK가 처리 못할 수 있음
-                    import time
-                    time.sleep(0.05)  # 50ms 딜레이
-
                 logger.info(f"📤 오디오 데이터 푸시 완료: {total_pushed} bytes")
 
                 # 스트림 종료 (중요!)
@@ -322,18 +312,22 @@ class DiarizationAgent:
 
             except Exception as e:
                 logger.error(f"오디오 푸시 오류: {e}")
-                push_stream.close()
+                try:
+                    push_stream.close()
+                except:
+                    pass
 
         # 오디오 푸시를 별도 스레드에서 실행
         push_thread = threading.Thread(target=push_audio_data, daemon=True)
         push_thread.start()
 
-        # 완료 대기
-        try:
-            await asyncio.wait_for(done.wait(), timeout=600)  # 최대 10분
-        except asyncio.TimeoutError:
+        # 완료 대기 (threading.Event 사용)
+        completed = done.wait(timeout=600)  # 최대 10분
+
+        if not completed:
             logger.warning("음성 인식 타임아웃 (10분)")
-            errors.append("타임아웃 (10분)")
+            with lock:
+                errors.append("타임아웃 (10분)")
 
         # 인식 종료
         recognizer.stop_continuous_recognition()
@@ -341,34 +335,37 @@ class DiarizationAgent:
         # 푸시 스레드 종료 대기
         push_thread.join(timeout=5)
 
-        if errors and "EndOfStream" not in str(errors):
-            logger.error(f"음성 인식 오류: {errors}")
+        # 에러 확인
+        with lock:
+            if errors and "EndOfStream" not in str(errors):
+                logger.error(f"음성 인식 오류: {errors}")
 
         # 결과 계산
-        result_duration = 0.0
-        if utterances:
-            result_duration = max(u.end_time_ms for u in utterances) / 1000.0
+        with lock:
+            result_duration = 0.0
+            if utterances:
+                result_duration = max(u.end_time_ms for u in utterances) / 1000.0
 
-        # 화자 수 (현재는 단일 화자로 처리)
-        unique_speakers = 1 if utterances else 0
+            unique_speakers = 1 if utterances else 0
+            utterance_count = len(utterances)
 
-        logger.info(f"📊 분석 완료: {len(utterances)}개 발화, {result_duration:.1f}초")
+            logger.info(f"📊 분석 완료: {utterance_count}개 발화, {result_duration:.1f}초")
 
-        return {
-            "utterances": [
-                {
-                    "speaker_id": u.speaker_id,
-                    "text": u.text,
-                    "start_time_ms": u.start_time_ms,
-                    "end_time_ms": u.end_time_ms,
-                    "confidence": u.confidence,
-                    "sequence_number": u.sequence_number
-                }
-                for u in utterances
-            ],
-            "speaker_count": unique_speakers,
-            "duration_seconds": result_duration
-        }
+            return {
+                "utterances": [
+                    {
+                        "speaker_id": u.speaker_id,
+                        "text": u.text,
+                        "start_time_ms": u.start_time_ms,
+                        "end_time_ms": u.end_time_ms,
+                        "confidence": u.confidence,
+                        "sequence_number": u.sequence_number
+                    }
+                    for u in utterances
+                ],
+                "speaker_count": unique_speakers,
+                "duration_seconds": result_duration
+            }
 
     def get_supported_languages(self) -> List[str]:
         """지원되는 언어 코드 목록 반환."""
