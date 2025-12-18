@@ -219,15 +219,34 @@ class GlossaryService:
         # 문자열 "None"을 실제 None으로 변환
         actual_project_id = None if project_id in ["None", None] else project_id
 
+        # 같은 배치 내 중복 용어 추적 (korean_term 기준)
+        processed_terms_in_batch = set()
+
         for term_data in terms_data:
+            korean_term = term_data['korean']
+
+            # 같은 배치 내 중복 체크
+            if korean_term in processed_terms_in_batch:
+                logger.debug(f"배치 내 중복 용어 건너뜀: '{korean_term}'")
+                continue
+            processed_terms_in_batch.add(korean_term)
+
             # 개별 롤백을 위해 각 용어에 대해 savepoint 생성
             savepoint = db.begin_nested()
             try:
                 # 용어가 이미 존재하는지 확인 (중복 체크)
-                existing_term = db.query(GlossaryTerm).filter(
-                    GlossaryTerm.user_id == user_id,
-                    GlossaryTerm.korean_term == term_data['korean']
-                ).first()
+                # DB 유니크 제약조건: (project_id, korean_term)에 맞춰 검색
+                # NULL 비교는 is_(None) 사용 필요
+                if actual_project_id is None:
+                    existing_term = db.query(GlossaryTerm).filter(
+                        GlossaryTerm.project_id.is_(None),
+                        GlossaryTerm.korean_term == korean_term
+                    ).first()
+                else:
+                    existing_term = db.query(GlossaryTerm).filter(
+                        GlossaryTerm.project_id == actual_project_id,
+                        GlossaryTerm.korean_term == korean_term
+                    ).first()
 
                 if existing_term:
                     # 기존 용어가 있어도 새 문서와의 연결은 추가해야 함
@@ -245,17 +264,17 @@ class GlossaryService:
                         db.add(term_doc)
                         savepoint.commit()  # savepoint 커밋
                         link_count += 1
-                        logger.info(f"기존 용어에 문서 연결 추가: '{term_data['korean']}'")
+                        logger.info(f"기존 용어에 문서 연결 추가: '{korean_term}'")
                     else:
                         savepoint.commit()  # 저장할 것 없지만 savepoint 커밋
-                        logger.debug(f"용어와 문서 연결이 이미 존재하여 건너뜀: '{term_data['korean']}'")
+                        logger.debug(f"용어와 문서 연결이 이미 존재하여 건너뜀: '{korean_term}'")
                     continue
 
                 # GlossaryTerm 생성
                 term = GlossaryTerm(
                     project_id=actual_project_id,
                     user_id=user_id,
-                    korean_term=term_data['korean'],
+                    korean_term=korean_term,
                     english_term=term_data.get('english'),
                     vietnamese_term=term_data.get('vietnamese'),
                     japanese_term=term_data.get('japanese'),
@@ -284,7 +303,7 @@ class GlossaryService:
             except Exception as e:
                 # 전체 트랜잭션이 아닌 이 savepoint만 롤백
                 savepoint.rollback()
-                logger.warning(f"용어 저장 실패 '{term_data.get('korean', 'unknown')}': {str(e)}")
+                logger.warning(f"용어 저장 실패 '{korean_term}': {str(e)}")
                 continue
 
         # 메인 트랜잭션 커밋
