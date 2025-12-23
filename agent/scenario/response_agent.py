@@ -196,10 +196,14 @@ class ResponseAgent(BaseAgent):
         # 대화 히스토리 구성
         messages = [{"role": "system", "content": system_prompt}]
 
-        # 이전 대화 추가 (최근 10개)
+        # 이전 대화 추가 (최근 10개, 빈 메시지 필터링)
         for msg in conversation_history[-10:]:
+            content = msg.get("message", "").strip()
+            if not content:
+                logger.warning("Skipping empty message in conversation history")
+                continue
             role = "assistant" if msg["speaker"] == "ai" else "user"
-            messages.append({"role": role, "content": msg["message"]})
+            messages.append({"role": role, "content": content})
 
         # 현재 사용자 메시지 추가
         messages.append({"role": "user", "content": user_message})
@@ -217,18 +221,31 @@ class ResponseAgent(BaseAgent):
 
             response_text = response.choices[0].message.content
 
+            # 디버깅용 상세 로그
+            logger.info(f"GPT raw response: {response_text}")
+
+            if not response_text:
+                logger.error("GPT returned None or empty content - this should not happen")
+                raise ValueError("GPT returned empty response")
+
             try:
                 parsed_response = json.loads(response_text)
+                message = parsed_response.get("message", "").strip()
+                step_completed = parsed_response.get("step_completed", False)
+
+                logger.info(f"Parsed response - message length: {len(message)}, step_completed: {step_completed}")
+
+                if not message:
+                    logger.error(f"GPT returned empty message field. Full response: {response_text}")
+                    raise ValueError(f"GPT returned empty message. Raw: {response_text}")
+
                 return {
-                    "message": parsed_response.get("message", response_text),
-                    "step_completed": parsed_response.get("step_completed", False)
+                    "message": message,
+                    "step_completed": step_completed
                 }
-            except json.JSONDecodeError:
-                logger.warning(f"Failed to parse AI response as JSON: {response_text}")
-                return {
-                    "message": response_text,
-                    "step_completed": False
-                }
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse AI response as JSON: {response_text}, error: {e}")
+                raise ValueError(f"Invalid JSON from GPT: {response_text}")
 
         except Exception as e:
             logger.error(f"Error generating conversation response: {str(e)}")

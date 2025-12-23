@@ -163,6 +163,11 @@ class ConversationService:
             steps = getattr(scenario, 'steps', None) or []
             current_step = steps[current_step_index] if steps and current_step_index < len(steps) else None
 
+            # 디버깅용 스텝 정보 로그
+            logger.info(f"Step info - total_steps: {len(steps)}, current_step_index: {current_step_index}, has_current_step: {current_step is not None}")
+            if current_step:
+                logger.info(f"Current step: {current_step.get('name', 'Unknown')} - {current_step.get('title', 'No title')}")
+
             # AI 응답 생성 (스텝 판단 포함)
             ai_response = await self._generate_ai_response(
                 scenario=scenario,
