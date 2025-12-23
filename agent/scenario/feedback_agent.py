@@ -53,59 +53,44 @@ class FeedbackAgent(BaseAgent):
     # 비즈니스 카테고리 키워드 (이 키워드가 포함되면 비즈니스 피드백 제공)
     BUSINESS_CATEGORIES = ["business", "meeting", "negotiation", "presentation", "interview", "conference", "corporate"]
 
+    # suggestions에서 자주 튀어나오는 '뭉뚱그린 느낌' 표현(금지)
+    FORBIDDEN_SUGGESTION_PHRASES = [
+        "딱딱", "자연스럽", "처럼 들", "처럼 느껴", "부드럽게", "흐름을 부드럽게",
+        "부담", "어색하게 들", "느낌"
+    ]
+
     # 카테고리별 개선 제안 가이드
     SUGGESTION_GUIDE = {
-        "business": """3. 개선 제안 (suggestions): 비즈니스 맥락에서 원어민 관점의 뉘앙스를 분석하고, **줄글 형태**로 제안하세요
+        "business": """3. 개선 제안 (suggestions): 원어민 비즈니스 커뮤니케이션 평가자로서 '뉘앙스/책임 추궁 리스크/협업 요청/다음 조치 합의' 관점으로만 코칭하세요.
 
-   각 suggestion은 **하나의 줄글 문자열**로 다음 내용을 포함해야 합니다:
-   1) 문제가 되는 표현 지적
-   2) 왜 문제인지 구체적 설명 (어떤 단어가 어떤 뉘앙스로 들리는지)
-   3) 어떤 방향으로 바꾸면 좋을지
-   4) 대안 문장 예시
+출력 강제 규칙(중요):
+- suggestions는 반드시 배열 길이 1로 반환
+- suggestions[0]는 반드시 아래 '3문장 구조'를 그대로 따르세요(문장 수 고정)
 
-   ⚠️ 절대 금지 표현 (이런 식으로 쓰면 안 됨):
-   - ❌ "직접적으로 들려요", "딱딱하게 느껴져요", "부담을 줄 수 있어요"
-   - ❌ "~처럼 들려요", "~하게 느껴져요" (구체적 이유 없이 느낌만 서술)
+(3문장 구조)
+1) "원문은 끝의 “<문제 구절(원문에서 그대로 인용)>”이(가) 원어민 비즈니스 맥락에서 <구체 리스크: 책임 추궁/지식 테스트/압박/명령 등>로 해석될 수 있고, <문제 1개: 앞 문장과의 연결/정보 부족/요청 방식 등>가 있습니다."
+2) "따라서 “<대체 전략: 함께 확인/검토/정리/합의 요청>”의 협업 요청 형태로 바꿔 말해보는 것이 좋습니다."
+3) "“<개선 영어 문장 1개>”처럼 말해보세요."
 
-   ✅ 반드시 이렇게 작성:
-   - 어떤 **특정 단어/문법 구조**가 문제인지 지목
-   - 그 단어가 영어권 비즈니스 문화에서 **왜** 그런 인상을 주는지 설명
-   - 한국어로 치면 어떤 느낌인지 비유 제공
+제약:
+- 영어 예시는 정확히 1문장만 허용
+- 문법 교정은 grammar_corrections로만(여기에 문법 교정 나열 금지)
+- 아래 표현(느낌만 서술)은 금지: '딱딱하게', '자연스럽게', '~처럼 들려요/느껴져요'""",
 
-   좋은 예시 1:
-   "'Do you know the reason?'에서 'Do you know...?'는 영어에서 상대방의 지식을 테스트하는 질문 형태예요. 특히 문제 상황에서 이렇게 물으면 '너 왜 이렇게 됐는지 알기는 해?'라는 추궁으로 들려서, 상대방이 자기 잘못을 인정하라는 압박으로 받아들일 수 있어요. 'Could we review this together to identify the root cause?'처럼 'together'를 넣으면 '같이 원인 찾아보자'는 협업 제안이 됩니다."
+        "daily": """3. 개선 제안 (suggestions): 원어민 일상 대화 관점에서 '과도한 격식/직설/불필요한 압박/부자연스런 연결'을 구체적으로 짚고 더 편한 표현으로 유도하세요.
 
-   좋은 예시 2:
-   "'We need more time.'에서 'need'는 '필요하다'는 뜻이지만, 비즈니스에서는 '우리한테 이게 필수야, 줘'라는 요구로 읽혀요. 상대방에게 선택권을 주지 않고 일방적으로 통보하는 형태거든요. 'We could use a bit more time—would that be feasible?'처럼 'could use'(있으면 좋겠다)와 'would that be feasible?'(가능할까요?)를 쓰면 상대방 의견을 구하는 협조 요청이 됩니다."
+출력 강제 규칙(중요):
+- suggestions는 반드시 배열 길이 1로 반환
+- suggestions[0]는 반드시 아래 '3문장 구조'(문장 수 고정)
 
-   좋은 예시 3:
-   "'I have concerns about...'에서 'concerns'는 영어권에서 '걱정/우려'라는 뜻 외에 '문제 제기하겠다'는 시그널로 쓰여요. 이 단어를 들으면 상대방은 '아, 뭔가 비판이 오겠구나' 하고 방어 자세를 취하게 돼요. 'I'd love to discuss a few thoughts I have on the feature'처럼 'thoughts'(생각들)로 바꾸고 'I'd love to discuss'(논의하고 싶어요)를 붙이면 열린 대화 제안이 됩니다."
+(3문장 구조)
+1) "원문은 “<문제 구절(원문에서 그대로 인용)>”이(가) 일상 대화에서 <구체 이유: 과하게 격식/직설/부담 주는 질문 형태 등>로 처리될 수 있고, <문제 1개: 연결/맥락/정보 부족 등>가 있습니다."
+2) "따라서 <전략: 완곡하게 묻기/가볍게 제안하기/상대 선택권 주기> 형태로 바꿔 말해보는 것이 좋습니다."
+3) "“<개선 영어 문장 1개>”처럼 말해보세요."
 
-   비즈니스 상황별 어조 가이드:
-   * 요청: 직접적 요구 → 정중한 협업 제안 (Would it be possible to...? / Could we...)
-   * 문제 지적: 비난 → 해결 중심 (Let's work together to... / How can we address...)
-   * 시간 요청: 일방적 통보 → 협조 요청 (Would that be feasible? / Could we discuss the timeline?)
-   * 의견 제시: 단정적 → 열린 자세 (I think... What are your thoughts?)""",
-
-        "daily": """3. 개선 제안 (suggestions): 일상 회화에서 더 자연스럽고 친근한 표현을 **줄글 형태**로 제안하세요
-
-   각 suggestion은 **하나의 줄글 문자열**로 다음 내용을 포함해야 합니다:
-   1) 사용자가 쓴 표현 지적
-   2) 왜 어색한지 설명 (교과서적, 딱딱함, 상황에 안 맞음 등)
-   3) 어떤 방향으로 바꾸면 좋을지
-   4) 대안 문장 예시
-
-   예시 1:
-   "'I want to eat pizza.'라고 하면 문법적으로는 맞지만 원어민이 일상에서 잘 안 쓰는 딱딱한 표현이에요. 좀 더 캐주얼하고 자연스러운 구어체로 바꿔보세요. 'I'm in the mood for pizza.' 또는 'I could really go for some pizza.'라고 하면 훨씬 자연스러워요."
-
-   예시 2:
-   "'Do you want to go?'라고 하면 틀린 건 아니지만 친구 사이에서는 약간 격식체처럼 들려요. 친구와의 대화에서는 축약형이나 캐주얼한 표현이 더 자연스러워요. 'Wanna go?' 또는 'Feel like going?'이라고 해보세요."
-
-   일상 상황별 표현 가이드:
-   * 제안하기: Want to...? → How about...? / Feel like...?
-   * 부탁하기: Please do... → Could you...? / Would you mind...?
-   * 동의하기: Yes → Sure! / Sounds good! / I'm down!
-   * 거절하기: No → I'm good, thanks / Maybe next time / I'll pass"""
+제약:
+- 영어 예시는 정확히 1문장만 허용
+- 아래 표현(느낌만 서술)은 금지: '딱딱하게', '자연스럽게', '~처럼 들려요/느껴져요'"""
     }
 
     async def process(
@@ -120,25 +105,6 @@ class FeedbackAgent(BaseAgent):
     ) -> Dict[str, Any]:
         """
         사용자 메시지에 대한 피드백을 생성합니다.
-
-        Args:
-            scenario_context: 시나리오 정보
-                - title, description, scenario_text
-                - roles: {"ai": str, "user": str}
-                - language, difficulty
-                - required_terminology
-            user_message: 사용자 메시지
-            detected_terms: 감지된 전문용어 리스트
-            missed_terms: 미사용 전문용어 리스트
-            current_step: 현재 대화 단계 정보 (선택)
-                - name, title, guide, terminology
-            pronunciation_details: 발음 평가 결과 (선택)
-                - pronunciation_score, accuracy_score, fluency_score
-                - prosody_score, completeness_score, words
-            previously_used_terms: 이전 대화에서 이미 사용한 용어 리스트 (선택)
-
-        Returns:
-            피드백 딕셔너리
         """
         self._validate_input(scenario_context, user_message)
 
@@ -159,16 +125,24 @@ class FeedbackAgent(BaseAgent):
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                temperature=0.7,
-                max_tokens=800,
+                temperature=0.2,  # ✅ 무난한 완곡화로 흐르는 걸 줄이기 위해 낮춤
+                max_tokens=900,
                 response_format={"type": "json_object"}
             )
 
             feedback = json.loads(response.choices[0].message.content)
 
-            # 발음 상세 정보 추가
+            # ✅ 발음 상세 정보 추가
             if pronunciation_details:
                 feedback['pronunciation_details'] = pronunciation_details
+
+            # ✅ suggestions 포맷 강제 + 금지표현 방지(필요 시 suggestions만 1회 리라이트)
+            feedback = await self._normalize_and_fix_suggestions(
+                scenario_context=scenario_context,
+                user_message=user_message,
+                system_prompt=system_prompt,
+                feedback=feedback
+            )
 
             return feedback
 
@@ -196,6 +170,100 @@ class FeedbackAgent(BaseAgent):
             return False
         category_lower = category.lower()
         return any(biz_cat in category_lower for biz_cat in self.BUSINESS_CATEGORIES)
+
+    def _suggestion_needs_fix(self, suggestion: str) -> bool:
+        """suggestions[0]가 금지표현/형식 위반 가능성이 있는지 검사"""
+        if not suggestion:
+            return True
+        # 금지표현 포함 여부
+        if any(p in suggestion for p in self.FORBIDDEN_SUGGESTION_PHRASES):
+            return True
+        # 3문장 구조 유사 체크: 마침표(또는 문장 종결) 2개 이상 권장
+        # (완벽한 문장 분리까지는 강제하지 않고, 최소 안전장치로 둠)
+        if suggestion.count("습니다.") < 2 and suggestion.count("있습니다.") < 1:
+            return True
+        # 영어 예시가 1개인지 대략 체크(따옴표 “ ” 안의 영어가 여러 개면 위험)
+        if suggestion.count("“") >= 2 and suggestion.count("”") >= 2:
+            # 여러 인용일 수 있으니 위험으로 간주
+            return True
+        return False
+
+    async def _rewrite_suggestion_once(
+        self,
+        scenario_context: Dict[str, Any],
+        user_message: str,
+        system_prompt: str,
+        bad_suggestion: str
+    ) -> str:
+        """suggestions[0]만 규칙에 맞게 1회 리라이트"""
+        category = scenario_context.get("category", "")
+        is_business = self._is_business_scenario(category)
+        scenario_type = "비즈니스" if is_business else "일상"
+
+        rewrite_prompt = f"""
+아래는 사용자 메시지에 대한 suggestions 문장입니다. 규칙에 맞게 suggestions[0]만 다시 작성하세요.
+
+[상황]
+- 시나리오 타입: {scenario_type}
+- 사용자 메시지: "{user_message}"
+
+[반드시 지켜야 할 형식(3문장 구조, 문장 수 고정)]
+1) "원문은 ...입니다."
+2) "따라서 ... 것이 좋습니다."
+3) "“<개선 영어 문장 1개>”처럼 말해보세요."
+
+[제약]
+- 영어 예시는 정확히 1문장만
+- 금지 표현: {", ".join(self.FORBIDDEN_SUGGESTION_PHRASES)}
+- 느낌만 말하지 말고, 문제 구절을 “ ”로 인용하고 '왜 그런 해석이 가능한지'를 구체적으로 설명
+- 결과는 JSON으로만: {{ "suggestion": "..." }}
+
+[현재 suggestions(문제 버전)]
+{bad_suggestion}
+"""
+        resp = await self.client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": rewrite_prompt}
+            ],
+            temperature=0.0,
+            max_tokens=350,
+            response_format={"type": "json_object"}
+        )
+        obj = json.loads(resp.choices[0].message.content)
+        return obj.get("suggestion", bad_suggestion)
+
+    async def _normalize_and_fix_suggestions(
+        self,
+        scenario_context: Dict[str, Any],
+        user_message: str,
+        system_prompt: str,
+        feedback: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """suggestions를 배열 길이 1로 정규화하고, 필요 시 1회 리라이트"""
+        suggestions = feedback.get("suggestions", [])
+        if not isinstance(suggestions, list):
+            suggestions = [str(suggestions)]
+
+        # 배열 길이 1로 강제
+        if len(suggestions) == 0:
+            suggestions = [""]  # 리라이트 트리거
+        elif len(suggestions) > 1:
+            suggestions = [suggestions[0]]
+
+        s0 = suggestions[0] if suggestions else ""
+        if self._suggestion_needs_fix(s0):
+            fixed = await self._rewrite_suggestion_once(
+                scenario_context=scenario_context,
+                user_message=user_message,
+                system_prompt=system_prompt,
+                bad_suggestion=s0
+            )
+            suggestions = [fixed]
+
+        feedback["suggestions"] = suggestions
+        return feedback
 
     def _build_system_prompt(
         self,
@@ -273,6 +341,7 @@ class FeedbackAgent(BaseAgent):
     ) -> str:
         """사용자 프롬프트 구성"""
         previously_used_terms = previously_used_terms or []
+
         # 이전에 사용한 용어 섹션
         previously_used_section = ""
         if previously_used_terms:
@@ -361,11 +430,11 @@ Azure 발음 평가 결과:
     "<실제 문법 오류가 있으면 여기에 작성. 오류가 없으면 빈 배열 []>"
   ],
   "terminology_usage": {{
-    "used": ["<현재 메시지에서 사용한 필수 용어 - 정확히 일치 또는 의미적으로 유사한 표현을 사용한 경우 해당 필수 용어를 여기에 추가>"],
-    "previously_used": ["<이전 메시지들에서 이미 사용 완료된 용어 - 시스템이 전달한 리스트 그대로>"],
-    "missed": ["<아직 한 번도 사용하지 않은 용어 - used에도 없고 previously_used에도 없는 것만>"],
+    "used": ["<현재 메시지에서 사용한 용어 (의미적 유사성 기반)>"],
+    "previously_used": ["<이전 메시지들에서 이미 사용 완료된 용어>"],
+    "missed": ["<아직 한 번도 사용하지 않은 용어들>"],
     "similar_expressions": {{
-      "<필수용어>": "<사용자가 해당 용어 대신 사용한 유사 표현>"
+      "<필수용어>": "<사용자가 사용한 유사 표현 (있다면)>"
     }},
     "feedback": "필수 용어 사용에 대한 피드백 (이전에 쓴 건 다시 언급할 필요 없음)",
     "step_expression": {{
@@ -376,7 +445,7 @@ Azure 발음 평가 결과:
     }}
   }},
   "suggestions": [
-    "'사용자가 쓴 표현'이라고 하면 [구체적인 단어/표현]이 [어떤 뉘앙스로 들리는지 설명]. [왜 문제인지 상대방 관점에서 설명]. [어떤 방향으로 바꾸면 좋을지 제안]. '[대안 문장]'처럼 말해보세요."
+    "원문은 끝의 “<문제 구절>”이(가) <해석 리스크/문제점>가 있습니다. 따라서 <협업 요청/완곡/구체화> 형태로 바꿔 말해보는 것이 좋습니다. “<개선 영어 문장 1개>”처럼 말해보세요."
   ],
   "pronunciation_feedback": [
     "<발음 평가 데이터 기반 실제 피드백>"
@@ -394,16 +463,16 @@ Azure 발음 평가 결과:
 - grammar_corrections: 사용자 메시지에 **실제로 존재하는** 문법 오류만 지적하세요. 오류가 없으면 빈 배열 []을 반환하세요.
 - 예시나 템플릿 문구를 그대로 복사하지 마세요. 오직 사용자 메시지 분석 결과만 작성하세요.
 - 문법적으로 완벽한 문장에 대해 거짓 오류를 만들어내지 마세요.
+- suggestions: 반드시 배열 길이 1로 반환하고, 3문장 구조(문장 수 고정)를 지키세요.
+- suggestions에는 '{", ".join(self.FORBIDDEN_SUGGESTION_PHRASES)}' 같은 뭉뚱그린 느낌 표현을 쓰지 마세요(구체적 이유로 설명).
 
 terminology_usage 규칙 (핵심!):
-- used: **현재 메시지**에서 사용한 **필수 용어 이름** (의미적 유사성 기반)
-  ⚠️ 중요: 사용자가 유사 표현을 썼더라도 used 배열에는 **원래 필수 용어 이름**을 넣으세요!
-  예: 필수 용어가 "I'd like to discuss"이고 사용자가 "Can we talk about"을 썼다면
-      → used: ["I'd like to discuss"] (원래 필수 용어명)
-      → similar_expressions: {{"I'd like to discuss": "Can we talk about"}} (매핑)
-- previously_used: **이전 메시지들**에서 이미 사용 완료된 용어 (시스템이 전달한 리스트 그대로 복사)
-- missed: 아직 **한 번도** 사용하지 않은 용어만 (used에 있거나 previously_used에 있으면 missed에서 제외!)
-- similar_expressions: 유사 표현을 사용한 경우, {{"필수용어": "사용자가 쓴 유사 표현"}} 형태로 기록
+- used: **현재 메시지**에서 사용한 용어 (의미적 유사성 기반)
+- previously_used: **이전 메시지들**에서 이미 사용 완료된 용어 (시스템이 전달한 리스트 그대로 사용)
+- missed: 아직 **한 번도** 사용하지 않은 용어 (previously_used에 있으면 missed 아님!)
+- 시스템 감지 결과는 참고용일 뿐, 정확히 일치하는 것만 체크한 것입니다
+- 사용자가 "I'd like to discuss"를 써야 하는데 "Can we talk about"을 썼다면 → used에 포함!
+- similar_expressions: 유사 표현을 사용한 경우, 어떤 표현을 썼는지 기록 (예: {{"I'd like to discuss": "Can we talk about"}})
 - feedback: 이전에 이미 쓴 용어는 언급하지 마세요. 현재 메시지에서 새로 사용한 것만 칭찬하세요.
 
 기타 규칙:
