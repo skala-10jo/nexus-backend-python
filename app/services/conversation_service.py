@@ -385,6 +385,13 @@ class ConversationService:
                 pronunciation_details=pronunciation_details
             )
 
+            # FeedbackAgent가 의미적 유사성 기반으로 판단한 used/missed를 최상위에 추가
+            # 프론트엔드에서 쉽게 접근할 수 있도록
+            terminology_usage = feedback.get("terminology_usage", {})
+            feedback["detectedTerms"] = terminology_usage.get("used", [])
+            feedback["missedTerms"] = terminology_usage.get("missed", [])
+            feedback["similarExpressions"] = terminology_usage.get("similar_expressions", {})
+
             # 피드백을 마지막 사용자 메시지에 저장
             await self._save_feedback_to_message(
                 db=db,
