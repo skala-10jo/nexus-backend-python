@@ -399,12 +399,32 @@ class ConversationService:
             )
 
             # FeedbackAgent가 의미적 유사성 기반으로 판단한 용어 사용 정보를 최상위에 추가
-            # 프론트엔드에서 쉽게 접근할 수 있도록
             terminology_usage = feedback.get("terminology_usage", {})
-            feedback["detectedTerms"] = terminology_usage.get("used", [])  # 현재 메시지에서 사용
-            feedback["previouslyUsedTerms"] = terminology_usage.get("previously_used", [])  # 이전에 이미 사용
-            feedback["missedTerms"] = terminology_usage.get("missed", [])  # 아직 미사용
-            feedback["similarExpressions"] = terminology_usage.get("similar_expressions", {})
+            gpt_used = terminology_usage.get("used", [])
+            gpt_previously_used = terminology_usage.get("previously_used", [])
+            gpt_missed = terminology_usage.get("missed", [])
+            similar_expressions = terminology_usage.get("similar_expressions", {})
+
+            # 후처리: GPT가 missed에서 제거했지만 used에 추가하지 않은 경우 보정
+            # 필수 용어 중 missed에도 없고 previously_used에도 없으면 현재 메시지에서 사용한 것
+            all_accounted = set(gpt_used) | set(gpt_previously_used) | set(gpt_missed)
+            for term in required_terms:
+                if term not in all_accounted:
+                    # GPT가 의미적으로 인식했지만 used에 안 넣은 경우
+                    if term not in gpt_used:
+                        gpt_used.append(term)
+                        logger.info(f"Post-processing: Added '{term}' to used (was recognized but not added)")
+
+            # similar_expressions에 있는 용어도 used에 추가
+            for term in similar_expressions.keys():
+                if term in required_terms and term not in gpt_used:
+                    gpt_used.append(term)
+                    logger.info(f"Post-processing: Added '{term}' to used (found in similar_expressions)")
+
+            feedback["detectedTerms"] = gpt_used  # 현재 메시지에서 사용
+            feedback["previouslyUsedTerms"] = gpt_previously_used  # 이전에 이미 사용
+            feedback["missedTerms"] = gpt_missed  # 아직 미사용
+            feedback["similarExpressions"] = similar_expressions
 
             # 피드백을 마지막 사용자 메시지에 저장
             await self._save_feedback_to_message(

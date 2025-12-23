@@ -210,63 +210,47 @@ class ResponseAgent(BaseAgent):
 
         logger.info(f"Generating conversation response for scenario: {scenario_context.get('title', 'Unknown')}")
 
-        # 재시도 로직 (최대 3회, 온도 조절)
-        max_retries = 3
-        last_error = None
-        temperatures = [0.7, 0.5, 0.9]  # 재시도마다 다른 온도
+        try:
+            response = await self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                temperature=0.7,
+                max_tokens=250,
+                response_format={"type": "json_object"}
+            )
 
-        for attempt in range(max_retries):
-            try:
-                temp = temperatures[attempt] if attempt < len(temperatures) else 0.7
-                response = await self.client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=messages,
-                    temperature=temp,
-                    max_tokens=250,
-                    response_format={"type": "json_object"}
-                )
+            response_text = response.choices[0].message.content
+            logger.info(f"GPT raw response: {response_text[:100] if response_text else 'None'}...")
 
-                response_text = response.choices[0].message.content
-
-                logger.info(f"GPT raw response (attempt {attempt + 1}, temp={temp}): {response_text[:100] if response_text else 'None'}...")
-
-                if not response_text or not response_text.strip():
-                    logger.warning(f"GPT returned empty content (attempt {attempt + 1})")
-                    last_error = ValueError("GPT returned empty response")
-                    continue
-
+            # 응답 파싱 시도
+            if response_text and response_text.strip():
                 try:
                     parsed_response = json.loads(response_text)
                     message = parsed_response.get("message", "").strip()
                     step_completed = parsed_response.get("step_completed", False)
 
-                    logger.info(f"Parsed response - message length: {len(message)}, step_completed: {step_completed}")
-
-                    if not message:
-                        logger.warning(f"GPT returned empty message (attempt {attempt + 1})")
-                        last_error = ValueError("GPT returned empty message")
-                        continue
-
-                    return {
-                        "message": message,
-                        "step_completed": step_completed
-                    }
+                    if message:
+                        logger.info(f"Parsed response - message length: {len(message)}, step_completed: {step_completed}")
+                        return {
+                            "message": message,
+                            "step_completed": step_completed
+                        }
                 except json.JSONDecodeError as e:
-                    logger.warning(f"Failed to parse JSON (attempt {attempt + 1}): {e}")
-                    last_error = ValueError(f"Invalid JSON from GPT")
-                    continue
+                    logger.warning(f"Failed to parse JSON: {e}")
 
-            except Exception as e:
-                logger.error(f"Error in GPT call (attempt {attempt + 1}): {str(e)}")
-                last_error = e
-                continue
+            # 파싱 실패 또는 빈 응답 시 fallback
+            logger.info("Using fallback response")
+            return {
+                "message": "I see. Please go on.",
+                "step_completed": False
+            }
 
-        # 모든 재시도 실패 시 fallback 응답
-        logger.error(f"All {max_retries} attempts failed. Using fallback response.")
-        return {
-            "message": "I understand. Could you tell me more about that?",
-            "step_completed": False
-        }
+        except Exception as e:
+            logger.error(f"Error in GPT call: {str(e)}")
+            return {
+                "message": "I see. Please go on.",
+                "step_completed": False
+            }
 
     def _build_initial_system_prompt(
         self,
