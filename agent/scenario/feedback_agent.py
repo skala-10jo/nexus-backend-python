@@ -63,19 +63,23 @@ class FeedbackAgent(BaseAgent):
    3) 어떤 방향으로 바꾸면 좋을지
    4) 대안 문장 예시
 
-   ⚠️ 작성 시 주의:
-   - "직접적이다", "딱딱하다", "부담을 준다" 같은 **일반적인 표현만 쓰지 마세요**
-   - 반드시 **어떤 단어/표현**이 **왜** 그렇게 들리는지 구체적으로 설명하세요
-   - 상대방이 **어떻게 느낄 수 있는지** (방어적, 비난받는 느낌, 압박감 등) 명시하세요
+   ⚠️ 절대 금지 표현 (이런 식으로 쓰면 안 됨):
+   - ❌ "직접적으로 들려요", "딱딱하게 느껴져요", "부담을 줄 수 있어요"
+   - ❌ "~처럼 들려요", "~하게 느껴져요" (구체적 이유 없이 느낌만 서술)
+
+   ✅ 반드시 이렇게 작성:
+   - 어떤 **특정 단어/문법 구조**가 문제인지 지목
+   - 그 단어가 영어권 비즈니스 문화에서 **왜** 그런 인상을 주는지 설명
+   - 한국어로 치면 어떤 느낌인지 비유 제공
 
    좋은 예시 1:
-   "'Do you know the reason?'이라고 하면 'Do you know'라는 표현이 상대방에게 '너 이거 알아?'라고 추궁하는 것처럼 들릴 수 있어요. 특히 문제 상황에서 이렇게 물으면 상대방이 책임을 묻는다고 느껴 방어적으로 반응할 수 있습니다. 함께 원인을 확인하자는 협업 요청으로 바꿔보세요. 'Could we review this together to identify the root cause and align on next steps?'처럼 말해보세요."
+   "'Do you know the reason?'에서 'Do you know...?'는 영어에서 상대방의 지식을 테스트하는 질문 형태예요. 특히 문제 상황에서 이렇게 물으면 '너 왜 이렇게 됐는지 알기는 해?'라는 추궁으로 들려서, 상대방이 자기 잘못을 인정하라는 압박으로 받아들일 수 있어요. 'Could we review this together to identify the root cause?'처럼 'together'를 넣으면 '같이 원인 찾아보자'는 협업 제안이 됩니다."
 
    좋은 예시 2:
-   "'We need more time to finish the project.'라고 하면 'We need'라는 표현이 일방적인 요구처럼 들려요. 상대방 입장에서는 '그래서 어쩌라고?'라는 느낌을 받을 수 있고, 협의 없이 통보하는 것처럼 느껴질 수 있습니다. 상대방의 여유를 구하는 협조 요청으로 바꿔보세요. 'We could use a bit more time to wrap up the project—would that be feasible on your end?'처럼 말하면 훨씬 협조적으로 들려요."
+   "'We need more time.'에서 'need'는 '필요하다'는 뜻이지만, 비즈니스에서는 '우리한테 이게 필수야, 줘'라는 요구로 읽혀요. 상대방에게 선택권을 주지 않고 일방적으로 통보하는 형태거든요. 'We could use a bit more time—would that be feasible?'처럼 'could use'(있으면 좋겠다)와 'would that be feasible?'(가능할까요?)를 쓰면 상대방 의견을 구하는 협조 요청이 됩니다."
 
    좋은 예시 3:
-   "'I have concerns about the feature.'라고 직접 말하면 'concerns'라는 단어 자체가 문제 제기의 뉘앙스가 있어서 상대방이 비판이나 불만을 표현한다고 느끼고 방어적으로 반응할 수 있어요. 함께 논의하자는 협업 요청으로 바꿔보세요. 'I'd love to discuss a few thoughts I have on the feature—could we find time to go over them together?'라고 하면 더 부드럽게 들려요."
+   "'I have concerns about...'에서 'concerns'는 영어권에서 '걱정/우려'라는 뜻 외에 '문제 제기하겠다'는 시그널로 쓰여요. 이 단어를 들으면 상대방은 '아, 뭔가 비판이 오겠구나' 하고 방어 자세를 취하게 돼요. 'I'd love to discuss a few thoughts I have on the feature'처럼 'thoughts'(생각들)로 바꾸고 'I'd love to discuss'(논의하고 싶어요)를 붙이면 열린 대화 제안이 됩니다."
 
    비즈니스 상황별 어조 가이드:
    * 요청: 직접적 요구 → 정중한 협업 제안 (Would it be possible to...? / Could we...)
@@ -111,7 +115,8 @@ class FeedbackAgent(BaseAgent):
         detected_terms: List[str],
         missed_terms: List[str],
         current_step: Optional[Dict[str, Any]] = None,
-        pronunciation_details: Optional[Dict[str, Any]] = None
+        pronunciation_details: Optional[Dict[str, Any]] = None,
+        previously_used_terms: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
         사용자 메시지에 대한 피드백을 생성합니다.
@@ -130,6 +135,7 @@ class FeedbackAgent(BaseAgent):
             pronunciation_details: 발음 평가 결과 (선택)
                 - pronunciation_score, accuracy_score, fluency_score
                 - prosody_score, completeness_score, words
+            previously_used_terms: 이전 대화에서 이미 사용한 용어 리스트 (선택)
 
         Returns:
             피드백 딕셔너리
@@ -140,7 +146,8 @@ class FeedbackAgent(BaseAgent):
         system_prompt = self._build_system_prompt(scenario_context, difficulty, current_step)
         user_prompt = self._build_user_prompt(
             user_message, detected_terms, missed_terms,
-            current_step, pronunciation_details
+            current_step, pronunciation_details,
+            previously_used_terms or []
         )
 
         logger.info(f"Generating feedback for scenario: {scenario_context.get('title', 'Unknown')}")
@@ -261,9 +268,22 @@ class FeedbackAgent(BaseAgent):
         detected_terms: List[str],
         missed_terms: List[str],
         current_step: Optional[Dict[str, Any]],
-        pronunciation_details: Optional[Dict[str, Any]]
+        pronunciation_details: Optional[Dict[str, Any]],
+        previously_used_terms: List[str] = None
     ) -> str:
         """사용자 프롬프트 구성"""
+        previously_used_terms = previously_used_terms or []
+        # 이전에 사용한 용어 섹션
+        previously_used_section = ""
+        if previously_used_terms:
+            previously_used_section = f"""
+
+⭐ 이전 대화에서 이미 사용한 용어 (이 세션에서 이미 체크됨):
+- {', '.join(previously_used_terms)}
+- 이 용어들은 이미 사용 완료된 것으로 간주하세요!
+- 현재 메시지에서 다시 안 써도 "missed"가 아닙니다!
+"""
+
         # Step terminology 분석
         step_terminology = []
         step_terminology_section = ""
@@ -309,8 +329,10 @@ Azure 발음 평가 결과:
         return f"""사용자 메시지: "{user_message}"
 
 전문용어 분석 (의미적 유사성 기반으로 재평가 필요):
-- 필수 전문용어: {', '.join(required_terms) if required_terms else '없음'}
-- 시스템 감지 결과 (정확히 일치만): 사용={', '.join(detected_terms) if detected_terms else '없음'}, 미사용={', '.join(missed_terms) if missed_terms else '없음'}
+- 필수 전문용어 전체: {', '.join(required_terms) if required_terms else '없음'}
+- 현재 메시지에서 시스템 감지 (정확히 일치만): 사용={', '.join(detected_terms) if detected_terms else '없음'}
+- 아직 미사용 (이전+현재 합쳐서): {', '.join(missed_terms) if missed_terms else '없음'}
+{previously_used_section}
 - 중요: 사용자가 정확히 같은 표현이 아니더라도 **의미적으로 유사한 표현**을 사용했으면 "사용함"으로 판단하세요
 
   유사 표현 예시:
@@ -339,12 +361,13 @@ Azure 발음 평가 결과:
     "<실제 문법 오류가 있으면 여기에 작성. 오류가 없으면 빈 배열 []>"
   ],
   "terminology_usage": {{
-    "used": ["<의미적 유사성 기반으로 사용자가 사용한 것으로 판단되는 용어들>"],
-    "missed": ["<의미적 유사성 기반으로 사용자가 사용하지 않은 용어들>"],
+    "used": ["<현재 메시지에서 사용한 용어 (의미적 유사성 기반)>"],
+    "previously_used": ["<이전 메시지들에서 이미 사용 완료된 용어>"],
+    "missed": ["<아직 한 번도 사용하지 않은 용어들>"],
     "similar_expressions": {{
       "<필수용어>": "<사용자가 사용한 유사 표현 (있다면)>"
     }},
-    "feedback": "필수 용어 사용에 대한 피드백을 여기에 작성하세요",
+    "feedback": "필수 용어 사용에 대한 피드백 (이전에 쓴 건 다시 언급할 필요 없음)",
     "step_expression": {{
       "recommended": {json.dumps(step_terminology, ensure_ascii=False)},
       "used_similar": "<사용자가 권장 표현과 유사한 표현을 사용했는지 여부 (true/false)>",
@@ -373,11 +396,13 @@ Azure 발음 평가 결과:
 - 문법적으로 완벽한 문장에 대해 거짓 오류를 만들어내지 마세요.
 
 terminology_usage 규칙 (핵심!):
-- used와 missed는 **의미적 유사성**을 기반으로 직접 판단하세요
+- used: **현재 메시지**에서 사용한 용어 (의미적 유사성 기반)
+- previously_used: **이전 메시지들**에서 이미 사용 완료된 용어 (시스템이 전달한 리스트 그대로 사용)
+- missed: 아직 **한 번도** 사용하지 않은 용어 (previously_used에 있으면 missed 아님!)
 - 시스템 감지 결과는 참고용일 뿐, 정확히 일치하는 것만 체크한 것입니다
 - 사용자가 "I'd like to discuss"를 써야 하는데 "Can we talk about"을 썼다면 → used에 포함!
 - similar_expressions: 유사 표현을 사용한 경우, 어떤 표현을 썼는지 기록 (예: {{"I'd like to discuss": "Can we talk about"}})
-- 용어 사용에 대한 구체적인 피드백을 한글로 작성하세요
+- feedback: 이전에 이미 쓴 용어는 언급하지 마세요. 현재 메시지에서 새로 사용한 것만 칭찬하세요.
 
 기타 규칙:
 - terminology_usage.step_expression: 현재 단계 권장 표현 사용 여부를 평가하세요 (의미적 유사성 기준)

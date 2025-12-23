@@ -360,9 +360,19 @@ class ConversationService:
                 except Exception as e:
                     logger.error(f"Pronunciation assessment failed: {str(e)}", exc_info=True)
 
-            # 미사용 용어 계산
+            # 세션에서 이전에 사용한 용어들 조회
+            previously_used_terms = await self._get_session_used_terms(db, scenario_id, user_id)
+            logger.info(f"Previously used terms in session: {previously_used_terms}")
+
+            # 필수 용어 목록
             required_terms = scenario.required_terminology or []
-            missed_terms = [term for term in required_terms if term.lower() not in user_message.lower()]
+
+            # 현재 메시지에서 감지된 용어 (정확히 일치)
+            current_detected = [term for term in required_terms if term.lower() in user_message.lower()]
+
+            # 아직 사용되지 않은 용어 = 필수 용어 - (이전 사용 + 현재 사용)
+            all_used_terms = set(previously_used_terms) | set(current_detected)
+            missed_terms = [term for term in required_terms if term not in all_used_terms]
 
             # 시나리오 컨텍스트 구성
             scenario_context = {
@@ -372,24 +382,28 @@ class ConversationService:
                 "roles": scenario.roles,
                 "language": scenario.language,
                 "difficulty": scenario.difficulty,
+                "category": scenario.category,
                 "required_terminology": required_terms
             }
 
             # FeedbackAgent로 피드백 생성 위임
+            # 이전에 사용한 용어 정보도 함께 전달
             feedback = await self.feedback_agent.process(
                 scenario_context=scenario_context,
                 user_message=user_message,
                 detected_terms=detected_terms,
                 missed_terms=missed_terms,
                 current_step=current_step,
-                pronunciation_details=pronunciation_details
+                pronunciation_details=pronunciation_details,
+                previously_used_terms=list(previously_used_terms)
             )
 
-            # FeedbackAgent가 의미적 유사성 기반으로 판단한 used/missed를 최상위에 추가
+            # FeedbackAgent가 의미적 유사성 기반으로 판단한 용어 사용 정보를 최상위에 추가
             # 프론트엔드에서 쉽게 접근할 수 있도록
             terminology_usage = feedback.get("terminology_usage", {})
-            feedback["detectedTerms"] = terminology_usage.get("used", [])
-            feedback["missedTerms"] = terminology_usage.get("missed", [])
+            feedback["detectedTerms"] = terminology_usage.get("used", [])  # 현재 메시지에서 사용
+            feedback["previouslyUsedTerms"] = terminology_usage.get("previously_used", [])  # 이전에 이미 사용
+            feedback["missedTerms"] = terminology_usage.get("missed", [])  # 아직 미사용
             feedback["similarExpressions"] = terminology_usage.get("similar_expressions", {})
 
             # 피드백을 마지막 사용자 메시지에 저장
@@ -771,3 +785,44 @@ class ConversationService:
         except Exception as e:
             logger.error(f"Error generating hint: {str(e)}")
             raise
+
+    async def _get_session_used_terms(
+        self,
+        db,
+        scenario_id: str,
+        user_id: UUID
+    ) -> set:
+        """
+        세션에서 이전에 사용된 모든 용어 조회
+
+        Args:
+            db: 데이터베이스 세션
+            scenario_id: 시나리오 ID
+            user_id: 사용자 ID
+
+        Returns:
+            이전에 사용된 용어들의 집합
+        """
+        # 해당 시나리오의 active 세션 찾기
+        session = db.query(ConversationSession).filter(
+            ConversationSession.scenario_id == UUID(scenario_id),
+            ConversationSession.user_id == user_id,
+            ConversationSession.status == 'active'
+        ).order_by(ConversationSession.started_at.desc()).first()
+
+        if not session:
+            return set()
+
+        # 해당 세션의 모든 메시지에서 detected_terms 수집
+        messages = db.query(ConversationMessage).filter(
+            ConversationMessage.session_id == session.id,
+            ConversationMessage.sender == 'user',
+            ConversationMessage.detected_terms.isnot(None)
+        ).all()
+
+        all_used_terms = set()
+        for msg in messages:
+            if msg.detected_terms:
+                all_used_terms.update(msg.detected_terms)
+
+        return all_used_terms
