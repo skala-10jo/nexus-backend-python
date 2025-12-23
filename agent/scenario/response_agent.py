@@ -210,29 +210,30 @@ class ResponseAgent(BaseAgent):
 
         logger.info(f"Generating conversation response for scenario: {scenario_context.get('title', 'Unknown')}")
 
-        # 재시도 로직 (최대 2회)
-        max_retries = 2
+        # 재시도 로직 (최대 3회, 온도 조절)
+        max_retries = 3
         last_error = None
+        temperatures = [0.7, 0.5, 0.9]  # 재시도마다 다른 온도
 
         for attempt in range(max_retries):
             try:
+                temp = temperatures[attempt] if attempt < len(temperatures) else 0.7
                 response = await self.client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=messages,
-                    temperature=0.7,  # 안정적인 JSON 응답을 위해 낮춤
-                    max_tokens=200,   # 충분한 토큰 확보
+                    temperature=temp,
+                    max_tokens=250,
                     response_format={"type": "json_object"}
                 )
 
                 response_text = response.choices[0].message.content
 
-                # 디버깅용 상세 로그
-                logger.info(f"GPT raw response (attempt {attempt + 1}): {response_text}")
+                logger.info(f"GPT raw response (attempt {attempt + 1}, temp={temp}): {response_text[:100] if response_text else 'None'}...")
 
                 if not response_text or not response_text.strip():
-                    logger.warning(f"GPT returned empty content (attempt {attempt + 1}): repr={repr(response_text)}")
+                    logger.warning(f"GPT returned empty content (attempt {attempt + 1})")
                     last_error = ValueError("GPT returned empty response")
-                    continue  # 재시도
+                    continue
 
                 try:
                     parsed_response = json.loads(response_text)
@@ -242,27 +243,30 @@ class ResponseAgent(BaseAgent):
                     logger.info(f"Parsed response - message length: {len(message)}, step_completed: {step_completed}")
 
                     if not message:
-                        logger.warning(f"GPT returned empty message (attempt {attempt + 1}). Full response: {response_text}")
-                        last_error = ValueError(f"GPT returned empty message")
-                        continue  # 재시도
+                        logger.warning(f"GPT returned empty message (attempt {attempt + 1})")
+                        last_error = ValueError("GPT returned empty message")
+                        continue
 
                     return {
                         "message": message,
                         "step_completed": step_completed
                     }
                 except json.JSONDecodeError as e:
-                    logger.warning(f"Failed to parse JSON (attempt {attempt + 1}): {response_text}, error: {e}")
-                    last_error = ValueError(f"Invalid JSON from GPT: {response_text}")
-                    continue  # 재시도
+                    logger.warning(f"Failed to parse JSON (attempt {attempt + 1}): {e}")
+                    last_error = ValueError(f"Invalid JSON from GPT")
+                    continue
 
             except Exception as e:
                 logger.error(f"Error in GPT call (attempt {attempt + 1}): {str(e)}")
                 last_error = e
-                continue  # 재시도
+                continue
 
-        # 모든 재시도 실패
-        logger.error(f"All {max_retries} attempts failed. Last error: {last_error}")
-        raise last_error if last_error else ValueError("Unknown error in conversation response")
+        # 모든 재시도 실패 시 fallback 응답
+        logger.error(f"All {max_retries} attempts failed. Using fallback response.")
+        return {
+            "message": "I understand. Could you tell me more about that?",
+            "step_completed": False
+        }
 
     def _build_initial_system_prompt(
         self,
@@ -337,27 +341,14 @@ class ResponseAgent(BaseAgent):
 스텝 가이드: {current_step.get('guide', '')}
 이 스텝에서 사용할 용어: {step_terminology_str}
 """
+            step_name = current_step.get('name', 'unknown')
             step_judgment_instruction = f"""
-⚠️ 스텝 완료 판단 (매우 중요!):
-현재 스텝 "{current_step.get('name', 'unknown')}"의 완료 여부를 적극적으로 판단하세요.
-
-스텝별 완료 기준:
-- ice_breaking: 인사와 안부를 주고받았으면 완료 (2-3회 교환이면 충분)
-- agenda_setting: 미팅 목적/주제가 언급되었으면 완료
-- discussion: 주요 논의 사항을 다뤘으면 완료 (3-4회 의미 있는 교환)
-- action_items: 할 일이나 다음 단계가 언급되었으면 완료
-- wrap_up: 마무리 인사나 감사 표현이 있으면 완료
-
-판단 원칙:
-1. 완벽할 필요 없음 - 스텝의 핵심 목적이 어느 정도 달성되면 true
-2. 자연스러운 흐름 우선 - 대화가 다음 주제로 넘어가려는 징후가 보이면 true
-3. 적극적으로 판단 - 애매하면 true로 설정하여 대화 흐름을 유지
-4. 절대로 "다음 단계로 넘어갑시다" 같은 명시적 언급 금지
-
-예시:
-- 사용자: "I'm doing well, thanks!" → ice_breaking 완료 (step_completed: true)
-- 사용자: "Let's talk about the project timeline" → agenda_setting 완료 (step_completed: true)
-- 사용자: "I think we covered the main points" → discussion 완료 (step_completed: true)
+스텝 완료 판단 (현재: {step_name}):
+- ice_breaking: 인사 완료시 true
+- agenda_setting: 주제 언급시 true
+- discussion: 3-4회 교환 후 true
+- action_items/wrap_up: 마무리 언급시 true
+- 애매하면 true로 설정
 """
 
         return f"""당신은 비즈니스 회화 연습 시나리오에 참여하고 있습니다.
@@ -392,13 +383,5 @@ class ResponseAgent(BaseAgent):
 - 오늘 맥락을 기반으로 현실적인 날짜와 시간을 사용하세요
 - 알림: "빠른 채팅 메시지"로 생각하세요, "이메일"이 아닙니다 - 대화체이고 간결하게
 {step_judgment_instruction}
-응답은 반드시 다음 JSON 형식으로 제공하세요:
-{{
-    "message": "AI 응답 메시지 (간결하게, 15-20 단어 이내)",
-    "step_completed": true 또는 false (위의 스텝 완료 기준에 따라 적극적으로 판단!)
-}}
-
-⚠️ step_completed 주의사항:
-- 기본값을 false로 두지 마세요! 매번 적극적으로 판단하세요
-- 스텝 완료 기준에 부합하면 반드시 true로 설정하세요
-- 대화가 자연스럽게 다음 주제로 넘어가면 true로 설정하세요"""
+JSON 응답 형식:
+{{"message": "응답 (15-20단어)", "step_completed": true/false}}"""
