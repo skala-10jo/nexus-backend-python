@@ -210,46 +210,59 @@ class ResponseAgent(BaseAgent):
 
         logger.info(f"Generating conversation response for scenario: {scenario_context.get('title', 'Unknown')}")
 
-        try:
-            response = await self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=messages,
-                temperature=0.8,
-                max_tokens=150,
-                response_format={"type": "json_object"}
-            )
+        # 재시도 로직 (최대 2회)
+        max_retries = 2
+        last_error = None
 
-            response_text = response.choices[0].message.content
-
-            # 디버깅용 상세 로그
-            logger.info(f"GPT raw response: {response_text}")
-
-            if not response_text:
-                logger.error("GPT returned None or empty content - this should not happen")
-                raise ValueError("GPT returned empty response")
-
+        for attempt in range(max_retries):
             try:
-                parsed_response = json.loads(response_text)
-                message = parsed_response.get("message", "").strip()
-                step_completed = parsed_response.get("step_completed", False)
+                response = await self.client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=messages,
+                    temperature=0.7,  # 안정적인 JSON 응답을 위해 낮춤
+                    max_tokens=200,   # 충분한 토큰 확보
+                    response_format={"type": "json_object"}
+                )
 
-                logger.info(f"Parsed response - message length: {len(message)}, step_completed: {step_completed}")
+                response_text = response.choices[0].message.content
 
-                if not message:
-                    logger.error(f"GPT returned empty message field. Full response: {response_text}")
-                    raise ValueError(f"GPT returned empty message. Raw: {response_text}")
+                # 디버깅용 상세 로그
+                logger.info(f"GPT raw response (attempt {attempt + 1}): {response_text}")
 
-                return {
-                    "message": message,
-                    "step_completed": step_completed
-                }
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse AI response as JSON: {response_text}, error: {e}")
-                raise ValueError(f"Invalid JSON from GPT: {response_text}")
+                if not response_text or not response_text.strip():
+                    logger.warning(f"GPT returned empty content (attempt {attempt + 1}): repr={repr(response_text)}")
+                    last_error = ValueError("GPT returned empty response")
+                    continue  # 재시도
 
-        except Exception as e:
-            logger.error(f"Error generating conversation response: {str(e)}")
-            raise
+                try:
+                    parsed_response = json.loads(response_text)
+                    message = parsed_response.get("message", "").strip()
+                    step_completed = parsed_response.get("step_completed", False)
+
+                    logger.info(f"Parsed response - message length: {len(message)}, step_completed: {step_completed}")
+
+                    if not message:
+                        logger.warning(f"GPT returned empty message (attempt {attempt + 1}). Full response: {response_text}")
+                        last_error = ValueError(f"GPT returned empty message")
+                        continue  # 재시도
+
+                    return {
+                        "message": message,
+                        "step_completed": step_completed
+                    }
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Failed to parse JSON (attempt {attempt + 1}): {response_text}, error: {e}")
+                    last_error = ValueError(f"Invalid JSON from GPT: {response_text}")
+                    continue  # 재시도
+
+            except Exception as e:
+                logger.error(f"Error in GPT call (attempt {attempt + 1}): {str(e)}")
+                last_error = e
+                continue  # 재시도
+
+        # 모든 재시도 실패
+        logger.error(f"All {max_retries} attempts failed. Last error: {last_error}")
+        raise last_error if last_error else ValueError("Unknown error in conversation response")
 
     def _build_initial_system_prompt(
         self,

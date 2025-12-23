@@ -88,7 +88,9 @@ async def send_message(
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        # GPT 응답 오류 등 비즈니스 로직 오류는 500으로 처리
+        logger.error(f"ValueError in send_message: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         logger.error(f"Failed to send message: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to send message: {str(e)}")
