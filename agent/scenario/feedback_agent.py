@@ -361,11 +361,11 @@ Azure 발음 평가 결과:
     "<실제 문법 오류가 있으면 여기에 작성. 오류가 없으면 빈 배열 []>"
   ],
   "terminology_usage": {{
-    "used": ["<현재 메시지에서 사용한 용어 (의미적 유사성 기반)>"],
-    "previously_used": ["<이전 메시지들에서 이미 사용 완료된 용어>"],
-    "missed": ["<아직 한 번도 사용하지 않은 용어들>"],
+    "used": ["<현재 메시지에서 사용한 필수 용어 - 정확히 일치 또는 의미적으로 유사한 표현을 사용한 경우 해당 필수 용어를 여기에 추가>"],
+    "previously_used": ["<이전 메시지들에서 이미 사용 완료된 용어 - 시스템이 전달한 리스트 그대로>"],
+    "missed": ["<아직 한 번도 사용하지 않은 용어 - used에도 없고 previously_used에도 없는 것만>"],
     "similar_expressions": {{
-      "<필수용어>": "<사용자가 사용한 유사 표현 (있다면)>"
+      "<필수용어>": "<사용자가 해당 용어 대신 사용한 유사 표현>"
     }},
     "feedback": "필수 용어 사용에 대한 피드백 (이전에 쓴 건 다시 언급할 필요 없음)",
     "step_expression": {{
@@ -396,12 +396,14 @@ Azure 발음 평가 결과:
 - 문법적으로 완벽한 문장에 대해 거짓 오류를 만들어내지 마세요.
 
 terminology_usage 규칙 (핵심!):
-- used: **현재 메시지**에서 사용한 용어 (의미적 유사성 기반)
-- previously_used: **이전 메시지들**에서 이미 사용 완료된 용어 (시스템이 전달한 리스트 그대로 사용)
-- missed: 아직 **한 번도** 사용하지 않은 용어 (previously_used에 있으면 missed 아님!)
-- 시스템 감지 결과는 참고용일 뿐, 정확히 일치하는 것만 체크한 것입니다
-- 사용자가 "I'd like to discuss"를 써야 하는데 "Can we talk about"을 썼다면 → used에 포함!
-- similar_expressions: 유사 표현을 사용한 경우, 어떤 표현을 썼는지 기록 (예: {{"I'd like to discuss": "Can we talk about"}})
+- used: **현재 메시지**에서 사용한 **필수 용어 이름** (의미적 유사성 기반)
+  ⚠️ 중요: 사용자가 유사 표현을 썼더라도 used 배열에는 **원래 필수 용어 이름**을 넣으세요!
+  예: 필수 용어가 "I'd like to discuss"이고 사용자가 "Can we talk about"을 썼다면
+      → used: ["I'd like to discuss"] (원래 필수 용어명)
+      → similar_expressions: {{"I'd like to discuss": "Can we talk about"}} (매핑)
+- previously_used: **이전 메시지들**에서 이미 사용 완료된 용어 (시스템이 전달한 리스트 그대로 복사)
+- missed: 아직 **한 번도** 사용하지 않은 용어만 (used에 있거나 previously_used에 있으면 missed에서 제외!)
+- similar_expressions: 유사 표현을 사용한 경우, {{"필수용어": "사용자가 쓴 유사 표현"}} 형태로 기록
 - feedback: 이전에 이미 쓴 용어는 언급하지 마세요. 현재 메시지에서 새로 사용한 것만 칭찬하세요.
 
 기타 규칙:
